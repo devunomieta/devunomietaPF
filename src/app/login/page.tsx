@@ -77,6 +77,12 @@ export default async function LoginPage({
             Authenticate
           </button>
         </form>
+        
+        <div className="mt-8 flex justify-center gap-4 text-[10px] text-muted uppercase tracking-widest font-semibold">
+          <Link href="/privacy" className="hover:text-accent-blue hover:underline">Privacy Policy</Link>
+          <span>·</span>
+          <Link href="/terms" className="hover:text-accent-blue hover:underline">Terms of Service</Link>
+        </div>
       </div>
     </div>
   )

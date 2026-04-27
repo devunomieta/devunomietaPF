@@ -5,6 +5,7 @@ import Image from "next/image";
 import { BookOpen, Users, Star, MapPin, Link as LinkIcon, Mail } from "lucide-react";
 import { ContributionGraph } from "@/components/ui/ContributionGraph";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const titles = [
   "Senior Software Engineer & Architect",
@@ -12,12 +13,9 @@ const titles = [
   "Product Growth Manager"
 ];
 
-export default function Home() {
+function AuthFallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [titleIndex, setTitleIndex] = useState(0);
-  const [displayText, setDisplayText] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -25,6 +23,14 @@ export default function Home() {
       router.push(`/auth/callback?code=${code}`);
     }
   }, [searchParams, router]);
+
+  return null;
+}
+
+export default function Home() {
+  const [titleIndex, setTitleIndex] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -49,7 +55,11 @@ export default function Home() {
   }, [displayText, isDeleting, titleIndex]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
+    <>
+      <Suspense fallback={null}>
+        <AuthFallback />
+      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
       {/* Left Sidebar - Profile Info */}
       <aside className="flex flex-col gap-6">
         <div className="relative w-full max-w-[300px] aspect-square rounded-full border border-border overflow-hidden glow mx-auto md:mx-0">
@@ -129,6 +139,7 @@ export default function Home() {
           <ContributionGraph />
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
