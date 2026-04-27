@@ -11,7 +11,7 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
 
-  // Use service-role to bypass RLS when checking admin status
+  // Use service-role to bypass RLS on admins table
   const { data: admin } = await adminDb
     .from('admins')
     .select('email')
@@ -19,8 +19,8 @@ export async function updateProfile(formData: FormData) {
     .maybeSingle()
   if (!admin) return { error: 'Unauthorized: not in admin list' }
 
-  // Fetch the profile row to get its ID (don't rely on email matching)
-  const { data: existing, error: fetchError } = await supabase
+  // Use admin client to fetch & update profile (bypasses profile table RLS)
+  const { data: existing, error: fetchError } = await adminDb
     .from('profile')
     .select('id')
     .limit(1)
@@ -45,18 +45,16 @@ export async function updateProfile(formData: FormData) {
     updated_at: new Date().toISOString(),
   }
 
-  // Only update avatar_url if a new one was uploaded
   if (avatarUrl) {
     profileData.avatar_url = avatarUrl
   }
 
-  const { error } = await supabase
+  const { error } = await adminDb
     .from('profile')
     .update(profileData)
     .eq('id', existing.id)
 
   if (error) {
-    console.error('Update profile error:', error)
     return { error: error.message }
   }
 
