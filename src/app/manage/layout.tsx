@@ -12,11 +12,13 @@ export default async function ManageLayout({ children }: { children: React.React
     redirect('/login');
   }
 
+  const userEmail = user.email?.toLowerCase();
+  
   const { data: adminUser } = await supabase
     .from('admins')
     .select('email')
-    .eq('email', user.email?.toLowerCase() || '')
-    .single();
+    .eq('email', userEmail || '')
+    .maybeSingle();
 
   if (!adminUser) {
     await supabase.auth.signOut();
