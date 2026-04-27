@@ -129,11 +129,24 @@ export function PostEditor({ post }: { post?: any }) {
                     h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-foreground mt-4 mb-2 border-b border-border pb-1" {...props} />,
                     h2: ({node, ...props}) => <h2 className="text-xl font-bold text-foreground mt-4 mb-2" {...props} />,
                     h3: ({node, ...props}) => <h3 className="text-lg font-bold text-foreground mt-4 mb-2" {...props} />,
-                    p: ({node, ...props}) => <p className="text-sm text-muted mb-4 leading-relaxed" {...props} />,
+                    p: ({node, ...props}) => <div className="text-sm text-muted mb-4 leading-relaxed" {...props} />,
                     ul: ({node, ...props}) => <ul className="list-disc list-inside text-sm text-muted mb-4" {...props} />,
                     ol: ({node, ...props}) => <ol className="list-decimal list-inside text-sm text-muted mb-4" {...props} />,
                     a: ({node, ...props}) => <a className="text-accent-blue hover:underline" {...props} />,
-                    code: ({node, inline, ...props}) => inline ? <code className="bg-header px-1.5 py-0.5 rounded text-accent-blue text-xs font-mono border border-border" {...props} /> : <pre className="bg-header p-4 rounded-lg text-xs font-mono text-foreground border border-border mb-4 overflow-x-auto"><code {...props} /></pre>,
+                    code: ({node, className, children, ...props}) => {
+                      const isInline = !className?.includes('language-');
+                      return isInline ? (
+                        <code className="bg-header px-1.5 py-0.5 rounded text-accent-blue text-xs font-mono border border-border" {...props}>
+                          {children}
+                        </code>
+                      ) : (
+                        <pre className="bg-header p-4 rounded-lg text-xs font-mono text-foreground border border-border mb-4 overflow-x-auto">
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        </pre>
+                      );
+                    },
                     blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-accent-blue pl-4 italic text-muted my-4" {...props} />
                   }}
                 >

@@ -24,6 +24,8 @@ export function Footer() {
           <div className="flex items-center justify-center md:justify-start gap-4 opacity-0">
             <span>Academic</span>
             <span>Contact</span>
+            <span>Privacy</span>
+            <span>Terms</span>
           </div>
           <p className="italic text-xs font-medium opacity-0 text-center">"Time is of essence"</p>
           <div className="flex items-center justify-center md:justify-end gap-2 opacity-0">
@@ -42,6 +44,8 @@ export function Footer() {
         <div className="flex items-center justify-center md:justify-start gap-4">
           <Link href="/academic" className="hover:text-foreground transition-colors hover:underline">Academic</Link>
           <Link href="/contact" className="hover:text-foreground transition-colors hover:underline">Contact</Link>
+          <Link href="/privacy" className="hover:text-foreground transition-colors hover:underline">Privacy</Link>
+          <Link href="/terms" className="hover:text-foreground transition-colors hover:underline">Terms</Link>
         </div>
         
         {/* Center: Quote */}

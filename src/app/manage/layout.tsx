@@ -2,17 +2,7 @@ import Link from 'next/link';
 import { logout } from '@/app/login/actions';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut } from 'lucide-react';
-
-const navLinks = [
-  { name: 'Dashboard', href: '/manage', icon: LayoutDashboard },
-  { name: 'Profile', href: '/manage/profile', icon: User },
-  { name: 'Posts', href: '/manage/posts', icon: FileText },
-  { name: 'Projects', href: '/manage/projects', icon: FolderGit2 },
-  { name: 'Experience', href: '/manage/experience', icon: History },
-  { name: 'Academic', href: '/manage/academic', icon: GraduationCap },
-  { name: 'Inquiries', href: '/manage/inquiries', icon: MessageSquare },
-];
+import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send } from 'lucide-react';
 
 export default async function ManageLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -22,12 +12,47 @@ export default async function ManageLayout({ children }: { children: React.React
     redirect('/login');
   }
 
-  const allowedEmails = ['lionelunomieta@gmail.com', 'devunomieta@gmail.com'];
-  
-  if (!user.email || !allowedEmails.includes(user.email.toLowerCase())) {
+  const { data: adminUser } = await supabase
+    .from('admins')
+    .select('email')
+    .eq('email', user.email?.toLowerCase() || '')
+    .single();
+
+  if (!adminUser) {
     await supabase.auth.signOut();
-    redirect('/login?error=Unauthorized%20email%20address');
+    redirect('/login?error=Unauthorized%20access');
   }
+
+  // Fetch notification counts
+  const { count: unreadInquiries } = await supabase
+    .from('inquiries')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_read', false);
+
+  const { count: subscriberCount } = await supabase
+    .from('subscribers')
+    .select('*', { count: 'exact', head: true });
+
+  const navLinks = [
+    { name: 'Dashboard', href: '/manage', icon: LayoutDashboard },
+    { name: 'Profile', href: '/manage/profile', icon: User },
+    { name: 'Posts', href: '/manage/posts', icon: FileText },
+    { name: 'Projects', href: '/manage/projects', icon: FolderGit2 },
+    { name: 'Experience', href: '/manage/experience', icon: History },
+    { name: 'Academic', href: '/manage/academic', icon: GraduationCap },
+    { 
+      name: 'Inquiries', 
+      href: '/manage/inquiries', 
+      icon: MessageSquare, 
+      count: unreadInquiries 
+    },
+    { 
+      name: 'Newsletter', 
+      href: '/manage/newsletter', 
+      icon: Send, 
+      count: subscriberCount 
+    },
+  ];
 
   return (
     <div className="flex flex-col md:flex-row min-h-[70vh] gap-8">
@@ -40,10 +65,17 @@ export default async function ManageLayout({ children }: { children: React.React
               <Link
                 key={link.name}
                 href={link.href}
-                className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors"
+                className="flex items-center justify-between px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors"
               >
-                <link.icon size={16} />
-                {link.name}
+                <div className="flex items-center gap-3">
+                  <link.icon size={16} />
+                  {link.name}
+                </div>
+                {link.count !== undefined && link.count !== null && link.count > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-accent-blue text-white text-[10px] font-bold">
+                    {link.count}
+                  </span>
+                )}
               </Link>
             ))}
             

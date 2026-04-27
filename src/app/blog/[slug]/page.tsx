@@ -110,15 +110,16 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
             h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-foreground mt-8 mb-4 border-b border-border pb-2" {...props} />,
             h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-foreground mt-8 mb-4 border-b border-border pb-2" {...props} />,
             h3: ({node, ...props}) => <h3 className="text-xl font-bold text-foreground mt-6 mb-3" {...props} />,
-            p: ({node, ...props}) => <p className="text-muted text-base leading-relaxed mb-4" {...props} />,
+            p: ({node, ...props}) => <div className="text-muted text-base leading-relaxed mb-4" {...props} />,
             ul: ({node, ...props}) => <ul className="list-disc list-inside text-muted mb-4 space-y-1 ml-4" {...props} />,
             ol: ({node, ...props}) => <ol className="list-decimal list-inside text-muted mb-4 space-y-1 ml-4" {...props} />,
             li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
             a: ({node, ...props}) => <a className="text-accent-blue hover:underline" {...props} />,
-            // @ts-ignore
-            code: ({node, inline, className, children, ...props}) => {
+            code: ({node, className, children, ...props}) => {
               const match = /language-(\w+)/.exec(className || '')
-              return !inline ? (
+              const isInline = !className?.includes('language-')
+              
+              return !isInline ? (
                 <div className="my-6 rounded-xl overflow-hidden border border-border bg-header shadow-md glow">
                   <div className="px-4 py-2 border-b border-border flex items-center bg-background/50">
                     <span className="text-xs font-mono text-muted uppercase tracking-wider">{match ? match[1] : 'code'}</span>

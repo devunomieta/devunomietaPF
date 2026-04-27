@@ -1,6 +1,7 @@
 import { login } from './actions'
 import { Terminal, Lock } from 'lucide-react'
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton'
+import Link from 'next/link'
 
 export default async function LoginPage({
   searchParams,
@@ -43,7 +44,15 @@ export default async function LoginPage({
           </div>
           
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground uppercase tracking-wider" htmlFor="password">Password</label>
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-semibold text-foreground uppercase tracking-wider" htmlFor="password">Password</label>
+              <Link 
+                href="/login/forgot-password"
+                className="text-[10px] text-accent-blue hover:underline uppercase tracking-wider font-bold"
+              >
+                Forgot?
+              </Link>
+            </div>
             <input
               id="password"
               name="password"

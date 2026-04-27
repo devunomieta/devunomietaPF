@@ -39,7 +39,7 @@ export function CommentsSection({
     }
 
     setLoading(true);
-    const res = await postCommentAction(postId, newComment, parentId);
+    const res = await postCommentAction(postId, newComment, parentId || undefined);
     if (res.success) {
       setNewComment("");
       setReplyingTo(null);
