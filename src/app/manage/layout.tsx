@@ -22,7 +22,8 @@ export default async function ManageLayout({ children }: { children: React.React
 
   if (!adminUser) {
     await supabase.auth.signOut();
-    redirect('/login?error=Unauthorized%20access');
+    // Diagnostic error message to help the user identify which email is missing from the DB
+    redirect(`/login?error=Unauthorized:%20${userEmail || 'unknown'}%20is%20not%20in%20the%20admin%20list`);
   }
 
   // Fetch notification counts
