@@ -15,20 +15,25 @@ export default async function ManageLayout({ children }: { children: React.React
 
   const userEmail = user.email?.toLowerCase() ?? '';
 
-  // Use the service-role client to bypass RLS and read the admins table directly
+  // Use service-role client to bypass RLS entirely — reads admins table directly
   const adminDb = createAdminClient();
-  const { data: adminUser } = await adminDb
+  const { data: adminUser, error: adminQueryError } = await adminDb
     .from('admins')
     .select('email')
     .eq('email', userEmail)
     .maybeSingle();
 
-  if (!adminUser) {
-    await supabase.auth.signOut();
-    redirect(`/login?error=Access denied. ${userEmail} is not an authorized admin.`);
+  // Throw real errors (e.g. wrong service key, network) — do NOT silently treat as "not found"
+  if (adminQueryError) {
+    throw new Error(`Admin DB lookup failed: ${adminQueryError.message}`);
   }
 
-  // Fetch notification counts (use normal client — RLS protects these correctly)
+  if (!adminUser) {
+    await supabase.auth.signOut();
+    redirect(`/login?error=Access+denied.+${encodeURIComponent(userEmail)}+is+not+an+authorized+admin.`);
+  }
+
+  // Fetch notification counts using normal user-scoped client
   const { count: unreadInquiries } = await supabase
     .from('inquiries')
     .select('*', { count: 'exact', head: true })
@@ -61,7 +66,6 @@ export default async function ManageLayout({ children }: { children: React.React
 
   return (
     <div className="flex flex-col md:flex-row min-h-[70vh] gap-8">
-      {/* Sidebar */}
       <aside className="w-full md:w-64 shrink-0">
         <div className="bg-header/50 border border-border rounded-xl p-4 sticky top-24">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 px-3">Admin Panel</h2>
@@ -96,7 +100,6 @@ export default async function ManageLayout({ children }: { children: React.React
         </div>
       </aside>
       
-      {/* Main Content */}
       <div className="flex-1 bg-background border border-border rounded-xl p-6">
         {children}
       </div>
