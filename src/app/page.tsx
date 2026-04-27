@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { BookOpen, Users, Star, MapPin, Link as LinkIcon, Mail } from "lucide-react";
 import { ContributionGraph } from "@/components/ui/ContributionGraph";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const titles = [
   "Senior Software Engineer & Architect",
@@ -12,9 +13,18 @@ const titles = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [titleIndex, setTitleIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const code = searchParams.get('code');
+    if (code) {
+      router.push(`/auth/callback?code=${code}`);
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
