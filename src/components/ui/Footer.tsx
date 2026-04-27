@@ -21,7 +21,7 @@ export function Footer() {
     <footer className="border-t border-border mt-auto py-6 bg-header/30 w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 items-center text-muted text-sm gap-4">
         {/* Left: Links - Always rendered for SEO and Google Verification */}
-        <div className="flex items-center justify-center md:justify-start gap-4">
+        <div className="flex items-center justify-center md:justify-start gap-x-4 gap-y-2 flex-wrap">
           <Link href="/academic" className="hover:text-foreground transition-colors hover:underline">Academic</Link>
           <Link href="/contact" className="hover:text-foreground transition-colors hover:underline">Contact</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors hover:underline" rel="privacy-policy">Privacy Policy</Link>

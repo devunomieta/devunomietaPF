@@ -109,7 +109,7 @@ export function ContributionGraph({ activityData = {} }: ContributionGraphProps)
   const grandTotal = totalInquiries + totalMocked;
 
   return (
-    <div className="border border-border rounded-xl p-6 bg-background overflow-hidden relative">
+    <div className="border border-border rounded-xl p-4 sm:p-6 bg-background overflow-hidden relative max-w-full">
       <div className="flex items-baseline gap-2 mb-6">
         {/* <span className="font-mono text-accent-green text-xs font-bold min-w-[3ch] inline-block">
           {mounted ? grandTotal.toLocaleString() : "..."}

@@ -122,15 +122,15 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate-none sm:truncate">
               {profile?.name || "Joseph Unomieta"}
             </h1>
-            <h2 className="text-xl font-light text-muted mb-4">
+            <h2 className="text-lg sm:text-xl font-light text-muted mb-4">
               {profile?.handle || "DevUnomieta"}
             </h2>
 
             {/* Typewriter titles */}
-            <div className="min-h-[3rem] mb-4 font-mono text-sm text-foreground leading-relaxed">
+            <div className="min-h-[4rem] sm:min-h-[3rem] mb-4 font-mono text-sm text-foreground leading-relaxed whitespace-normal break-words">
               <span className="text-accent-blue font-bold">{">"}</span> {displayText}
               <span className="animate-pulse bg-accent-blue ml-0.5 inline-block w-1.5 h-4 align-middle"></span>
             </div>

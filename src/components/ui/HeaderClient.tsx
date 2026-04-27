@@ -78,9 +78,9 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted border border-border rounded-md bg-background hover:border-muted transition-colors w-10 sm:w-64"
+              className="flex items-center gap-2 px-2 sm:px-3 py-1.5 text-xs text-muted border border-border rounded-md bg-background hover:border-muted transition-colors w-10 sm:w-64"
             >
-              <Search size={14} />
+              <Search size={14} className="shrink-0" />
               <span className="flex-1 text-left hidden sm:inline-block">Search or jump to...</span>
               <kbd className="hidden sm:inline-block ml-2 border border-border rounded px-1.5 font-mono text-[10px]">
                 ⌘K
@@ -89,10 +89,10 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
   
             <Link
               href="/contact?purpose=hiring"
-              className="text-xs font-bold bg-accent-green hover:bg-accent-green/90 text-white px-4 py-2 rounded-md border border-white/10 transition-all flex items-center gap-2 glow"
+              className="text-xs font-bold bg-accent-green hover:bg-accent-green/90 text-white px-2.5 sm:px-4 py-2 rounded-md border border-white/10 transition-all flex items-center gap-2 glow"
             >
-              <Zap size={14} className="fill-current" />
-              <span>Hire Me</span>
+              <Zap size={14} className="fill-current shrink-0" />
+              <span className="hidden xs:inline">Hire Me</span>
             </Link>
           </div>
         </div>

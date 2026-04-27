@@ -83,38 +83,38 @@ export function TourGuide() {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed bottom-6 right-6 z-50 w-80 bg-background border border-accent-green rounded-xl shadow-[0_0_20px_rgba(35,134,54,0.15)] p-4 flex flex-col"
+            className="fixed bottom-0 right-0 left-0 sm:bottom-6 sm:right-6 sm:left-auto z-50 w-full sm:w-80 bg-background border-t sm:border border-accent-green rounded-t-2xl sm:rounded-xl shadow-[0_-4px_20px_rgba(35,134,54,0.15)] sm:shadow-[0_0_20px_rgba(35,134,54,0.15)] p-5 sm:p-4 flex flex-col"
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3 sm:mb-2">
               <div className="flex items-center gap-2 text-accent-green">
-                <Terminal size={16} />
-                <span className="font-mono text-xs font-bold uppercase tracking-wider">
+                <Terminal size={18} className="sm:w-4 sm:h-4" />
+                <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider">
                   Guided Tour ({currentStepIndex + 1}/{TOUR_STEPS.length})
                 </span>
               </div>
-              <button onClick={endTour} className="text-muted hover:text-foreground transition-colors">
-                <X size={16} />
+              <button onClick={endTour} className="text-muted hover:text-foreground transition-colors p-2 -mr-2">
+                <X size={20} className="sm:w-4 sm:h-4" />
               </button>
             </div>
             
-            <h3 className="font-semibold text-foreground text-sm mb-1">{TOUR_STEPS[currentStepIndex].title}</h3>
-            <p className="text-muted text-xs mb-4 leading-relaxed">{TOUR_STEPS[currentStepIndex].desc}</p>
+            <h3 className="font-semibold text-foreground text-base sm:text-sm mb-1.5 sm:mb-1">{TOUR_STEPS[currentStepIndex].title}</h3>
+            <p className="text-muted text-sm sm:text-xs mb-5 sm:mb-4 leading-relaxed">{TOUR_STEPS[currentStepIndex].desc}</p>
             
-            <div className="flex justify-between items-center mt-2 pt-3 border-t border-border">
-              <div className="flex gap-1">
+            <div className="flex justify-between items-center mt-auto pt-3 border-t border-border">
+              <div className="flex gap-1.5 sm:gap-1">
                 {TOUR_STEPS.map((_, idx) => (
                   <div 
                     key={idx} 
-                    className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentStepIndex ? "w-4 bg-accent-green" : "w-1.5 bg-border"}`}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentStepIndex ? "w-5 sm:w-4 bg-accent-green" : "w-1.5 bg-border"}`}
                   />
                 ))}
               </div>
               <button
                 onClick={nextStep}
-                className="flex items-center gap-2 bg-accent-green hover:bg-accent-green/90 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
+                className="flex items-center gap-2 bg-accent-green hover:bg-accent-green/90 text-white px-4 sm:px-3 py-2 sm:py-1.5 rounded-md text-sm sm:text-xs font-semibold transition-colors shadow-lg shadow-accent-green/20"
               >
                 {currentStepIndex === TOUR_STEPS.length - 1 ? "Finish Tour" : "Next Page"}
-                {currentStepIndex !== TOUR_STEPS.length - 1 && <ArrowRight size={14} />}
+                {currentStepIndex !== TOUR_STEPS.length - 1 && <ArrowRight size={16} className="sm:w-3.5 sm:h-3.5" />}
               </button>
             </div>
           </motion.div>
