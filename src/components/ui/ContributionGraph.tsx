@@ -119,43 +119,49 @@ export function ContributionGraph({ activityData = {} }: ContributionGraphProps)
         </span>
       </div>
       
-      <div className="overflow-hidden pb-2 select-none flex justify-center">
-        <motion.div 
-          className="flex gap-[3px] min-w-max"
-          animate={isMobile ? {
-            x: [0, -400, -400, -800, -800, 0],
-          } : {}}
-          transition={isMobile ? {
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut",
-            times: [0, 0.4, 0.45, 0.9, 0.95, 1]
-          } : {}}
-        >
-          {grid.map((week, i) => (
-            <div key={i} className="flex flex-col gap-[3px]">
-              {week.map((cell, j) => (
-                <motion.div
-                  key={`${i}-${j}`}
-                  animate={cell.isText ? {
-                    opacity: [1, 0.6, 1],
-                    filter: ["brightness(1)", "brightness(1.5)", "brightness(1)"],
-                  } : {}}
-                  transition={cell.isText ? {
-                    duration: 3,
-                    repeat: Infinity,
-                    delay: (i * 0.04) + (j * 0.08),
-                  } : {}}
-                  className={cn(
-                    "w-[12px] h-[12px] rounded-[2px] transition-all duration-500",
-                    getIntensityColor(cell.intensity),
-                    cell.isText ? "shadow-[0_0_10px_rgba(57,211,83,0.45)] z-10" : "opacity-80"
-                  )}
-                />
-              ))}
-            </div>
-          ))}
-        </motion.div>
+      <div className="overflow-hidden pb-2 select-none flex justify-center min-h-[105px]">
+        {mounted ? (
+          <motion.div 
+            className="flex gap-[3px] min-w-max"
+            animate={isMobile ? {
+              x: [0, -400, -400, -800, -800, 0],
+            } : {}}
+            transition={isMobile ? {
+              duration: 15,
+              repeat: Infinity,
+              ease: "easeInOut",
+              times: [0, 0.4, 0.45, 0.9, 0.95, 1]
+            } : {}}
+          >
+            {grid.map((week, i) => (
+              <div key={i} className="flex flex-col gap-[3px]">
+                {week.map((cell, j) => (
+                  <motion.div
+                    key={`${i}-${j}`}
+                    animate={cell.isText ? {
+                      opacity: [1, 0.6, 1],
+                      filter: ["brightness(1)", "brightness(1.5)", "brightness(1)"],
+                    } : {}}
+                    transition={cell.isText ? {
+                      duration: 3,
+                      repeat: Infinity,
+                      delay: (i * 0.04) + (j * 0.08),
+                    } : {}}
+                    className={cn(
+                      "w-[12px] h-[12px] rounded-[2px] transition-all duration-500",
+                      getIntensityColor(cell.intensity),
+                      cell.isText ? "shadow-[0_0_10px_rgba(57,211,83,0.45)] z-10" : "opacity-80"
+                    )}
+                  />
+                ))}
+              </div>
+            ))}
+          </motion.div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted/20 text-xs font-mono">
+            Initializing neural activity...
+          </div>
+        )}
       </div>
       
       <div className="mt-8 flex items-center justify-between text-[10px] text-muted border-t border-border/30 pt-4">
