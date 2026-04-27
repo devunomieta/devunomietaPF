@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { logout } from '@/app/login/actions';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { redirect } from 'next/navigation';
 import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send } from 'lucide-react';
 
@@ -12,21 +13,22 @@ export default async function ManageLayout({ children }: { children: React.React
     redirect('/login');
   }
 
-  const userEmail = user.email?.toLowerCase();
-  
-  const { data: adminUser } = await supabase
+  const userEmail = user.email?.toLowerCase() ?? '';
+
+  // Use the service-role client to bypass RLS and read the admins table directly
+  const adminDb = createAdminClient();
+  const { data: adminUser } = await adminDb
     .from('admins')
     .select('email')
-    .eq('email', userEmail || '')
+    .eq('email', userEmail)
     .maybeSingle();
 
   if (!adminUser) {
     await supabase.auth.signOut();
-    // Diagnostic error message to help the user identify which email is missing from the DB
-    redirect(`/login?error=Unauthorized:%20${userEmail || 'unknown'}%20is%20not%20in%20the%20admin%20list`);
+    redirect(`/login?error=Access denied. ${userEmail} is not an authorized admin.`);
   }
 
-  // Fetch notification counts
+  // Fetch notification counts (use normal client — RLS protects these correctly)
   const { count: unreadInquiries } = await supabase
     .from('inquiries')
     .select('*', { count: 'exact', head: true })
