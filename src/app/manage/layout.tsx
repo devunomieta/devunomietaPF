@@ -15,7 +15,7 @@ export default async function ManageLayout({ children }: { children: React.React
 
   const userEmail = user.email?.toLowerCase() ?? '';
 
-  // Use service-role client to bypass RLS entirely — reads admins table directly
+  // Use service-role client to bypass RLS
   const adminDb = createAdminClient();
   const { data: adminUser, error: adminQueryError } = await adminDb
     .from('admins')
@@ -23,9 +23,10 @@ export default async function ManageLayout({ children }: { children: React.React
     .eq('email', userEmail)
     .maybeSingle();
 
-  // Throw real errors (e.g. wrong service key, network) — do NOT silently treat as "not found"
   if (adminQueryError) {
-    throw new Error(`Admin DB lookup failed: ${adminQueryError.message}`);
+    // Surface the real DB error in the login page instead of crashing
+    await supabase.auth.signOut();
+    redirect(`/login?error=Admin+check+failed:+${encodeURIComponent(adminQueryError.message)}`);
   }
 
   if (!adminUser) {
@@ -33,15 +34,11 @@ export default async function ManageLayout({ children }: { children: React.React
     redirect(`/login?error=Access+denied.+${encodeURIComponent(userEmail)}+is+not+an+authorized+admin.`);
   }
 
-  // Fetch notification counts using normal user-scoped client
-  const { count: unreadInquiries } = await supabase
-    .from('inquiries')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_read', false);
-
-  const { count: subscriberCount } = await supabase
-    .from('subscribers')
-    .select('*', { count: 'exact', head: true });
+  // Notification counts — default to 0 on error (non-critical)
+  const [{ count: unreadInquiries }, { count: subscriberCount }] = await Promise.all([
+    supabase.from('inquiries').select('*', { count: 'exact', head: true }).eq('is_read', false),
+    supabase.from('subscribers').select('*', { count: 'exact', head: true }),
+  ]);
 
   const navLinks = [
     { name: 'Dashboard', href: '/manage', icon: LayoutDashboard },
@@ -50,18 +47,8 @@ export default async function ManageLayout({ children }: { children: React.React
     { name: 'Projects', href: '/manage/projects', icon: FolderGit2 },
     { name: 'Experience', href: '/manage/experience', icon: History },
     { name: 'Academic', href: '/manage/academic', icon: GraduationCap },
-    { 
-      name: 'Inquiries', 
-      href: '/manage/inquiries', 
-      icon: MessageSquare, 
-      count: unreadInquiries 
-    },
-    { 
-      name: 'Newsletter', 
-      href: '/manage/newsletter', 
-      icon: Send, 
-      count: subscriberCount 
-    },
+    { name: 'Inquiries', href: '/manage/inquiries', icon: MessageSquare, count: unreadInquiries },
+    { name: 'Newsletter', href: '/manage/newsletter', icon: Send, count: subscriberCount },
   ];
 
   return (
@@ -87,9 +74,7 @@ export default async function ManageLayout({ children }: { children: React.React
                 )}
               </Link>
             ))}
-            
             <div className="my-2 border-t border-border"></div>
-            
             <form action={logout}>
               <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">
                 <LogOut size={16} />
@@ -99,7 +84,6 @@ export default async function ManageLayout({ children }: { children: React.React
           </nav>
         </div>
       </aside>
-      
       <div className="flex-1 bg-background border border-border rounded-xl p-6">
         {children}
       </div>
