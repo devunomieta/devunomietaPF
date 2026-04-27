@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-accent-green: var(--accent-green);
+  --color-accent-blue: var(--accent-blue);
+  --color-muted: var(--muted);
+  --color-header: var(--header);
+  
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root {
+  --background: #0d1117;
+  --foreground: #c9d1d9;
+  --border: #30363d;
+  --accent-green: #238636;
+  --accent-blue: #58a6ff;
+  --muted: #8b949e;
+  --header: #161b22;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  /* GitHub typically uses a standard sans font for body and monospace for code */
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Utilities for Hover States */
+@layer utilities {
+  .glow {
+    box-shadow: 0 0 10px rgba(88, 166, 255, 0.2);
+    transition: box-shadow 0.2s ease-in-out;
+  }
+  .glow:hover {
+    box-shadow: 0 0 20px rgba(88, 166, 255, 0.4);
+  }
+  
+  .border-beam {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .border-beam::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--border), var(--accent-blue), var(--border));
+    z-index: -1;
+    border-radius: inherit;
+    animation: beam 3s linear infinite;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  .border-beam:hover::before {
+    opacity: 1;
+  }
+}
+
+@keyframes beam {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
