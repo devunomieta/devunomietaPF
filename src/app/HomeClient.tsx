@@ -126,7 +126,7 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
               {profile?.name || "Joseph Unomieta"}
             </h1>
             <h2 className="text-xl font-light text-muted mb-4">
-              @{profile?.handle || "DevUnomieta"}
+              {profile?.handle || "DevUnomieta"}
             </h2>
 
             {/* Typewriter titles */}
@@ -141,9 +141,9 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
 
             {/* Official Social Logos */}
             <div className="flex items-center gap-3 mb-4">
-              <a 
-                href="https://x.com/DevUnomieta" 
-                target="_blank" 
+              <a
+                href="https://x.com/DevUnomieta"
+                target="_blank"
                 className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-header border border-border text-foreground hover:border-accent-blue hover:text-accent-blue transition-all"
                 title="Follow on X"
               >
@@ -151,9 +151,9 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                   <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
                 </svg>
               </a>
-              <a 
-                href="https://linkedin.com/in/joseph-unomieta" 
-                target="_blank" 
+              <a
+                href="https://linkedin.com/in/joseph-unomieta"
+                target="_blank"
                 className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-header border border-border text-foreground hover:border-accent-blue hover:text-accent-blue transition-all"
                 title="Connect on LinkedIn"
               >
@@ -161,9 +161,9 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                   <path d="M22.23 0H1.77C.8 0 0 .77 0 1.72v20.56C0 23.23.8 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.2 0 22.23 0zM7.12 20.45H3.56V9h3.56v11.45zM5.34 7.43c-1.14 0-2.06-.92-2.06-2.06 0-1.14.92-2.06 2.06-2.06 1.14 0 2.06.92 2.06 2.06 0 1.14-.92 2.06-2.06 2.06zM20.45 20.45h-3.56v-5.6c0-1.34-.03-3.06-1.87-3.06-1.87 0-2.15 1.46-2.15 2.96v5.7h-3.56V9h3.42v1.56h.05c.48-.9 1.62-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29z" />
                 </svg>
               </a>
-              <a 
-                href="/resume.pdf" 
-                target="_blank" 
+              <a
+                href="/resume.pdf"
+                target="_blank"
                 className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-accent-blue text-white hover:bg-accent-blue/90 transition-all shadow-lg shadow-accent-blue/20"
                 title="Download Resume"
               >
@@ -185,7 +185,8 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                     <Users size={14} className="text-accent-blue" />
                     <span className="font-medium">Subscribers</span>
                   </div>
-                  <strong className="text-foreground font-mono">{stats.subscribers}</strong>
+                  {/* <strong className="text-foreground font-mono">{stats.subscribers}</strong> */}
+                  <strong className="text-foreground font-mono">12,065</strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -242,37 +243,37 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
               <h2 className="text-foreground border-b border-border pb-3 flex items-center gap-3">
                 Hi there, I&apos;m {profile?.name?.split(" ")[0] || "Joseph"} 👋
               </h2>
-              <p className="text-lg leading-relaxed">
+              <p className="leading-relaxed">
                 I am a Senior Software Engineer, CTO, and Product Growth Manager. I specialize in architecting scalable web applications, optimizing engineering workflows, and driving product success.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-8">
                 <div className="p-4 rounded-xl bg-header/20 border border-border/50">
-                    <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
-                        <Terminal size={16} className="text-accent-blue" />
-                        What I do
-                    </h4>
-                    <p className="text-xs text-muted leading-relaxed">
-                        Architecting high-performance systems and leading engineering teams to deliver world-class products.
-                    </p>
+                  <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
+                    <Terminal size={16} className="text-accent-blue" />
+                    What I do
+                  </h4>
+                  <p className="text-xs text-muted leading-relaxed">
+                    Architecting high-performance systems and leading engineering teams to deliver world-class products.
+                  </p>
                 </div>
                 <div className="p-4 rounded-xl bg-header/20 border border-border/50">
-                    <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
-                        <Zap size={16} className="text-yellow-500" />
-                        My Impact
-                    </h4>
-                    <p className="text-xs text-muted leading-relaxed">
-                        Boosting team productivity by 60% through tailored CI/CD pipelines and agile methodology.
-                    </p>
+                  <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
+                    <Zap size={16} className="text-yellow-500" />
+                    My Impact
+                  </h4>
+                  <p className="text-xs text-muted leading-relaxed">
+                    Boosting team productivity by 60% through tailored CI/CD pipelines and agile methodology.
+                  </p>
                 </div>
               </div>
-              
+
               <h3 className="text-foreground mt-8 mb-4">Core Tech Stack</h3>
               <div className="flex flex-wrap gap-2">
                 {techStack.map((tech) => (
-                    <span key={tech.name} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-header border border-border text-[10px] font-bold text-foreground">
-                        <tech.icon size={12} className="text-accent-blue" />
-                        {tech.name}
-                    </span>
+                  <span key={tech.name} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-header border border-border text-[10px] font-bold text-foreground">
+                    <tech.icon size={12} className="text-accent-blue" />
+                    {tech.name}
+                  </span>
                 ))}
               </div>
             </div>
@@ -280,59 +281,59 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
 
           <div className="flex flex-col gap-8">
             <div className="border border-border rounded-xl p-6 bg-background shadow-xl">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-foreground text-xl font-bold flex items-center gap-3">
-                        <Layout size={24} className="text-accent-blue" />
-                        Featured Repositories
-                    </h2>
-                    <Link href="/projects" className="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
-                        View all repositories <ChevronRight size={14} />
-                    </Link>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {featuredProjects.map((project) => (
-                        <a 
-                            key={project.id}
-                            href={project.link}
-                            target="_blank"
-                            className="p-5 rounded-xl border border-border bg-header/10 hover:border-accent-blue/30 transition-all cursor-pointer group relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Terminal size={40} />
-                            </div>
-                            <h4 className="text-accent-blue text-lg font-bold group-hover:underline flex items-center justify-between">
-                                {project.name}
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20 capitalize">{project.visibility}</span>
-                            </h4>
-                            <p className="text-sm text-muted mt-2 leading-relaxed line-clamp-2">{project.description}</p>
-                            <div className="mt-4 flex items-center gap-4 text-[10px] text-muted">
-                                <span className="flex items-center gap-1">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.language_color || '#3178c6' }} /> 
-                                    {project.language}
-                                </span>
-                                <span>⭐ {project.stars}</span>
-                                <span>forks {project.forks}</span>
-                            </div>
-                        </a>
-                    ))}
-                    {featuredProjects.length === 0 && (
-                        <div className="col-span-2 py-8 text-center text-muted border border-dashed border-border rounded-xl">
-                            No pinned repositories found. Manage them in the admin dashboard.
-                        </div>
-                    )}
-                </div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-foreground text-xl font-bold flex items-center gap-3">
+                  <Layout size={24} className="text-accent-blue" />
+                  Featured Repositories
+                </h2>
+                <Link href="/projects" className="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
+                  View all repositories <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {featuredProjects.map((project) => (
+                  <a
+                    key={project.id}
+                    href={project.link}
+                    target="_blank"
+                    className="p-5 rounded-xl border border-border bg-header/10 hover:border-accent-blue/30 transition-all cursor-pointer group relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                      <Terminal size={40} />
+                    </div>
+                    <h4 className="text-accent-blue text-lg font-bold group-hover:underline flex items-center justify-between">
+                      {project.name}
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20 capitalize">{project.visibility}</span>
+                    </h4>
+                    <p className="text-sm text-muted mt-2 leading-relaxed line-clamp-2">{project.description}</p>
+                    <div className="mt-4 flex items-center gap-4 text-[10px] text-muted">
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.language_color || '#3178c6' }} />
+                        {project.language}
+                      </span>
+                      <span>⭐ {project.stars}</span>
+                      <span>forks {project.forks}</span>
+                    </div>
+                  </a>
+                ))}
+                {featuredProjects.length === 0 && (
+                  <div className="col-span-2 py-8 text-center text-muted border border-dashed border-border rounded-xl">
+                    No pinned repositories found. Manage them in the admin dashboard.
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="border border-border rounded-xl p-6 bg-background shadow-xl">
-                <h2 className="text-foreground text-xl font-bold mb-6 flex items-center gap-3">
-                    <HistoryIcon size={24} className="text-accent-green" />
-                    Milestones & Contribution Activity
-                </h2>
-                <ContributionGraph activityData={activityData} />
+              <h2 className="text-foreground text-xl font-bold mb-6 flex items-center gap-3">
+                <HistoryIcon size={24} className="text-accent-green" />
+                Contribution Activity
+              </h2>
+              <ContributionGraph activityData={activityData} />
             </div>
           </div>
         </div>
       </div>
-      </div>
+    </div>
   );
 }

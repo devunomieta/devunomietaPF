@@ -24,7 +24,7 @@ const generateTextGrid = (activityData: Record<string, number> = {}) => {
   const cols = 53; // Standard GitHub year view
   const grid = [];
   let totalMocked = 0;
-  
+
   const today = new Date();
   const startDate = new Date();
   startDate.setDate(today.getDate() - (cols * 7));
@@ -35,9 +35,9 @@ const generateTextGrid = (activityData: Record<string, number> = {}) => {
       const currentDate = new Date(startDate);
       currentDate.setDate(startDate.getDate() + (w * 7) + d);
       const dateKey = currentDate.toISOString().split('T')[0];
-      
+
       const realInquiryActivity = activityData[dateKey] || 0;
-      
+
       // Determine if this cell is part of the "UNOMIETA" text
       const textColOffset = Math.floor((cols - textArt[0].length) / 2);
       const textCol = w - textColOffset;
@@ -69,11 +69,11 @@ const generateTextGrid = (activityData: Record<string, number> = {}) => {
       if (isTextCell) {
         finalIntensity = 4;
       } else if (realInquiryActivity > 0) {
-        finalIntensity = 3; 
+        finalIntensity = 3;
       } else if (mockCodeActivity > 0) {
         finalIntensity = Math.random() > 0.7 ? 2 : 1;
       }
-      
+
       week.push({ intensity: finalIntensity, isText: isTextCell });
     }
     grid.push(week);
@@ -84,11 +84,11 @@ const generateTextGrid = (activityData: Record<string, number> = {}) => {
 
 const getIntensityColor = (intensity: number) => {
   switch (intensity) {
-    case 4: return "bg-[#39d353]"; 
-    case 3: return "bg-[#26a641]"; 
-    case 2: return "bg-[#006d32]"; 
-    case 1: return "bg-[#0e4429]"; 
-    default: return "bg-[#161b22]"; 
+    case 4: return "bg-[#39d353]";
+    case 3: return "bg-[#26a641]";
+    case 2: return "bg-[#006d32]";
+    case 1: return "bg-[#0e4429]";
+    default: return "bg-[#161b22]";
   }
 };
 
@@ -111,17 +111,20 @@ export function ContributionGraph({ activityData = {} }: ContributionGraphProps)
   return (
     <div className="border border-border rounded-xl p-6 bg-background overflow-hidden relative">
       <div className="flex items-baseline gap-2 mb-6">
-        <span className="font-mono text-accent-green text-lg font-bold min-w-[3ch] inline-block">
+        {/* <span className="font-mono text-accent-green text-xs font-bold min-w-[3ch] inline-block">
           {mounted ? grandTotal.toLocaleString() : "..."}
+        </span> */}
+        <span className="font-mono text-accent-green text-xs font-bold min-w-[3ch] inline-block">
+          4118
         </span>
         <span className="text-muted text-xs font-medium">
           contributions in the last year
         </span>
       </div>
-      
+
       <div className="overflow-hidden pb-2 select-none flex justify-center min-h-[105px]">
         {mounted ? (
-          <motion.div 
+          <motion.div
             className="flex gap-[3px] min-w-max"
             animate={isMobile ? {
               x: [0, -400, -400, -800, -800, 0],
@@ -163,22 +166,21 @@ export function ContributionGraph({ activityData = {} }: ContributionGraphProps)
           </div>
         )}
       </div>
-      
+
       <div className="mt-8 flex items-center justify-between text-[10px] text-muted border-t border-border/30 pt-4">
         <div className="flex items-center gap-4">
-            <span className="hidden sm:inline italic">Portfolio Engine: Data-Driven Contributions</span>
-            <div className="flex items-center gap-1.5">
-                <span>Less</span>
-                <div className="w-[10px] h-[10px] rounded-sm bg-[#161b22]"></div>
-                <div className="w-[10px] h-[10px] rounded-sm bg-[#0e4429]"></div>
-                <div className="w-[10px] h-[10px] rounded-sm bg-[#006d32]"></div>
-                <div className="w-[10px] h-[10px] rounded-sm bg-[#26a641]"></div>
-                <div className="w-[10px] h-[10px] rounded-sm bg-[#39d353]"></div>
-                <span>More</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <span>Less</span>
+            <div className="w-[10px] h-[10px] rounded-sm bg-[#161b22]"></div>
+            <div className="w-[10px] h-[10px] rounded-sm bg-[#0e4429]"></div>
+            <div className="w-[10px] h-[10px] rounded-sm bg-[#006d32]"></div>
+            <div className="w-[10px] h-[10px] rounded-sm bg-[#26a641]"></div>
+            <div className="w-[10px] h-[10px] rounded-sm bg-[#39d353]"></div>
+            <span>More</span>
+          </div>
         </div>
         <span className="font-mono text-accent-blue/40 font-bold uppercase tracking-widest">
-            UNOMIETA
+          UNOMIETA
         </span>
       </div>
     </div>
