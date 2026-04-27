@@ -1,24 +1,10 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-
-async function checkAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  const { data: admin } = await supabase
-    .from('admins')
-    .select('email')
-    .eq('email', user.email?.toLowerCase())
-    .single()
-  if (!admin) throw new Error('Unauthorized')
-  return supabase
-}
+import { requireAdmin } from '@/lib/requireAdmin'
 
 export async function saveProject(formData: FormData, id?: string) {
-  const supabase = await checkAdmin()
+  const supabase = await requireAdmin()
   
   const projectData = {
     name: formData.get('name') as string,
@@ -41,10 +27,7 @@ export async function saveProject(formData: FormData, id?: string) {
     error = err
   }
 
-  if (error) {
-    console.error('Save project error:', error)
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/manage/projects')
   revalidatePath('/projects')
@@ -53,14 +36,9 @@ export async function saveProject(formData: FormData, id?: string) {
 }
 
 export async function deleteProject(id: string) {
-  const supabase = await checkAdmin()
+  const supabase = await requireAdmin()
   const { error } = await supabase.from('projects').delete().eq('id', id)
-
-  if (error) {
-    console.error('Delete project error:', error)
-    return { error: error.message }
-  }
-
+  if (error) return { error: error.message }
   revalidatePath('/manage/projects')
   revalidatePath('/projects')
   return { success: true }

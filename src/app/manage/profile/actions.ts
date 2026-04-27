@@ -1,23 +1,39 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  const adminDb = createAdminClient()
 
-  // Basic admin check
-  const { data: admin } = await supabase
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  // Use service-role to bypass RLS when checking admin status
+  const { data: admin } = await adminDb
     .from('admins')
     .select('email')
-    .eq('email', user.email?.toLowerCase())
-    .single()
-  if (!admin) throw new Error('Unauthorized')
+    .eq('email', user.email?.toLowerCase() ?? '')
+    .maybeSingle()
+  if (!admin) return { error: 'Unauthorized: not in admin list' }
 
-  const profileData = {
+  // Fetch the profile row to get its ID (don't rely on email matching)
+  const { data: existing, error: fetchError } = await supabase
+    .from('profile')
+    .select('id')
+    .limit(1)
+    .single()
+
+  if (fetchError || !existing) {
+    return { error: 'Could not find profile row to update' }
+  }
+
+  const titlesRaw = (formData.get('titles') as string) || ''
+  const avatarUrl = formData.get('avatar_url') as string
+
+  const profileData: Record<string, unknown> = {
     name: formData.get('name') as string,
     handle: formData.get('handle') as string,
     bio: formData.get('bio') as string,
@@ -25,15 +41,19 @@ export async function updateProfile(formData: FormData) {
     location: formData.get('location') as string,
     email: formData.get('email') as string,
     website: formData.get('website') as string,
-    avatar_url: formData.get('avatar_url') as string || undefined,
-    titles: (formData.get('titles') as string).split(',').map(t => t.trim()),
+    titles: titlesRaw ? titlesRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
     updated_at: new Date().toISOString(),
+  }
+
+  // Only update avatar_url if a new one was uploaded
+  if (avatarUrl) {
+    profileData.avatar_url = avatarUrl
   }
 
   const { error } = await supabase
     .from('profile')
     .update(profileData)
-    .eq('email', profileData.email) // Or use a specific ID if known, but email is in the schema
+    .eq('id', existing.id)
 
   if (error) {
     console.error('Update profile error:', error)
