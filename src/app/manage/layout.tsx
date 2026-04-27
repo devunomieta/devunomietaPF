@@ -3,7 +3,7 @@ import { logout } from '@/app/login/actions';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send } from 'lucide-react';
+import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send, Settings } from 'lucide-react';
 
 export default async function ManageLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -49,6 +49,7 @@ export default async function ManageLayout({ children }: { children: React.React
     { name: 'Academic', href: '/manage/academic', icon: GraduationCap },
     { name: 'Inquiries', href: '/manage/inquiries', icon: MessageSquare, count: unreadInquiries },
     { name: 'Newsletter', href: '/manage/newsletter', icon: Send, count: subscriberCount },
+    { name: 'Settings', href: '/manage/settings', icon: Settings },
   ];
 
   return (

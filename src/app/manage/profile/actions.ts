@@ -25,6 +25,7 @@ export async function updateProfile(formData: FormData) {
     location: formData.get('location') as string,
     email: formData.get('email') as string,
     website: formData.get('website') as string,
+    avatar_url: formData.get('avatar_url') as string || undefined,
     titles: (formData.get('titles') as string).split(',').map(t => t.trim()),
     updated_at: new Date().toISOString(),
   }

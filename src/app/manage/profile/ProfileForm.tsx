@@ -1,12 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { updateProfile } from './actions'
-import { Save, Loader2 } from 'lucide-react'
+import { uploadAsset } from '../settings/actions'
+import { Save, Loader2, Upload, User } from 'lucide-react'
 
 export default function ProfileForm({ initialData }: { initialData: any }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string>(initialData?.avatar_url || '')
+  const [avatarLoading, setAvatarLoading] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarLoading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await uploadAsset(fd, 'avatar')
+    if (res?.url) setAvatarUrl(res.url)
+    setAvatarLoading(false)
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -14,6 +29,7 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
     setMessage(null)
 
     const formData = new FormData(e.currentTarget)
+    formData.set('avatar_url', avatarUrl)
     const result = await updateProfile(formData)
 
     if (result?.error) {
@@ -31,6 +47,31 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
           {message.text}
         </div>
       )}
+
+      {/* Avatar Upload */}
+      <div className="flex items-center gap-6 pb-6 border-b border-border">
+        <div className="relative w-24 h-24 rounded-full border-2 border-border overflow-hidden bg-header flex items-center justify-center shrink-0">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            <User size={36} className="text-muted" />
+          )}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground mb-1">Profile Photo</p>
+          <p className="text-xs text-muted mb-3">JPG or PNG. Recommended: 400×400px.</p>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-header border border-border rounded-lg text-sm text-foreground hover:border-accent-blue transition-all disabled:opacity-50"
+          >
+            {avatarLoading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            {avatarLoading ? 'Uploading...' : 'Upload Photo'}
+          </button>
+        </div>
+        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
