@@ -9,17 +9,31 @@ export async function submitInquiry(formData: FormData) {
   const name = formData.get('name') as string
   const email = formData.get('email') as string
   const message = formData.get('message') as string
+  const purpose = formData.get('purpose') as string
+  const budget = formData.get('budget') as string
+  const timeline = formData.get('timeline') as string
 
   if (!name || !email || !message) {
     return redirect('/contact?error=All fields are required')
   }
 
+  const metadata: Record<string, string> = {}
+  if (budget) metadata.budget = budget
+  if (timeline) metadata.timeline = timeline
+
   const { error } = await supabase.from('inquiries').insert([
-    { name, email, message }
+    { 
+      name, 
+      email, 
+      message, 
+      purpose, 
+      metadata 
+    }
   ])
 
   if (error) {
-    return redirect('/contact?error=Failed to send message. Try again later.')
+    console.error('Inquiry submission error:', error)
+    return redirect(`/contact?error=${encodeURIComponent(error.message)}`)
   }
 
   redirect('/contact?success=true')

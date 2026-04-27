@@ -3,29 +3,55 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, FolderGit2, History, GitPullRequest, Book, User, X, FileText, Mail } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Search, FolderGit2, History, Book, User, X, FileText, Mail, MessageSquare } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
-type Route = {
+type SearchItem = {
   name: string;
   path: string;
-  icon: React.ElementType;
-  shortcut: string;
+  icon: any;
+  type: "page" | "post";
+  subtitle?: string;
 };
 
-const routes: Route[] = [
-  { name: "Home (README.md)", path: "/", icon: User, shortcut: "H" },
-  { name: "Experience (Commit History)", path: "/experience", icon: History, shortcut: "E" },
-  { name: "Projects (Repositories)", path: "/projects", icon: FolderGit2, shortcut: "P" },
-  { name: "Academic & Research (Wiki)", path: "/academic", icon: Book, shortcut: "A" },
-  { name: "Blog (Discussions)", path: "/blog", icon: FileText, shortcut: "B" },
-  { name: "Contact (Issues)", path: "/contact", icon: Mail, shortcut: "C" },
+const staticRoutes: SearchItem[] = [
+  { name: "Home (README.md)", path: "/", icon: User, type: "page" },
+  { name: "Experience (Commit History)", path: "/experience", icon: History, type: "page" },
+  { name: "Projects (Repositories)", path: "/projects", icon: FolderGit2, type: "page" },
+  { name: "Academic & Research (Wiki)", path: "/academic", icon: Book, type: "page" },
+  { name: "Blog (Discussions)", path: "/blog", icon: FileText, type: "page" },
+  { name: "Contact (Issues)", path: "/contact", icon: Mail, type: "page" },
 ];
 
 export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [posts, setPosts] = useState<SearchItem[]>([]);
   const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      const { data } = await supabase
+        .from("posts")
+        .select("title, slug, excerpt")
+        .eq("status", "published")
+        .limit(10);
+
+      if (data) {
+        const postItems: SearchItem[] = data.map((p) => ({
+          name: p.title,
+          path: `/blog/${p.slug}`,
+          icon: MessageSquare,
+          type: "post",
+          subtitle: p.excerpt
+        }));
+        setPosts(postItems);
+      }
+    };
+
+    fetchPosts();
+  }, [supabase]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -49,8 +75,10 @@ export function CommandPalette() {
     };
   }, []);
 
-  const filteredRoutes = routes.filter((route) =>
-    route.name.toLowerCase().includes(search.toLowerCase())
+  const allItems = [...staticRoutes, ...posts];
+  const filteredItems = allItems.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase()) ||
+    (item.subtitle && item.subtitle.toLowerCase().includes(search.toLowerCase()))
   );
 
   const navigateTo = (path: string) => {
@@ -59,7 +87,6 @@ export function CommandPalette() {
     router.push(path);
   };
 
-  // Hydration safety
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
@@ -86,7 +113,7 @@ export function CommandPalette() {
                 <Search size={18} className="text-muted" />
                 <input
                   type="text"
-                  placeholder="Search or jump to..."
+                  placeholder="Search pages or blog posts..."
                   className="w-full bg-transparent border-none text-foreground px-4 py-4 outline-none placeholder:text-muted"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -98,30 +125,39 @@ export function CommandPalette() {
               </div>
 
               <div className="max-h-[60vh] overflow-y-auto py-2">
-                {filteredRoutes.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   <div className="px-4 py-8 text-center text-muted text-sm">
                     No results found.
                   </div>
                 ) : (
                   <ul className="px-2">
-                    {filteredRoutes.map((route) => (
-                      <li key={route.path}>
+                    {filteredItems.map((item, idx) => (
+                      <li key={`${item.path}-${idx}`}>
                         <button
-                          onClick={() => navigateTo(route.path)}
+                          onClick={() => navigateTo(item.path)}
                           className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-accent-blue/10 hover:text-accent-blue text-left transition-colors group"
                         >
                           <div className="flex items-center gap-3">
-                            <route.icon size={16} className="text-muted group-hover:text-accent-blue" />
-                            <span className="text-sm font-medium text-foreground">{route.name}</span>
+                            <item.icon size={16} className="text-muted group-hover:text-accent-blue" />
+                            <div>
+                                <span className="text-sm font-medium text-foreground block">{item.name}</span>
+                                {item.subtitle && (
+                                    <span className="text-[10px] text-muted truncate max-w-[300px] block">{item.subtitle}</span>
+                                )}
+                            </div>
                           </div>
-                          <kbd className="border border-border rounded px-1.5 font-mono text-[10px] text-muted group-hover:text-accent-blue group-hover:border-accent-blue/50">
-                            {route.shortcut}
-                          </kbd>
+                          <span className="text-[10px] uppercase tracking-widest text-muted/50 font-bold group-hover:text-accent-blue/50">
+                            {item.type}
+                          </span>
                         </button>
                       </li>
                     ))}
                   </ul>
                 )}
+              </div>
+              <div className="p-2 border-t border-border bg-header/20 flex items-center justify-center gap-4 text-[10px] text-muted">
+                <span><kbd className="border border-border px-1 rounded">↵</kbd> Select</span>
+                <span><kbd className="border border-border px-1 rounded">esc</kbd> Close</span>
               </div>
             </motion.div>
           </>

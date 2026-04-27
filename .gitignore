@@ -84,5 +84,17 @@ next-env.d.ts
 fix_*.sql
 test_*.js
 phase*_schema.sql
+add_*.sql
+update_*.sql
 *.db
 *.sqlite
+
+# AI / Assistant
+.antigravity/
+.gemini/
+brain/
+artifacts/
+scratch/
+implementation_plan.md
+task.md
+walkthrough.md

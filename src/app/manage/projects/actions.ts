@@ -16,6 +16,7 @@ export async function saveProject(formData: FormData, id?: string) {
     visibility: formData.get('visibility') as string,
     link: formData.get('link') as string,
     sort_order: parseInt(formData.get('sort_order') as string) || 0,
+    is_featured: formData.get('is_featured') === 'on',
   }
 
   let error

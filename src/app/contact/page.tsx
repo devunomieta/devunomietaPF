@@ -1,5 +1,6 @@
-import { submitInquiry } from './actions'
-import { Mail, MessageSquare, Send, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Suspense } from 'react'
+import ContactForm from './ContactForm'
+import { Mail, MessageSquare, CheckCircle2 } from 'lucide-react'
 
 export default function ContactPage({
   searchParams,
@@ -22,7 +23,7 @@ export default function ContactPage({
         <div className="mb-6 relative z-10">
           <h2 className="text-xl font-semibold text-foreground mb-2">Drop a message</h2>
           <p className="text-muted text-sm leading-relaxed">
-            Whether you have a question, a project proposal, or just want to say hi, feel free to reach out. I'll get back to you as soon as I can.
+            Whether you have a question, a project proposal, or just want to say hi, feel free to reach out. I&apos;ll get back to you as soon as I can.
           </p>
         </div>
 
@@ -32,65 +33,27 @@ export default function ContactPage({
             <div>
               <h3 className="font-semibold text-foreground text-lg">Message Sent Successfully!</h3>
               <p className="text-muted text-sm mt-1">Thank you for reaching out. I will review your inquiry shortly.</p>
+              
+              <div className="mt-6 p-4 bg-accent-blue/10 rounded-lg border border-accent-blue/20 max-w-sm mx-auto">
+                <p className="text-xs text-foreground font-medium mb-3 italic">Want to skip the wait?</p>
+                <a 
+                  href="https://cal.com/devunomieta" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-accent-blue text-white px-4 py-2 rounded-md text-xs font-bold hover:bg-accent-blue/80 transition-all"
+                >
+                  Schedule a Call on Cal.com
+                </a>
+              </div>
             </div>
-            <a href="/" className="mt-4 bg-header border border-border px-4 py-2 rounded-md text-sm font-semibold hover:border-accent-blue transition-colors">
+            <a href="/" className="mt-8 bg-header border border-border px-4 py-2 rounded-md text-sm font-semibold hover:border-accent-blue transition-colors">
               Return Home
             </a>
           </div>
         ) : (
-          <form className="flex flex-col gap-5 relative z-10" action={submitInquiry}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="name" className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Name</label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  placeholder="John Doe"
-                  className="w-full bg-header/50 border border-border rounded-md px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-colors"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="email" className="text-xs font-semibold text-foreground uppercase tracking-wider">Email Address</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  placeholder="john@example.com"
-                  className="w-full bg-header/50 border border-border rounded-md px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="message" className="text-xs font-semibold text-foreground uppercase tracking-wider">Message</label>
-              <textarea
-                id="message"
-                name="message"
-                required
-                rows={5}
-                placeholder="How can I help you?"
-                className="w-full bg-header/50 border border-border rounded-md px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-colors resize-y"
-              ></textarea>
-            </div>
-
-            {searchParams.error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-md flex items-center gap-2">
-                <AlertCircle size={14} />
-                {searchParams.error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="mt-2 bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold py-2.5 px-6 rounded-md transition-colors flex items-center justify-center gap-2 w-fit"
-            >
-              <Send size={16} />
-              Send Message
-            </button>
-          </form>
+          <Suspense fallback={<div className="h-[400px] flex items-center justify-center text-muted text-sm italic">Loading form...</div>}>
+            <ContactForm error={searchParams.error} />
+          </Suspense>
         )}
       </div>
     </div>

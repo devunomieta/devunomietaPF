@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { markAsRead, deleteInquiry } from './actions'
-import { Mail, MailOpen, Trash2, User, Clock, ChevronDown, ChevronUp } from 'lucide-react'
+import { Mail, MailOpen, Trash2, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function InquiryList({ initialInquiries }: { initialInquiries: any[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -42,6 +42,23 @@ export default function InquiryList({ initialInquiries }: { initialInquiries: an
           {expandedId === inquiry.id && (
             <div className="p-6 bg-header/30 border-t border-border animate-in slide-in-from-top-2 duration-200">
               <div className="space-y-4">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {inquiry.purpose && (
+                    <span className="px-2 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue text-[10px] font-bold uppercase tracking-wider">
+                      {inquiry.purpose.replace('-', ' ')}
+                    </span>
+                  )}
+                  {inquiry.metadata?.budget && (
+                    <span className="px-2 py-0.5 rounded-full bg-accent-green/20 text-accent-green text-[10px] font-bold uppercase">
+                      Budget: {inquiry.metadata.budget}
+                    </span>
+                  )}
+                  {inquiry.metadata?.timeline && (
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-[10px] font-bold uppercase">
+                      Timeline: {inquiry.metadata.timeline.replace('-', ' ')}
+                    </span>
+                  )}
+                </div>
                 <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                   {inquiry.message}
                 </div>

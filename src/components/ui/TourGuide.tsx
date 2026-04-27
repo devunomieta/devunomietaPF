@@ -36,11 +36,13 @@ export function TourGuide() {
     window.addEventListener("start-tour", startTour);
 
     if (!hasSeenTour) {
-      setIsTourActive(true);
-      // We don't force redirect immediately on first load, we just sync with current path
-      // if they landed on a different page.
-      const index = TOUR_STEPS.findIndex((step) => step.path === window.location.pathname);
-      if (index !== -1) setCurrentStepIndex(index);
+      // Auto-start on first visit after a short delay
+      const timer = setTimeout(() => {
+        setIsTourActive(true);
+        const index = TOUR_STEPS.findIndex((step) => step.path === window.location.pathname);
+        if (index !== -1) setCurrentStepIndex((prev) => prev !== index ? index : prev);
+      }, 1500);
+      return () => clearTimeout(timer);
     }
     
     return () => window.removeEventListener("start-tour", startTour);
@@ -51,7 +53,7 @@ export function TourGuide() {
     if (isTourActive) {
       const index = TOUR_STEPS.findIndex((step) => step.path === pathname);
       if (index !== -1) {
-        setCurrentStepIndex(index);
+        setCurrentStepIndex((prev) => prev !== index ? index : prev);
       }
     }
   }, [pathname, isTourActive]);

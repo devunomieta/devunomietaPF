@@ -31,8 +31,8 @@ export async function sendEmail({ to, subject, htmlContent }: { to: { email: str
     }
 
     return { success: true, messageId: data.messageId }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Email send error:', error)
-    return { error: error.message }
+    return { error: error instanceof Error ? error.message : 'Unknown error occurred' }
   }
 }

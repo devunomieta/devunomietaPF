@@ -18,8 +18,8 @@ export function Footer() {
   }, []);
 
   return (
-    <footer className="border-t border-border mt-auto py-6 bg-header/30">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-3 items-center text-muted text-sm gap-4">
+    <footer className="border-t border-border mt-auto py-6 bg-header/30 w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 items-center text-muted text-sm gap-4">
         {/* Left: Links - Always rendered for SEO and Google Verification */}
         <div className="flex items-center justify-center md:justify-start gap-4">
           <Link href="/academic" className="hover:text-foreground transition-colors hover:underline">Academic</Link>
@@ -29,7 +29,11 @@ export function Footer() {
         </div>
         
         {/* Center: Quote */}
-        <p className="italic text-xs font-medium text-muted/80 text-center">"Time is of essence"</p>
+        <p className="italic text-base md:text-lg font-medium text-foreground text-center py-4 md:py-0 border-y md:border-y-0 border-border/50">
+          <span className="text-accent-blue opacity-50">&quot;</span>
+          Time is of essence
+          <span className="text-accent-blue opacity-50">&quot;</span>
+        </p>
         
         {/* Right: Date and Time - Dynamic parts check for mounted */}
         <div className="flex items-center justify-center md:justify-end gap-2 min-h-[24px]">

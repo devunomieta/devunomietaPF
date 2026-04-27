@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateSettings, uploadAsset, changePassword } from './actions'
 import { Save, Loader2, Upload, Image, Globe, Lock, Mail, Info } from 'lucide-react'
 
@@ -53,6 +54,11 @@ function AssetUploader({ label, currentUrl, type, onUploaded }: {
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [previewUrl, setPreviewUrl] = useState(currentUrl)
   const inputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    setPreviewUrl(currentUrl)
+  }, [currentUrl])
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -68,6 +74,7 @@ function AssetUploader({ label, currentUrl, type, onUploaded }: {
       setPreviewUrl(res.url)
       setMsg({ type: 'success', text: `${label} uploaded!` })
       onUploaded?.(res.url!)
+      router.refresh()
     }
     setLoading(false)
   }
@@ -107,6 +114,7 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
   const [siteMsg, setSiteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [pwLoading, setPwLoading] = useState(false)
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const router = useRouter()
 
   async function handleSiteSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -114,7 +122,12 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
     setSiteMsg(null)
     const fd = new FormData(e.currentTarget)
     const res = await updateSettings(fd)
-    setSiteMsg(res.success ? { type: 'success', text: 'Settings saved!' } : { type: 'error', text: 'Failed to save.' })
+    if (res.success) {
+      setSiteMsg({ type: 'success', text: 'Settings saved!' })
+      router.refresh()
+    } else {
+      setSiteMsg({ type: 'error', text: 'Failed to save.' })
+    }
     setSiteLoading(false)
   }
 

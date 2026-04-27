@@ -2,9 +2,10 @@
 
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
-import { BookOpen, Users, MapPin, Link as LinkIcon, Mail } from "lucide-react";
+import { BookOpen, Users, MapPin, Link as LinkIcon, Mail, FileText, Zap, ChevronRight, Terminal, Cpu, Layout, Database, History as HistoryIcon } from "lucide-react";
 import { ContributionGraph } from "@/components/ui/ContributionGraph";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 /** Silently cleans ?code= from the URL if Supabase misdirects to homepage */
 function AuthCodeCleaner() {
@@ -30,7 +31,31 @@ interface Profile {
   titles?: string[];
 }
 
-export default function HomeClient({ profile }: { profile: Profile | null }) {
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  language: string;
+  language_color: string;
+  stars: number;
+  forks: number;
+  visibility: string;
+  link: string;
+  is_featured: boolean;
+}
+
+interface HomeClientProps {
+  profile: Profile | null;
+  stats: {
+    subscribers: number;
+    posts: number;
+    engagement: number;
+  };
+  activityData?: Record<string, number>;
+  featuredProjects?: Project[];
+}
+
+export default function HomeClient({ profile, stats, activityData, featuredProjects = [] }: HomeClientProps) {
   const titles = profile?.titles?.length
     ? profile.titles
     : ["Senior Software Engineer & Architect", "CTO", "Product Growth Manager"];
@@ -61,12 +86,21 @@ export default function HomeClient({ profile }: { profile: Profile | null }) {
     return () => clearTimeout(timeout);
   }, [displayText, isDeleting, titleIndex, titles]);
 
+  const techStack = [
+    { name: "Next.js", icon: Terminal },
+    { name: "TypeScript", icon: Cpu },
+    { name: "React", icon: Layout },
+    { name: "Supabase", icon: Database },
+    { name: "Tailwind", icon: Layout },
+    { name: "Node.js", icon: Terminal },
+  ];
+
   return (
-    <>
+    <div className="py-2 w-full">
       <Suspense fallback={null}>
         <AuthCodeCleaner />
       </Suspense>
-      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] gap-8">
         {/* Left Sidebar */}
         <aside className="flex flex-col gap-6">
           {/* Avatar */}
@@ -96,84 +130,209 @@ export default function HomeClient({ profile }: { profile: Profile | null }) {
             </h2>
 
             {/* Typewriter titles */}
-            <div className="h-12 mb-4 font-mono text-sm text-foreground">
-              <span className="text-accent-blue">{">"}</span> {displayText}
-              <span className="animate-pulse">_</span>
+            <div className="min-h-[3rem] mb-4 font-mono text-sm text-foreground leading-relaxed">
+              <span className="text-accent-blue font-bold">{">"}</span> {displayText}
+              <span className="animate-pulse bg-accent-blue ml-0.5 inline-block w-1.5 h-4 align-middle"></span>
             </div>
 
-            <p className="text-sm text-foreground mb-6">
+            <p className="text-sm text-foreground mb-6 leading-relaxed">
               {profile?.bio || "Building web products that work and helping them grow. Strategist, architect, and hands-on builder."}
             </p>
 
-            <a
-              href={`mailto:${profile?.email || "hello@devunomieta.xyz"}`}
-              className="w-full flex items-center justify-center py-1.5 px-3 rounded-md bg-header border border-border text-foreground hover:bg-border transition-colors text-sm font-semibold mb-4"
-            >
-              Follow
-            </a>
+            {/* Official Social Logos */}
+            <div className="flex items-center gap-3 mb-4">
+              <a 
+                href="https://x.com/DevUnomieta" 
+                target="_blank" 
+                className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-header border border-border text-foreground hover:border-accent-blue hover:text-accent-blue transition-all"
+                title="Follow on X"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+                </svg>
+              </a>
+              <a 
+                href="https://linkedin.com/in/joseph-unomieta" 
+                target="_blank" 
+                className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-header border border-border text-foreground hover:border-accent-blue hover:text-accent-blue transition-all"
+                title="Connect on LinkedIn"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M22.23 0H1.77C.8 0 0 .77 0 1.72v20.56C0 23.23.8 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.2 0 22.23 0zM7.12 20.45H3.56V9h3.56v11.45zM5.34 7.43c-1.14 0-2.06-.92-2.06-2.06 0-1.14.92-2.06 2.06-2.06 1.14 0 2.06.92 2.06 2.06 0 1.14-.92 2.06-2.06 2.06zM20.45 20.45h-3.56v-5.6c0-1.34-.03-3.06-1.87-3.06-1.87 0-2.15 1.46-2.15 2.96v5.7h-3.56V9h3.42v1.56h.05c.48-.9 1.62-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29z" />
+                </svg>
+              </a>
+              <a 
+                href="/resume.pdf" 
+                target="_blank" 
+                className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-accent-blue text-white hover:bg-accent-blue/90 transition-all shadow-lg shadow-accent-blue/20"
+                title="Download Resume"
+              >
+                <FileText size={18} />
+              </a>
+            </div>
 
-            <div className="flex flex-col gap-2 text-sm text-muted">
-              <div className="flex items-center gap-2 hover:text-accent-blue cursor-pointer transition-colors">
-                <Users size={16} />
-                <span><strong className="text-foreground">1.2k</strong> followers</span>
-                <span>·</span>
-                <span><strong className="text-foreground">42</strong> following</span>
+            <Link
+              href="/contact?purpose=hiring"
+              className="w-full flex items-center justify-center py-2 px-3 rounded-md border border-accent-blue/50 text-accent-blue hover:bg-accent-blue/10 transition-all text-sm font-bold mb-6"
+            >
+              Hire me
+            </Link>
+
+            <div className="flex flex-col gap-3 text-sm text-muted">
+              <div className="flex flex-col gap-3 p-4 rounded-xl bg-header/20 border border-border/50 glow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users size={14} className="text-accent-blue" />
+                    <span className="font-medium">Subscribers</span>
+                  </div>
+                  <strong className="text-foreground font-mono">{stats.subscribers}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={14} className="text-accent-green" />
+                    <span className="font-medium">Blog Posts</span>
+                  </div>
+                  <strong className="text-foreground font-mono">{stats.posts}</strong>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                  <div className="flex items-center gap-2">
+                    <Zap size={14} className="text-yellow-500 fill-current" />
+                    <span className="font-medium text-foreground">Engagement</span>
+                  </div>
+                  <strong className="text-accent-blue font-mono">{stats.engagement}%</strong>
+                </div>
               </div>
-              {profile?.location && (
-                <div className="flex items-center gap-2 mt-2">
-                  <MapPin size={16} />
-                  <span>{profile.location}</span>
-                </div>
-              )}
-              {profile?.email && (
-                <div className="flex items-center gap-2">
-                  <Mail size={16} />
-                  <a href={`mailto:${profile.email}`} className="hover:text-accent-blue transition-colors hover:underline">
-                    {profile.email}
-                  </a>
-                </div>
-              )}
-              {profile?.website && (
-                <div className="flex items-center gap-2">
-                  <LinkIcon size={16} />
-                  <a href={profile.website} className="hover:text-accent-blue transition-colors hover:underline">
-                    {profile.website.replace(/^https?:\/\//, "")}
-                  </a>
-                </div>
-              )}
+
+              <div className="mt-4 space-y-3 px-1">
+                {profile?.location && (
+                  <div className="flex items-center gap-3">
+                    <MapPin size={16} className="text-muted/70" />
+                    <span>{profile.location}</span>
+                  </div>
+                )}
+                {profile?.email && (
+                  <div className="flex items-center gap-3">
+                    <Mail size={16} className="text-muted/70" />
+                    <a href={`mailto:${profile.email}`} className="hover:text-accent-blue transition-colors hover:underline">
+                      {profile.email}
+                    </a>
+                  </div>
+                )}
+                {profile?.website && (
+                  <div className="flex items-center gap-3">
+                    <LinkIcon size={16} className="text-muted/70" />
+                    <a href={profile.website} target="_blank" className="hover:text-accent-blue transition-colors hover:underline">
+                      {profile.website.replace(/^https?:\/\//, "")}
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>
 
         {/* Right Content */}
         <div className="flex flex-col gap-8">
-          <div className="border border-border rounded-xl overflow-hidden bg-background">
+          <div className="border border-border rounded-xl overflow-hidden bg-background shadow-xl">
             <div className="bg-header px-4 py-2 border-b border-border flex items-center gap-2 text-xs font-semibold text-foreground">
               <BookOpen size={14} className="text-muted" />
               README.md
             </div>
-            <div className="p-6 prose prose-invert prose-p:text-muted prose-a:text-accent-blue max-w-none">
-              <h2 className="text-foreground border-b border-border pb-2">
+            <div className="p-8 prose prose-invert prose-p:text-muted prose-a:text-accent-blue max-w-none">
+              <h2 className="text-foreground border-b border-border pb-3 flex items-center gap-3">
                 Hi there, I&apos;m {profile?.name?.split(" ")[0] || "Joseph"} 👋
               </h2>
-              <p>
+              <p className="text-lg leading-relaxed">
                 I am a Senior Software Engineer, CTO, and Product Growth Manager. I specialize in architecting scalable web applications, optimizing engineering workflows, and driving product success.
               </p>
-              <ul>
-                <li>🔭 I&apos;m currently working on high-performance web products.</li>
-                <li>🌱 I&apos;m deeply interested in <strong>Web3 (Solana/EVM)</strong> and <strong>Sustainable Energy infrastructure</strong>.</li>
-                <li>💬 Ask me about React, Next.js, System Architecture, and Team Leadership.</li>
-                <li>⚡ Fun fact: I boost team productivity by 60% using tailored CI/CD pipelines.</li>
-              </ul>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-8">
+                <div className="p-4 rounded-xl bg-header/20 border border-border/50">
+                    <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
+                        <Terminal size={16} className="text-accent-blue" />
+                        What I do
+                    </h4>
+                    <p className="text-xs text-muted leading-relaxed">
+                        Architecting high-performance systems and leading engineering teams to deliver world-class products.
+                    </p>
+                </div>
+                <div className="p-4 rounded-xl bg-header/20 border border-border/50">
+                    <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
+                        <Zap size={16} className="text-yellow-500" />
+                        My Impact
+                    </h4>
+                    <p className="text-xs text-muted leading-relaxed">
+                        Boosting team productivity by 60% through tailored CI/CD pipelines and agile methodology.
+                    </p>
+                </div>
+              </div>
+              
+              <h3 className="text-foreground mt-8 mb-4">Core Tech Stack</h3>
+              <div className="flex flex-wrap gap-2">
+                {techStack.map((tech) => (
+                    <span key={tech.name} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-header border border-border text-[10px] font-bold text-foreground">
+                        <tech.icon size={12} className="text-accent-blue" />
+                        {tech.name}
+                    </span>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div>
-            <h2 className="text-foreground text-base mb-2">Milestones &amp; Activity</h2>
-            <ContributionGraph />
+          <div className="flex flex-col gap-8">
+            <div className="border border-border rounded-xl p-6 bg-background shadow-xl">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-foreground text-xl font-bold flex items-center gap-3">
+                        <Layout size={24} className="text-accent-blue" />
+                        Featured Repositories
+                    </h2>
+                    <Link href="/projects" className="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
+                        View all repositories <ChevronRight size={14} />
+                    </Link>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {featuredProjects.map((project) => (
+                        <a 
+                            key={project.id}
+                            href={project.link}
+                            target="_blank"
+                            className="p-5 rounded-xl border border-border bg-header/10 hover:border-accent-blue/30 transition-all cursor-pointer group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <Terminal size={40} />
+                            </div>
+                            <h4 className="text-accent-blue text-lg font-bold group-hover:underline flex items-center justify-between">
+                                {project.name}
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20 capitalize">{project.visibility}</span>
+                            </h4>
+                            <p className="text-sm text-muted mt-2 leading-relaxed line-clamp-2">{project.description}</p>
+                            <div className="mt-4 flex items-center gap-4 text-[10px] text-muted">
+                                <span className="flex items-center gap-1">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.language_color || '#3178c6' }} /> 
+                                    {project.language}
+                                </span>
+                                <span>⭐ {project.stars}</span>
+                                <span>forks {project.forks}</span>
+                            </div>
+                        </a>
+                    ))}
+                    {featuredProjects.length === 0 && (
+                        <div className="col-span-2 py-8 text-center text-muted border border-dashed border-border rounded-xl">
+                            No pinned repositories found. Manage them in the admin dashboard.
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="border border-border rounded-xl p-6 bg-background shadow-xl">
+                <h2 className="text-foreground text-xl font-bold mb-6 flex items-center gap-3">
+                    <HistoryIcon size={24} className="text-accent-green" />
+                    Milestones & Contribution Activity
+                </h2>
+                <ContributionGraph activityData={activityData} />
+            </div>
           </div>
         </div>
       </div>
-    </>
+      </div>
   );
 }

@@ -1,14 +1,18 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import SettingsForm from './SettingsForm'
 
-export default async function ManageSettings() {
-  const supabase = await createClient()
+export const dynamic = 'force-dynamic'
 
-  const { data: rows } = await supabase
+export default async function ManageSettings() {
+  // Use admin client so we always get fresh data regardless of RLS or cache
+  const adminDb = createAdminClient()
+
+  const { data: rows } = await adminDb
     .from('site_settings')
     .select('key, value')
 
-  // Convert rows to a key→value map
+  console.log('DEBUG: Site Settings Rows:', rows)
+
   const settings: Record<string, string> = {}
   for (const row of rows || []) {
     settings[row.key] = row.value ?? ''

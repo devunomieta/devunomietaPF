@@ -60,6 +60,11 @@ export default function ProjectManager({ initialProjects }: { initialProjects: a
                   <span className="flex items-center gap-1"><Star size={12} /> {project.stars}</span>
                   <span className="flex items-center gap-1"><GitFork size={12} /> {project.forks}</span>
                   <span className="px-2 py-0.5 rounded-full bg-border/50">{project.language}</span>
+                  {project.is_featured && (
+                    <span className="px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue font-bold flex items-center gap-1">
+                      <Star size={10} className="fill-current" /> Pinned
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -149,6 +154,19 @@ export default function ProjectManager({ initialProjects }: { initialProjects: a
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-muted uppercase">Project URL</label>
                 <input name="link" defaultValue={editingProject?.link} placeholder="https://github.com/..." className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none" />
+              </div>
+
+              <div className="flex items-center gap-3 p-4 bg-accent-blue/5 rounded-xl border border-accent-blue/10">
+                <input 
+                  type="checkbox" 
+                  id="is_featured" 
+                  name="is_featured" 
+                  defaultChecked={editingProject?.is_featured} 
+                  className="w-4 h-4 accent-accent-blue cursor-pointer"
+                />
+                <label htmlFor="is_featured" className="text-sm font-semibold text-foreground cursor-pointer select-none">
+                  Pin this project (Feature on landing page)
+                </label>
               </div>
 
               <div className="flex gap-3 pt-4">
