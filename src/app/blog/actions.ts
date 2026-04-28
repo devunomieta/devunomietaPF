@@ -87,3 +87,29 @@ export async function reactToPostAction(postId: string, type: 'like' | 'dislike'
   revalidatePath('/blog/[slug]', 'page')
   return { success: true }
 }
+
+export async function reactToCommentAction(commentId: string, type: 'like' | 'dislike') {
+  const supabase = await createClient()
+  
+  const { data: comment } = await supabase.from('comments').select('likes, dislikes').eq('id', commentId).single()
+  if (!comment) return { error: 'Comment not found' }
+  
+  const updateData = type === 'like' 
+    ? { likes: (comment.likes || 0) + 1 }
+    : { dislikes: (comment.dislikes || 0) + 1 }
+
+  const { error } = await supabase.from('comments').update(updateData).eq('id', commentId)
+  
+  if (error) return { error: 'Failed to add reaction' }
+  
+  revalidatePath('/blog/[slug]', 'page')
+  return { success: true }
+}
+
+export async function deleteCommentAction(commentId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('comments').delete().eq('id', commentId)
+  if (error) return { error: 'Failed to delete comment' }
+  revalidatePath('/blog/[slug]', 'page')
+  return { success: true }
+}

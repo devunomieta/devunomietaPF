@@ -9,6 +9,19 @@ export default function NewsletterManager({ subscribers, campaigns }: { subscrib
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showToast, setShowToast] = useState<{ show: boolean, message: string }>({ show: false, message: '' })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 20
+
+  const filteredSubscribers = subscribers.filter(sub => 
+    sub.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    sub.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sub.display_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const totalPages = Math.ceil(filteredSubscribers.length / pageSize)
+  const paginatedSubscribers = filteredSubscribers.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   async function handleCampaignSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -45,34 +58,88 @@ export default function NewsletterManager({ subscribers, campaigns }: { subscrib
       </div>
 
       {activeTab === 'subscribers' ? (
-        <div className="bg-header/20 border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-header/40 text-muted uppercase text-[10px] tracking-widest font-bold">
-              <tr>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Email</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Joined</th>
-                <th className="px-6 py-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {subscribers.map((sub) => (
-                <tr key={sub.id} className="hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4 text-foreground font-medium">{sub.name || 'Anonymous'}</td>
-                  <td className="px-6 py-4 text-muted">{sub.email}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] font-bold">ACTIVE</span>
-                  </td>
-                  <td className="px-6 py-4 text-muted">{new Date(sub.created_at).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 text-right">
-                    <button onClick={() => deleteSubscriber(sub.id).then(() => window.location.reload())} className="text-red-400 hover:text-red-300 p-2"><Trash2 size={16} /></button>
-                  </td>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center gap-4">
+            <input 
+              type="text" 
+              placeholder="Search by name or email..." 
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="bg-header/20 border border-border rounded-lg px-4 py-1.5 text-xs text-foreground outline-none focus:border-accent-blue transition-all w-full max-w-sm"
+            />
+            <div className="text-[10px] text-muted font-mono">
+              Showing {paginatedSubscribers.length} of {filteredSubscribers.length}
+            </div>
+          </div>
+
+          <div className="bg-header/20 border border-border rounded-xl overflow-hidden shadow-sm">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-header/40 text-muted uppercase text-[9px] tracking-widest font-bold border-b border-border">
+                <tr>
+                  <th className="px-4 py-2.5">Name</th>
+                  <th className="px-4 py-2.5">Email</th>
+                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5">Joined</th>
+                  <th className="px-4 py-2.5 text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {subscribers.length === 0 && <div className="p-12 text-center text-muted">No subscribers yet.</div>}
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {paginatedSubscribers.map((sub) => (
+                  <tr key={sub.id} className="hover:bg-white/5 transition-colors group">
+                    <td className="px-4 py-2 text-foreground font-medium">
+                      <div className="flex flex-col">
+                        <span>{sub.name || 'Anonymous'}</span>
+                        {sub.display_name && sub.display_name !== sub.name && (
+                          <span className="text-[9px] text-muted opacity-60">@{sub.display_name}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-muted">{sub.email}</td>
+                    <td className="px-4 py-2">
+                      <span className="px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[9px] font-bold">ACTIVE</span>
+                    </td>
+                    <td className="px-4 py-2 text-muted">
+                      {sub.created_at ? new Date(sub.created_at).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <button 
+                        onClick={() => { if(confirm('Delete subscriber?')) deleteSubscriber(sub.id).then(() => window.location.reload()) }} 
+                        className="text-muted hover:text-red-400 transition-colors p-1"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {paginatedSubscribers.length === 0 && (
+              <div className="p-8 text-center text-muted text-xs italic">
+                {searchTerm ? 'No matches found.' : 'No subscribers yet.'}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 pt-2">
+              <button 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="px-2 py-1 text-[10px] border border-border rounded hover:bg-header disabled:opacity-30"
+              >
+                Prev
+              </button>
+              <span className="text-[10px] text-muted px-2">Page {currentPage} of {totalPages}</span>
+              <button 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="px-2 py-1 text-[10px] border border-border rounded hover:bg-header disabled:opacity-30"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -98,10 +165,23 @@ export default function NewsletterManager({ subscribers, campaigns }: { subscrib
                 <div className="flex items-center gap-2">
                   {camp.status === 'draft' && (
                     <button 
-                      onClick={async () => { if(confirm('Send to all subscribers?')) { setLoading(true); await sendCampaignAction(camp.id); window.location.reload(); } }}
+                      onClick={async () => { 
+                        if(confirm('Send to all subscribers?')) { 
+                          setLoading(true); 
+                          const res = await sendCampaignAction(camp.id); 
+                          if (res.success) {
+                            setShowToast({ show: true, message: res.details || 'Campaign sent successfully!' });
+                            setTimeout(() => { setShowToast({ show: false, message: '' }); window.location.reload(); }, 3000);
+                          } else {
+                            alert(res.error);
+                            setLoading(false);
+                          }
+                        } 
+                      }}
                       className="px-4 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition-all flex items-center gap-2"
+                      disabled={loading}
                     >
-                      <Send size={14} /> Send Now
+                      {loading ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Send Now</>}
                     </button>
                   )}
                   <button onClick={() => { setEditingCampaign(camp); setIsModalOpen(true); }} className="p-2 text-muted hover:text-foreground"><Mail size={18} /></button>
@@ -141,6 +221,21 @@ export default function NewsletterManager({ subscribers, campaigns }: { subscrib
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {showToast.show && (
+        <div className="fixed bottom-8 right-8 z-[200] animate-in slide-in-from-right duration-500">
+          <div className="bg-background border border-accent-green/30 rounded-xl p-4 shadow-2xl flex items-center gap-3 backdrop-blur-md">
+            <div className="bg-accent-green/20 p-2 rounded-lg text-accent-green">
+              <CheckCircle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">Mission Accomplished</p>
+              <p className="text-xs text-muted">{showToast.message}</p>
+            </div>
           </div>
         </div>
       )}

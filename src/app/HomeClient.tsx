@@ -6,6 +6,7 @@ import { BookOpen, Users, MapPin, Link as LinkIcon, Mail, FileText, Zap, Chevron
 import { ContributionGraph } from "@/components/ui/ContributionGraph";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 
 /** Silently cleans ?code= from the URL if Supabase misdirects to homepage */
 function AuthCodeCleaner() {
@@ -24,11 +25,13 @@ interface Profile {
   name?: string;
   handle?: string;
   bio?: string;
+  about_me?: string;
   avatar_url?: string;
   location?: string;
   email?: string;
   website?: string;
   titles?: string[];
+  tech_stack?: string[];
 }
 
 interface Project {
@@ -244,36 +247,20 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
               <h2 className="text-foreground border-b border-border pb-3 flex items-center gap-3">
                 Hi there, I&apos;m {profile?.name?.split(" ")[0] || "Joseph"} 👋
               </h2>
-              <p className="leading-relaxed">
-                I am a Senior Software Engineer, CTO, and Product Growth Manager. I specialize in architecting scalable web applications, optimizing engineering workflows, and driving product success.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 my-8">
-                <div className="p-4 rounded-xl bg-header/20 border border-border/50">
-                  <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
-                    <Terminal size={16} className="text-accent-blue" />
-                    What I do
-                  </h4>
-                  <p className="text-xs text-muted leading-relaxed">
-                    Architecting high-performance systems and leading engineering teams to deliver world-class products.
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl bg-header/20 border border-border/50">
-                  <h4 className="text-foreground font-bold mb-2 flex items-center gap-2">
-                    <Zap size={16} className="text-yellow-500" />
-                    My Impact
-                  </h4>
-                  <p className="text-xs text-muted leading-relaxed">
-                    Boosting team productivity by 60% through tailored CI/CD pipelines and agile methodology.
-                  </p>
-                </div>
+              <div className="prose prose-invert prose-p:text-muted prose-a:text-accent-blue prose-li:text-muted max-w-none mb-8">
+                <ReactMarkdown>
+                  {profile?.about_me 
+                    ? profile.about_me.replace(/\\n/g, '\n') 
+                    : "I am a Senior Software Engineer, CTO, and Product Growth Manager. I specialize in architecting scalable web applications, optimizing engineering workflows, and driving product success."}
+                </ReactMarkdown>
               </div>
 
               <h3 className="text-foreground mt-8 mb-4">Core Tech Stack</h3>
               <div className="flex flex-wrap gap-2">
-                {techStack.map((tech) => (
-                  <span key={tech.name} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-header border border-border text-[10px] font-bold text-foreground">
-                    <tech.icon size={12} className="text-accent-blue" />
-                    {tech.name}
+                {(profile?.tech_stack?.length ? profile.tech_stack : ["Next.js", "TypeScript", "React", "Supabase", "Tailwind", "Node.js"]).map((tech) => (
+                  <span key={tech} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-header border border-border text-[10px] font-bold text-foreground">
+                    <Terminal size={12} className="text-accent-blue" />
+                    {tech}
                   </span>
                 ))}
               </div>

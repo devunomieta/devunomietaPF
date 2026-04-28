@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { postCommentAction } from "@/app/blog/actions";
+import { postCommentAction, reactToCommentAction, deleteCommentAction } from "@/app/blog/actions";
 import { NewsletterModal } from "./NewsletterModal";
-import { MessageSquare, CornerDownRight } from "lucide-react";
+import { MessageSquare, CornerDownRight, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
 
 type Comment = {
   id: string;
   parent_id: string | null;
   content: string;
   created_at: string;
+  likes: number;
+  dislikes: number;
   subscriber: {
     display_name: string;
     avatar_url: string;
@@ -47,6 +49,16 @@ export function CommentsSection({
     setLoading(false);
   };
 
+  const handleReaction = async (commentId: string, type: 'like' | 'dislike') => {
+    await reactToCommentAction(commentId, type);
+  };
+
+  const handleDelete = async (commentId: string) => {
+    if (confirm("Are you sure you want to delete this comment?")) {
+      await deleteCommentAction(commentId);
+    }
+  };
+
   // Helper to build comment tree
   const buildTree = (parentId: string | null = null): Comment[] => {
     return comments.filter(c => c.parent_id === parentId).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -62,18 +74,44 @@ export function CommentsSection({
           <img src={comment.subscriber.avatar_url} alt={comment.subscriber.display_name} className="w-8 h-8 rounded-full bg-header border border-border" />
           
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm text-foreground">{comment.subscriber.display_name}</span>
-              <span className="text-xs text-muted font-mono">{new Date(comment.created_at).toLocaleDateString()}</span>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm text-foreground">{comment.subscriber.display_name}</span>
+                <span className="text-xs text-muted font-mono">{new Date(comment.created_at).toLocaleDateString()}</span>
+              </div>
+              <button 
+                onClick={() => handleDelete(comment.id)}
+                className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                title="Delete comment (Admin)"
+              >
+                <Trash2 size={12} />
+              </button>
             </div>
-            <p className="text-sm text-muted/90 leading-relaxed mb-2 whitespace-pre-wrap">{comment.content}</p>
+            <p className="text-sm text-muted/90 leading-relaxed mb-3 whitespace-pre-wrap">{comment.content}</p>
             
-            <button 
-              onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-              className="text-xs font-semibold text-muted hover:text-accent-blue transition-colors flex items-center gap-1"
-            >
-              <CornerDownRight size={12} /> Reply
-            </button>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                className="text-xs font-semibold text-muted hover:text-accent-blue transition-colors flex items-center gap-1"
+              >
+                <CornerDownRight size={12} /> Reply
+              </button>
+
+              <div className="flex items-center gap-3 ml-auto">
+                <button 
+                  onClick={() => handleReaction(comment.id, 'like')}
+                  className="flex items-center gap-1 text-[10px] font-mono text-muted hover:text-accent-green transition-colors"
+                >
+                  <ThumbsUp size={12} /> {comment.likes || 0}
+                </button>
+                <button 
+                  onClick={() => handleReaction(comment.id, 'dislike')}
+                  className="flex items-center gap-1 text-[10px] font-mono text-muted hover:text-red-400 transition-colors"
+                >
+                  <ThumbsDown size={12} /> {comment.dislikes || 0}
+                </button>
+              </div>
+            </div>
 
             {/* Reply Form */}
             {replyingTo === comment.id && (

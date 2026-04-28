@@ -1,5 +1,6 @@
 import { Book, GraduationCap, Award, Code, Shield, Zap, Droplets } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { NewsletterSection } from "@/components/ui/NewsletterSection";
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   GraduationCap,
@@ -138,6 +139,8 @@ export default async function Academic() {
           </div>
         </section>
       </div>
+
+      <NewsletterSection />
     </div>
   );
 }

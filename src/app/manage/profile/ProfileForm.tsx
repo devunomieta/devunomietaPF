@@ -11,6 +11,24 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
   const [avatarUrl, setAvatarUrl] = useState<string>(initialData?.avatar_url || '')
   const [avatarLoading, setAvatarLoading] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(initialData?.tech_stack || [])
+
+  const AVAILABLE_SKILLS = [
+    "JavaScript", "TypeScript", "React", "Next.js", "Vue.js", "Svelte", "Angular",
+    "Node.js", "Express", "NestJS", "Python", "Django", "FastAPI", "Go", "Rust",
+    "Java", "Spring Boot", "C#", ".NET", "Ruby on Rails", "PHP", "Laravel",
+    "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Supabase", "Firebase",
+    "AWS", "GCP", "Azure", "Vercel", "Docker", "Kubernetes", "CI/CD", "GitHub Actions",
+    "GraphQL", "REST APIs", "Tailwind CSS", "Sass", "Figma", "UI/UX",
+    "Web3", "Solana", "EVM", "Smart Contracts", "System Architecture", "Team Leadership"
+  ].sort()
+
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills(prev => 
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    )
+  }
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -152,6 +170,34 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
           defaultValue={initialData?.website}
           className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none transition-all"
         />
+      </div>
+
+      <div className="space-y-4 pt-4 border-t border-border">
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted block mb-2">Core Tech Stack</label>
+          <p className="text-xs text-muted mb-3">Select the technologies you actively work with.</p>
+          <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-3 bg-header/20 border border-border rounded-lg custom-scrollbar">
+            {AVAILABLE_SKILLS.map((skill) => {
+              const isSelected = selectedSkills.includes(skill);
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  onClick={() => toggleSkill(skill)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                    isSelected 
+                      ? 'bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/20' 
+                      : 'bg-header border-border text-muted hover:border-accent-blue/50 hover:text-foreground'
+                  }`}
+                >
+                  {skill}
+                </button>
+              )
+            })}
+          </div>
+          {/* Hidden input to submit the array as a comma-separated string */}
+          <input type="hidden" name="tech_stack" value={selectedSkills.join(',')} />
+        </div>
       </div>
 
       <button

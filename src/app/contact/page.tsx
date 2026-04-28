@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import ContactForm from './ContactForm'
 import { Mail, MessageSquare, CheckCircle2 } from 'lucide-react'
+import { NewsletterSection } from '@/components/ui/NewsletterSection'
 
 export default function ContactPage({
   searchParams,
@@ -56,6 +57,8 @@ export default function ContactPage({
           </Suspense>
         )}
       </div>
+
+      <NewsletterSection />
     </div>
   )
 }

@@ -1,18 +1,22 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import NewsletterManager from './NewsletterManager'
 
 export default async function ManageNewsletter() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   
-  const { data: subscribers } = await supabase
+  const { data: subscribers, error: subError } = await supabase
     .from('subscribers')
     .select('*')
     .order('created_at', { ascending: false })
 
-  const { data: campaigns } = await supabase
+  const { data: campaigns, error: campError } = await supabase
     .from('campaigns')
     .select('*')
     .order('created_at', { ascending: false })
+
+  if (subError || campError) {
+    console.error('Newsletter Fetch Error:', subError || campError)
+  }
 
   return (
     <div className="space-y-6">

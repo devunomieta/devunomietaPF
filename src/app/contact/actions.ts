@@ -21,6 +21,8 @@ export async function submitInquiry(formData: FormData) {
   if (budget) metadata.budget = budget
   if (timeline) metadata.timeline = timeline
 
+  const subscribe = formData.get('subscribe') === 'on'
+
   const { error } = await supabase.from('inquiries').insert([
     { 
       name, 
@@ -30,6 +32,13 @@ export async function submitInquiry(formData: FormData) {
       metadata 
     }
   ])
+
+  // Optionally subscribe to newsletter
+  if (subscribe && !error) {
+    await supabase.from('subscribers').upsert([
+      { email, name, status: 'active' }
+    ], { onConflict: 'email' })
+  }
 
   if (error) {
     console.error('Inquiry submission error:', error)

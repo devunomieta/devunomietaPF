@@ -18,7 +18,7 @@ export default async function Home() {
   ] = await Promise.all([
     supabase
       .from('profile')
-      .select('name, handle, bio, avatar_url, location, email, website, titles')
+      .select('name, handle, bio, about_me, avatar_url, location, email, website, titles, tech_stack')
       .limit(1)
       .single(),
     supabase

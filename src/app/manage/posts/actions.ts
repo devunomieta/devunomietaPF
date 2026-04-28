@@ -60,7 +60,44 @@ export async function savePost(formData: FormData) {
   if (id) {
     await supabase.from('posts').update(postData).eq('id', id)
   } else {
-    await supabase.from('posts').insert([postData])
+    const { data: newPost, error: insertError } = await supabase.from('posts').insert([postData]).select('id, title, slug').single()
+    
+    // Automatic Notification for New Published Posts
+    if (!insertError && is_published && newPost) {
+      const { data: subscribers } = await supabase
+        .from('subscribers')
+        .select('email, name')
+        .eq('status', 'active')
+
+      if (subscribers && subscribers.length > 0) {
+        const { sendEmail } = await import('@/lib/brevo')
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://devunomieta.xyz'
+        
+        // Send notifications in batches to avoid timeouts and spam flags
+        for (const sub of subscribers) {
+          try {
+            await sendEmail({
+              to: [{ email: sub.email, name: sub.name }],
+              subject: `New Post: ${newPost.title}`,
+              htmlContent: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; rounded: 8px;">
+                  <h2 style="color: #333;">New on the Digital Library</h2>
+                  <p>Hi ${sub.name || 'there'},</p>
+                  <p>A new piece has just been published: <strong>${newPost.title}</strong></p>
+                  <div style="margin-top: 30px; margin-bottom: 30px;">
+                    <a href="${baseUrl}/blog/${newPost.slug}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Read the Full Post</a>
+                  </div>
+                  <hr style="border: none; border-top: 1px solid #eee;" />
+                  <p style="font-size: 12px; color: #666;">You're receiving this because you subscribed to Joseph Unomieta's newsletter.</p>
+                </div>
+              `
+            })
+          } catch (e) {
+            console.error(`Failed to notify ${sub.email}:`, e)
+          }
+        }
+      }
+    }
   }
 
   revalidatePath('/blog')

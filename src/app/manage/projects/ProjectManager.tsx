@@ -10,6 +10,45 @@ export default function ProjectManager({ initialProjects }: { initialProjects: a
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const [lang, setLang] = useState('')
+  const [color, setColor] = useState('#3178c6')
+
+  const LANGUAGE_COLORS: Record<string, string> = {
+    'TypeScript': '#3178c6',
+    'JavaScript': '#f1e05a',
+    'React': '#61dafb',
+    'Next.js': '#000000',
+    'Vue': '#41b883',
+    'Python': '#3572A5',
+    'Go': '#00ADD8',
+    'Rust': '#dea584',
+    'Solidity': '#363636',
+    'Solidity / TypeScript': '#3178c6',
+    'HTML': '#e34c26',
+    'CSS': '#563d7c',
+    'Tailwind': '#38bdf8',
+    'C++': '#f34b7d',
+    'Java': '#b07219',
+    'PHP': '#4F5D95',
+    'Ruby': '#701516',
+  }
+
+  // Sync state when modal opens with a project
+  const openModal = (project: any = null) => {
+    setEditingProject(project)
+    setLang(project?.language || '')
+    setColor(project?.language_color || '#3178c6')
+    setIsModalOpen(true)
+  }
+
+  const handleLangChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setLang(val)
+    if (LANGUAGE_COLORS[val]) {
+      setColor(LANGUAGE_COLORS[val])
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
@@ -40,7 +79,7 @@ export default function ProjectManager({ initialProjects }: { initialProjects: a
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-foreground">All Projects</h2>
         <button
-          onClick={() => { setEditingProject(null); setIsModalOpen(true); }}
+          onClick={() => openModal(null)}
           className="flex items-center gap-2 px-4 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/80 transition-all text-sm"
         >
           <Plus size={16} /> Add Project
@@ -71,7 +110,7 @@ export default function ProjectManager({ initialProjects }: { initialProjects: a
             
             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={() => { setEditingProject(project); setIsModalOpen(true); }}
+                onClick={() => openModal(project)}
                 className="p-2 text-muted hover:text-foreground hover:bg-white/5 rounded-lg transition-all"
               >
                 <Edit size={18} />
@@ -94,13 +133,13 @@ export default function ProjectManager({ initialProjects }: { initialProjects: a
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-background border border-border rounded-2xl w-full max-w-xl shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-border">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-hidden">
+          <div className="bg-background border border-border rounded-2xl w-full max-w-xl shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-center p-6 border-b border-border sticky top-0 bg-background z-10">
               <h3 className="text-lg font-bold text-foreground">
                 {editingProject ? 'Edit Project' : 'Add New Project'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted hover:text-foreground transition-colors">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="text-muted hover:text-foreground transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -125,14 +164,51 @@ export default function ProjectManager({ initialProjects }: { initialProjects: a
                 <textarea name="description" defaultValue={editingProject?.description} rows={2} className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none resize-none" />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted uppercase">Language</label>
-                  <input name="language" defaultValue={editingProject?.language} placeholder="TypeScript" className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none" />
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted uppercase flex items-center justify-between">
+                      Language
+                    </label>
+                    <input 
+                      name="language" 
+                      value={lang} 
+                      onChange={handleLangChange}
+                      placeholder="TypeScript" 
+                      className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted uppercase">Language Color (Hex)</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="color" 
+                        value={color} 
+                        onChange={(e) => setColor(e.target.value)} 
+                        className="w-10 h-10 p-1 rounded-lg bg-header/30 border border-border cursor-pointer shrink-0" 
+                      />
+                      <input 
+                        name="language_color" 
+                        value={color} 
+                        onChange={(e) => setColor(e.target.value)}
+                        placeholder="#3178c6"
+                        className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none font-mono text-sm uppercase" 
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted uppercase">Language Color (Hex)</label>
-                  <input name="language_color" defaultValue={editingProject?.language_color || '#3178c6'} className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none" />
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {Object.entries(LANGUAGE_COLORS).slice(0, 10).map(([l, c]) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => { setLang(l); setColor(c); }}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-header/50 border border-border text-[10px] text-muted hover:text-foreground transition-colors hover:border-accent-blue/30"
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
+                      {l}
+                    </button>
+                  ))}
                 </div>
               </div>
 

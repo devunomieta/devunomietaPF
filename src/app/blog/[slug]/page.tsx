@@ -9,6 +9,7 @@ import { ReadingProgress } from '@/components/ui/ReadingProgress'
 import { AudioPlayer } from '@/components/ui/AudioPlayer'
 import { PdfViewer } from '@/components/ui/PdfViewer'
 import { cookies } from 'next/headers'
+import { NewsletterSection } from '@/components/ui/NewsletterSection'
 
 export const revalidate = 0
 
@@ -155,6 +156,8 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         comments={(comments as any) || []} 
         isSubscribedInitially={isSubscribed} 
       />
+
+      <NewsletterSection />
     </div>
     </>
   )

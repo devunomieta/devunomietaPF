@@ -118,6 +118,19 @@ export default function ContactForm({ error }: { error?: string }) {
         </div>
       )}
 
+      <div className="flex items-center gap-2 px-1">
+        <input 
+          id="subscribe" 
+          name="subscribe" 
+          type="checkbox" 
+          defaultChecked
+          className="w-4 h-4 rounded border-border bg-header text-accent-blue focus:ring-accent-blue"
+        />
+        <label htmlFor="subscribe" className="text-xs text-muted cursor-pointer select-none">
+          Join my newsletter for technical insights and project updates.
+        </label>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <label htmlFor="message" className="text-xs font-semibold text-foreground uppercase tracking-wider">Message</label>
         <textarea
@@ -144,6 +157,37 @@ export default function ContactForm({ error }: { error?: string }) {
         <Send size={16} />
         Send Message
       </button>
+
+      {/* Success Toast */}
+      {searchParams.get("success") === "true" && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-accent-green/10 border border-accent-green/30 text-accent-green shadow-xl shadow-black/50 backdrop-blur-md rounded-xl p-4 flex items-center gap-3">
+            <div className="bg-accent-green/20 p-1.5 rounded-full">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm">Message Sent!</h4>
+              <p className="text-xs opacity-80">I will get back to you shortly.</p>
+            </div>
+            <button 
+              type="button"
+              onClick={() => {
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, '', newUrl);
+                // force re-render by unsetting purpose to reset form visually, or just let state catch up
+                setPurpose('inquiry');
+              }}
+              className="ml-4 opacity-50 hover:opacity-100 transition-opacity"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

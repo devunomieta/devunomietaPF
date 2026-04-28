@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { FileText } from 'lucide-react'
 import { BookCard } from '@/components/ui/BookCard'
+import { NewsletterSection } from '@/components/ui/NewsletterSection'
 
 export const revalidate = 0
 
@@ -39,6 +40,7 @@ export default async function BlogIndexPage() {
           </div>
         )}
       </div>
+      <NewsletterSection />
     </div>
   )
 }

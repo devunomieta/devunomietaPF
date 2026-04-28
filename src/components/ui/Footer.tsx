@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
+import { NewsletterForm } from "./NewsletterForm";
 import Link from "next/link";
 
 export function Footer() {

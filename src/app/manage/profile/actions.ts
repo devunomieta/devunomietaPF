@@ -31,6 +31,7 @@ export async function updateProfile(formData: FormData) {
   }
 
   const titlesRaw = (formData.get('titles') as string) || ''
+  const techStackRaw = (formData.get('tech_stack') as string) || ''
   const avatarUrl = formData.get('avatar_url') as string
 
   const profileData: Record<string, unknown> = {
@@ -42,6 +43,7 @@ export async function updateProfile(formData: FormData) {
     email: formData.get('email') as string,
     website: formData.get('website') as string,
     titles: titlesRaw ? titlesRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
+    tech_stack: techStackRaw ? techStackRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
     updated_at: new Date().toISOString(),
   }
 
