@@ -34,8 +34,8 @@ export function CommandPalette() {
     const fetchPosts = async () => {
       const { data } = await supabase
         .from("posts")
-        .select("title, slug, excerpt")
-        .eq("status", "published")
+        .select("title, slug, content")
+        .eq("is_published", true)
         .limit(10);
 
       if (data) {
@@ -44,7 +44,7 @@ export function CommandPalette() {
           path: `/blog/${p.slug}`,
           icon: MessageSquare,
           type: "post",
-          subtitle: p.excerpt
+          subtitle: p.content ? p.content.slice(0, 100).replace(/[#*`_]/g, '') + '...' : undefined
         }));
         setPosts(postItems);
       }
