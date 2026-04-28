@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
@@ -95,14 +94,9 @@ const getIntensityColor = (intensity: number) => {
 export function ContributionGraph({ activityData = {} }: ContributionGraphProps) {
   const { grid, totalMocked } = useMemo(() => generateTextGrid(activityData), [activityData]);
   const [mounted, setMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const totalInquiries = Object.values(activityData).reduce((a, b) => a + b, 0);
@@ -122,46 +116,27 @@ export function ContributionGraph({ activityData = {} }: ContributionGraphProps)
         </span>
       </div>
 
-      <div className="overflow-hidden pb-2 select-none flex justify-center min-h-[105px]">
+      <div className="pb-4 select-none flex justify-center w-full">
         {mounted ? (
-          <motion.div
-            className="flex gap-[3px] min-w-max"
-            animate={isMobile ? {
-              x: [0, -400, -400, -800, -800, 0],
-            } : {}}
-            transition={isMobile ? {
-              duration: 15,
-              repeat: Infinity,
-              ease: "easeInOut",
-              times: [0, 0.4, 0.45, 0.9, 0.95, 1]
-            } : {}}
-          >
+          <div className="flex gap-[1px] sm:gap-[2px] md:gap-[3px] w-full max-w-full">
             {grid.map((week, i) => (
-              <div key={i} className="flex flex-col gap-[3px]">
+              <div key={i} className="flex flex-col gap-[1px] sm:gap-[2px] md:gap-[3px] flex-1">
                 {week.map((cell, j) => (
-                  <motion.div
+                  <div
                     key={`${i}-${j}`}
-                    animate={cell.isText ? {
-                      opacity: [1, 0.6, 1],
-                      filter: ["brightness(1)", "brightness(1.5)", "brightness(1)"],
-                    } : {}}
-                    transition={cell.isText ? {
-                      duration: 3,
-                      repeat: Infinity,
-                      delay: (i * 0.04) + (j * 0.08),
-                    } : {}}
                     className={cn(
-                      "w-[12px] h-[12px] rounded-[2px] transition-all duration-500",
+                      "w-full aspect-square rounded-[1px] md:rounded-[2px]",
                       getIntensityColor(cell.intensity),
-                      cell.isText ? "shadow-[0_0_10px_rgba(57,211,83,0.45)] z-10" : "opacity-80"
+                      cell.isText ? "shadow-[0_0_10px_rgba(57,211,83,0.45)] z-10 animate-pulse-cell" : "opacity-80 transition-all duration-500 hover:opacity-100"
                     )}
+                    style={cell.isText ? { animationDelay: `${(i * 0.04) + (j * 0.08)}s` } : {}}
                   />
                 ))}
               </div>
             ))}
-          </motion.div>
+          </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted/20 text-xs font-mono">
+          <div className="w-full h-[105px] flex items-center justify-center text-muted/20 text-xs font-mono">
             Initializing neural activity...
           </div>
         )}

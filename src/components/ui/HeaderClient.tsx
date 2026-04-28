@@ -43,7 +43,7 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
             <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               {activeLogo ? (
                 <div className="w-10 h-10 relative overflow-hidden rounded-md">
-                  <Image src={activeLogo} alt={siteName} fill className="object-contain" />
+                  <Image src={activeLogo} alt={siteName} fill sizes="40px" className="object-contain" />
                 </div>
               ) : (
                 <div className="p-2 bg-header border border-border rounded-md">

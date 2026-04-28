@@ -107,13 +107,14 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
           <div className="relative w-full max-w-[300px] aspect-square rounded-full border border-border overflow-hidden glow mx-auto md:mx-0">
             <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/20 to-transparent z-10 pointer-events-none mix-blend-overlay" />
             {profile?.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={profile.name || "Avatar"}
-                fill
-                className="object-cover"
-                priority
-              />
+                <Image
+                  src={profile.avatar_url}
+                  alt={profile.name || "Avatar"}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 300px"
+                  className="object-cover"
+                  priority
+                />
             ) : (
               <div className="w-full h-full bg-header flex items-center justify-center text-muted font-mono text-sm">
                 [Avatar Placeholder]

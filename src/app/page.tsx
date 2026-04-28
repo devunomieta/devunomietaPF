@@ -33,7 +33,7 @@ export default async function Home() {
     supabase
       .from('projects')
       .select('*')
-      .eq('is_featured', true)
+      .order('is_featured', { ascending: false })
       .order('sort_order', { ascending: true })
       .limit(2),
     // For the contribution graph (Activity Aggregation)
