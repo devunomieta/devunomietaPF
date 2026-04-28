@@ -14,6 +14,15 @@ export async function GET(request: Request) {
     if (!error) {
       // Immediately redirect — code is consumed and gone from the URL
       return NextResponse.redirect(`${origin}${next}`)
+    } else {
+      console.error('Auth Session Error:', error.message)
+    }
+  } else {
+    // If Supabase redirected back with an error instead of a code
+    const authError = searchParams.get('error')
+    const authErrorDescription = searchParams.get('error_description')
+    if (authError || authErrorDescription) {
+      console.error('Supabase Auth Error:', authError, authErrorDescription)
     }
   }
 
