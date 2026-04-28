@@ -15,6 +15,13 @@ export async function GET(request: Request) {
     console.log('Incoming Cookies on Callback:', request.headers.get('cookie'))
 
     const supabase = await createClient()
+    
+    // Check if a session already exists (this handles the aggressive double-firing browser/Next.js issue)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
