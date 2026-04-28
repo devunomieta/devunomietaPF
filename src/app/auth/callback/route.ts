@@ -10,6 +10,9 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/manage'
 
   if (code) {
+    // DEBUG: Log all cookies to see if the PKCE cookie is missing
+    console.log('Incoming Cookies on Callback:', request.headers.get('cookie'))
+
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
@@ -18,6 +21,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}${next}`)
     } else {
       console.error('Auth Session Error:', error.message)
+      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
     }
   } else {
     // If Supabase redirected back with an error instead of a code
