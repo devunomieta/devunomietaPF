@@ -3,7 +3,7 @@ import { logout } from '@/app/login/actions';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send, Settings } from 'lucide-react';
+import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send, Settings, Lightbulb } from 'lucide-react';
 
 export default async function ManageLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -47,13 +47,14 @@ export default async function ManageLayout({ children }: { children: React.React
     { name: 'Projects', href: '/manage/projects', icon: FolderGit2 },
     { name: 'Experience', href: '/manage/experience', icon: History },
     { name: 'Academic', href: '/manage/academic', icon: GraduationCap },
+    { name: 'Ideas', href: '/manage/ideas', icon: Lightbulb },
     { name: 'Inquiries', href: '/manage/inquiries', icon: MessageSquare, count: unreadInquiries },
     { name: 'Newsletter', href: '/manage/newsletter', icon: Send, count: subscriberCount },
     { name: 'Settings', href: '/manage/settings', icon: Settings },
   ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-[70vh] gap-8">
+    <div className="flex flex-col md:flex-row flex-1 gap-8">
       <aside className="w-full md:w-64 shrink-0">
         <div className="bg-header/50 border border-border rounded-xl p-4 sticky top-24">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 px-3">Admin Panel</h2>
