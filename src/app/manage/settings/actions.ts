@@ -15,14 +15,26 @@ export async function updateSettings(formData: FormData) {
   await getVerifiedUser()
   // Use admin client to bypass RLS on site_settings writes
   const adminDb = createAdminClient()
-  const keys = ['site_name', 'site_tagline', 'site_description', 'og_image_url']
+  const keys = ['site_name', 'site_tagline', 'site_description', 'og_image_url', 'announcement_text', 'announcement_link']
 
   for (const key of keys) {
-    const value = formData.get(key) as string
-    const { error } = await adminDb
+    if (formData.has(key)) {
+      const value = formData.get(key) as string
+      const { error } = await adminDb
+        .from('site_settings')
+        .upsert({ key, value }, { onConflict: 'key' })
+      if (error) return { error: `Failed to save ${key}: ${error.message}` }
+    }
+  }
+
+  // Handle announcement_enabled checkbox state ONLY if submitting the announcement form
+  if (formData.has('announcement_form_active')) {
+    const isEnabled = formData.get('announcement_enabled') === 'on' ? 'true' : 'false'
+    const { error: toggleError } = await adminDb
       .from('site_settings')
-      .upsert({ key, value }, { onConflict: 'key' })
-    if (error) return { error: `Failed to save ${key}: ${error.message}` }
+      .upsert({ key: 'announcement_enabled', value: isEnabled }, { onConflict: 'key' })
+    
+    if (toggleError) return { error: `Failed to save announcement_enabled: ${toggleError.message}` }
   }
 
   revalidatePath('/')

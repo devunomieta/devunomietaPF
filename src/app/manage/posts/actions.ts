@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -64,6 +65,17 @@ export async function savePost(formData: FormData) {
     
     // Automatic Notification for New Published Posts
     if (!insertError && is_published && newPost) {
+      // Update sitewide announcement for new post
+      try {
+        const adminDb = createAdminClient()
+        await Promise.all([
+          adminDb.from('site_settings').upsert({ key: 'announcement_enabled', value: 'true' }, { onConflict: 'key' }),
+          adminDb.from('site_settings').upsert({ key: 'announcement_text', value: `📢 New Blog Post: ${newPost.title}` }, { onConflict: 'key' }),
+          adminDb.from('site_settings').upsert({ key: 'announcement_link', value: `/blog/${newPost.slug}` }, { onConflict: 'key' }),
+        ])
+      } catch (announceErr) {
+        console.error('Failed to auto-publish sitewide announcement for new post:', announceErr)
+      }
       const { data: subscribers } = await supabase
         .from('subscribers')
         .select('email, name')
@@ -100,6 +112,7 @@ export async function savePost(formData: FormData) {
     }
   }
 
+  revalidatePath('/')
   revalidatePath('/blog')
   revalidatePath('/manage/posts')
   redirect('/manage/posts')

@@ -40,6 +40,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+import { AnnouncementBar } from "@/components/ui/AnnouncementBar";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -54,6 +56,7 @@ export default function RootLayout({
         className="min-h-screen flex flex-col bg-background text-foreground selection:bg-accent-blue selection:text-white"
         suppressHydrationWarning
       >
+        <AnnouncementBar />
         <Header />
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
           {children}

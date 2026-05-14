@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateSettings, uploadAsset, changePassword } from './actions'
-import { Save, Loader2, Upload, Image, Globe, Lock, Mail, Info } from 'lucide-react'
+import { Save, Loader2, Upload, Image, Globe, Lock, Mail, Info, Megaphone } from 'lucide-react'
 
 type Settings = Record<string, string>
 
@@ -112,9 +112,27 @@ function AssetUploader({ label, currentUrl, type, onUploaded }: {
 export default function SettingsForm({ settings }: { settings: Settings }) {
   const [siteLoading, setSiteLoading] = useState(false)
   const [siteMsg, setSiteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [announceLoading, setAnnounceLoading] = useState(false)
+  const [announceMsg, setAnnounceMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [pwLoading, setPwLoading] = useState(false)
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const router = useRouter()
+
+  async function handleAnnounceSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setAnnounceLoading(true)
+    setAnnounceMsg(null)
+    const fd = new FormData(e.currentTarget)
+    fd.append('announcement_form_active', 'true')
+    const res = await updateSettings(fd)
+    if (res.success) {
+      setAnnounceMsg({ type: 'success', text: 'Announcement updated successfully!' })
+      router.refresh()
+    } else {
+      setAnnounceMsg({ type: 'error', text: 'Failed to update announcement.' })
+    }
+    setAnnounceLoading(false)
+  }
 
   async function handleSiteSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -169,6 +187,45 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
           <button type="submit" disabled={siteLoading} className="flex items-center gap-2 px-5 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/80 transition-all disabled:opacity-50 text-sm font-semibold">
             {siteLoading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
             {siteLoading ? 'Saving...' : 'Save Settings'}
+          </button>
+        </form>
+      </div>
+
+      {/* Sitewide Announcements */}
+      <div className="bg-header/20 border border-border rounded-xl p-6">
+        <SectionTitle icon={Megaphone} title="Sitewide Announcement" description="Create highly visible banner notifications for all users." />
+        <form onSubmit={handleAnnounceSubmit} className="space-y-4 max-w-2xl">
+          <div className="flex items-center gap-3 p-3 bg-header/30 rounded-lg border border-border">
+            <input
+              id="announcement_enabled"
+              name="announcement_enabled"
+              type="checkbox"
+              defaultChecked={settings['announcement_enabled'] === 'true'}
+              className="h-4 w-4 rounded border-gray-600 text-accent-blue focus:ring-accent-blue bg-background cursor-pointer"
+            />
+            <label htmlFor="announcement_enabled" className="text-sm font-semibold text-foreground cursor-pointer select-none">
+              Enable sitewide announcement banner
+            </label>
+          </div>
+
+          <Field 
+            label="Announcement Text" 
+            name="announcement_text" 
+            defaultValue={settings['announcement_text']} 
+            placeholder="📢 Exclusive Update: Visit our live demo page now!" 
+          />
+          
+          <Field 
+            label="Call to Action URL (Optional)" 
+            name="announcement_link" 
+            defaultValue={settings['announcement_link']} 
+            placeholder="/blog/my-post or https://..." 
+          />
+          
+          <StatusMsg msg={announceMsg} />
+          <button type="submit" disabled={announceLoading} className="flex items-center gap-2 px-5 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/80 transition-all disabled:opacity-50 text-sm font-semibold">
+            {announceLoading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+            {announceLoading ? 'Saving...' : 'Update Announcement'}
           </button>
         </form>
       </div>
