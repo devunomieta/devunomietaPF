@@ -10,6 +10,7 @@ import { AudioPlayer } from '@/components/ui/AudioPlayer'
 import { PdfViewer } from '@/components/ui/PdfViewer'
 import { cookies } from 'next/headers'
 import { NewsletterSection } from '@/components/ui/NewsletterSection'
+import { TextToSpeechReader } from '@/components/ui/TextToSpeechReader'
 
 export const revalidate = 0
 
@@ -105,44 +106,47 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
       {post.post_type === 'pdf' && post.pdf_url ? (
         <PdfViewer src={post.pdf_url} title={post.title} />
       ) : (
-        <div className="max-w-none">
-          <ReactMarkdown
-          components={{
-            h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-foreground mt-8 mb-4 border-b border-border pb-2" {...props} />,
-            h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-foreground mt-8 mb-4 border-b border-border pb-2" {...props} />,
-            h3: ({node, ...props}) => <h3 className="text-xl font-bold text-foreground mt-6 mb-3" {...props} />,
-            p: ({node, ...props}) => <div className="text-muted text-base leading-relaxed mb-4" {...props} />,
-            ul: ({node, ...props}) => <ul className="list-disc list-inside text-muted mb-4 space-y-1 ml-4" {...props} />,
-            ol: ({node, ...props}) => <ol className="list-decimal list-inside text-muted mb-4 space-y-1 ml-4" {...props} />,
-            li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
-            a: ({node, ...props}) => <a className="text-accent-blue hover:underline" {...props} />,
-            code: ({node, className, children, ...props}) => {
-              const match = /language-(\w+)/.exec(className || '')
-              const isInline = !className?.includes('language-')
-              
-              return !isInline ? (
-                <div className="my-6 rounded-xl overflow-hidden border border-border bg-header shadow-md glow">
-                  <div className="px-4 py-2 border-b border-border flex items-center bg-background/50">
-                    <span className="text-xs font-mono text-muted uppercase tracking-wider">{match ? match[1] : 'code'}</span>
+        <>
+          <TextToSpeechReader containerId="blog-article-content" />
+          <div id="blog-article-content" className="max-w-none">
+            <ReactMarkdown
+            components={{
+              h1: ({node, ...props}) => <h1 className="tts-block text-3xl font-bold text-foreground mt-8 mb-4 border-b border-border pb-2" {...props} />,
+              h2: ({node, ...props}) => <h2 className="tts-block text-2xl font-bold text-foreground mt-8 mb-4 border-b border-border pb-2" {...props} />,
+              h3: ({node, ...props}) => <h3 className="tts-block text-xl font-bold text-foreground mt-6 mb-3" {...props} />,
+              p: ({node, ...props}) => <div className="tts-block text-muted text-base leading-relaxed mb-4" {...props} />,
+              ul: ({node, ...props}) => <ul className="list-disc list-inside text-muted mb-4 space-y-1 ml-4" {...props} />,
+              ol: ({node, ...props}) => <ol className="list-decimal list-inside text-muted mb-4 space-y-1 ml-4" {...props} />,
+              li: ({node, ...props}) => <li className="tts-block leading-relaxed" {...props} />,
+              a: ({node, ...props}) => <a className="text-accent-blue hover:underline" {...props} />,
+              code: ({node, className, children, ...props}) => {
+                const match = /language-(\w+)/.exec(className || '')
+                const isInline = !className?.includes('language-')
+                
+                return !isInline ? (
+                  <div className="my-6 rounded-xl overflow-hidden border border-border bg-header shadow-md glow">
+                    <div className="px-4 py-2 border-b border-border flex items-center bg-background/50">
+                      <span className="text-xs font-mono text-muted uppercase tracking-wider">{match ? match[1] : 'code'}</span>
+                    </div>
+                    <pre className="p-4 overflow-x-auto">
+                      <code className="text-sm font-mono text-foreground/90" {...props}>
+                        {children}
+                      </code>
+                    </pre>
                   </div>
-                  <pre className="p-4 overflow-x-auto">
-                    <code className="text-sm font-mono text-foreground/90" {...props}>
-                      {children}
-                    </code>
-                  </pre>
-                </div>
-              ) : (
-                <code className="bg-header px-1.5 py-0.5 rounded text-sm text-accent-blue font-mono border border-border" {...props}>
-                  {children}
-                </code>
-              )
-            },
-            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-accent-blue pl-4 italic text-muted my-4 bg-accent-blue/5 py-2 rounded-r-md" {...props} />
-          }}
-        >
-          {post.content}
-        </ReactMarkdown>
-        </div>
+                ) : (
+                  <code className="bg-header px-1.5 py-0.5 rounded text-sm text-accent-blue font-mono border border-border" {...props}>
+                    {children}
+                  </code>
+                )
+              },
+              blockquote: ({node, ...props}) => <blockquote className="tts-block border-l-4 border-accent-blue pl-4 italic text-muted my-4 bg-accent-blue/5 py-2 rounded-r-md" {...props} />
+            }}
+          >
+            {post.content}
+          </ReactMarkdown>
+          </div>
+        </>
       )}
 
       <Reactions 

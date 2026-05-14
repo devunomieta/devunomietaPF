@@ -18,12 +18,12 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
-    { name: "Overview", path: "/" },
-    { name: "Experience", path: "/experience" },
+    { name: "Home", path: "/" },
+    { name: "Experiences", path: "/experience" },
     { name: "Projects", path: "/projects" },
-    { name: "Blog", path: "/blog" },
-    { name: "Academic", path: "/academic" },
-    { name: "Contact", path: "/contact" },
+    { name: "Articles", path: "/blog" },
+    { name: "Qualifications", path: "/academic" },
+    { name: "Contact Me", path: "/contact" },
   ];
 
   const activeLogo = logoUrl || faviconUrl;
@@ -33,13 +33,13 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
       <header className="bg-header border-b border-border text-foreground sticky top-0 z-30 w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsMenuOpen(true)}
               className="md:hidden text-muted hover:text-foreground p-1"
             >
               <Menu size={20} />
             </button>
-            
+
             <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               {activeLogo ? (
                 <div className="w-10 h-10 relative overflow-hidden rounded-md">
@@ -53,9 +53,9 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
                 </div>
               )}
             </Link>
-  
+
             <nav className="hidden md:flex items-center gap-1 ml-2">
-              {navLinks.slice(0, 4).map((link) => {
+              {navLinks.slice(0, 5).map((link) => {
                 const isActive = pathname === link.path;
                 return (
                   <Link
@@ -74,7 +74,7 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
               })}
             </nav>
           </div>
-  
+
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
@@ -86,13 +86,13 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
                 ⌘K
               </kbd>
             </button>
-  
+
             <Link
               href="/contact?purpose=hiring"
               className="text-xs font-bold bg-accent-green hover:bg-accent-green/90 text-white px-2.5 sm:px-4 py-2 rounded-md border border-white/10 transition-all flex items-center gap-2 glow"
             >
               <Zap size={14} className="fill-current shrink-0" />
-              <span className="hidden xs:inline">Hire Me</span>
+              <span>Contact Me</span>
             </Link>
           </div>
         </div>
@@ -101,8 +101,8 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200">
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setIsMenuOpen(false)}
           />
           <div className="absolute top-0 left-0 bottom-0 w-3/4 max-w-sm bg-header border-r border-border p-6 shadow-2xl animate-in slide-in-from-left duration-300">
@@ -112,7 +112,7 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
                 <X size={24} />
               </button>
             </div>
-            
+
             <nav className="flex flex-col gap-2">
               {navLinks.map((link) => {
                 const isActive = pathname === link.path;
@@ -142,7 +142,7 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
                 className="w-full flex items-center justify-center gap-2 py-4 bg-accent-green text-white rounded-xl font-bold shadow-lg"
               >
                 <Zap size={18} className="fill-current" />
-                Hire Me Now
+                Contact
               </Link>
             </div>
           </div>
