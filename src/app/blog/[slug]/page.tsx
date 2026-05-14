@@ -79,7 +79,13 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   }
 
   // Increment view count in background (non-blocking)
-  supabase.rpc('increment_post_views', { post_id: post.id }).then(() => {}).catch(() => {})
+  (async () => {
+    try {
+      await supabase.rpc('increment_post_views', { post_id: post.id })
+    } catch (err) {
+      // Fail silently to ensure analytics never interrupt user load
+    }
+  })()
 
   // Fetch comments with subscriber details
   const { data: comments } = await supabase
