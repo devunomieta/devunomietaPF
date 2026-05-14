@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, User, Clock } from 'lucide-react'
 import { Reactions } from '@/components/ui/Reactions'
+import { ShareButton } from '@/components/ui/ShareButton'
 import { CommentsSection } from '@/components/ui/CommentsSection'
 import { ReadingProgress } from '@/components/ui/ReadingProgress'
 import { AudioPlayer } from '@/components/ui/AudioPlayer'
@@ -20,14 +21,43 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   
   const { data: post } = await supabase
     .from('posts')
-    .select('title')
+    .select('title, content, cover_image_url')
     .eq('slug', resolvedParams.slug)
     .single()
 
   if (!post) return { title: 'Post Not Found' }
   
+  // Extract and clean up a dynamic snippet from the markdown body for description
+  const cleanDesc = post.content
+    ? post.content
+        .replace(/[#*_`\[\]()]/g, '')
+        .replace(/\n+/g, ' ')
+        .substring(0, 155)
+        .trim() + '...'
+    : `Explore "${post.title}" on Joseph Unomieta's Personal Portfolio.`
+
   return {
     title: `${post.title} | Joseph Unomieta`,
+    description: cleanDesc,
+    openGraph: {
+      title: `${post.title} | Joseph Unomieta`,
+      description: cleanDesc,
+      type: 'article',
+      url: `https://www.devunomieta.xyz/blog/${resolvedParams.slug}`,
+      siteName: 'Joseph Unomieta',
+      images: post.cover_image_url ? [{
+        url: post.cover_image_url,
+        width: 1200,
+        height: 1800,
+        alt: post.title
+      }] : [],
+    },
+    twitter: {
+      card: post.cover_image_url ? 'summary_large_image' : 'summary',
+      title: `${post.title} | Joseph Unomieta`,
+      description: cleanDesc,
+      images: post.cover_image_url ? [post.cover_image_url] : [],
+    }
   }
 }
 
@@ -47,6 +77,9 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   if (error || !post) {
     notFound()
   }
+
+  // Increment view count in background (non-blocking)
+  supabase.rpc('increment_post_views', { post_id: post.id }).then(() => {}).catch(() => {})
 
   // Fetch comments with subscriber details
   const { data: comments } = await supabase
@@ -149,11 +182,14 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         </>
       )}
 
-      <Reactions 
-        postId={post.id} 
-        initialLikes={post.likes || 0} 
-        initialDislikes={post.dislikes || 0} 
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-b border-border/60 py-6 mt-4 select-none">
+        <Reactions 
+          postId={post.id} 
+          initialLikes={post.likes || 0} 
+          initialDislikes={post.dislikes || 0} 
+        />
+        <ShareButton title={post.title} slug={post.slug} />
+      </div>
 
       <CommentsSection 
         postId={post.id} 

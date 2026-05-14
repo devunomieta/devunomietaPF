@@ -21,6 +21,15 @@ export function BookCard({ post }: { post: any }) {
           e.currentTarget.style.boxShadow = '5px 5px 15px rgba(0,0,0,0.5), inset 4px 0 10px rgba(255,255,255,0.05)';
         }}
       >
+        {/* Featured Jacket Art Background */}
+        {post.cover_image_url && (
+          <img 
+            src={post.cover_image_url} 
+            alt="" 
+            className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-105 transition-all duration-700 ease-out z-0"
+          />
+        )}
+        
         <div className="absolute top-0 left-0 bottom-0 w-3 bg-gradient-to-r from-background/80 via-header to-background/20 border-r border-border/30 z-20"></div>
         
         <div className="absolute inset-0 p-4 pl-6 flex flex-col justify-between bg-gradient-to-b from-transparent via-background/40 to-background/95">

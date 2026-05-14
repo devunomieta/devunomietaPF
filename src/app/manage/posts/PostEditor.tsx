@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { savePost } from "./actions";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Edit3, Eye } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 
@@ -13,6 +13,8 @@ export function PostEditor({ post }: { post?: any }) {
   const [isPublished, setIsPublished] = useState(post?.is_published || false);
   const [postType, setPostType] = useState(post?.post_type || "markdown");
   const [autoSlug, setAutoSlug] = useState(!post); // Auto-generate slug only for new posts
+  const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
+  const [previewCoverUrl, setPreviewCoverUrl] = useState<string>("");
 
   useEffect(() => {
     if (autoSlug && title) {
@@ -23,6 +25,25 @@ export function PostEditor({ post }: { post?: any }) {
       setSlug(generatedSlug);
     }
   }, [title, autoSlug]);
+
+  useEffect(() => {
+    return () => {
+      if (previewCoverUrl) {
+        URL.revokeObjectURL(previewCoverUrl);
+      }
+    };
+  }, [previewCoverUrl]);
+
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (previewCoverUrl) {
+        URL.revokeObjectURL(previewCoverUrl);
+      }
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewCoverUrl(objectUrl);
+    }
+  };
 
   return (
     <form action={savePost} className="flex flex-col gap-6">
@@ -91,6 +112,34 @@ export function PostEditor({ post }: { post?: any }) {
         </div>
 
         <div>
+          <label className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5 block">Featured Cover Image (Optional)</label>
+          <input 
+            type="file" 
+            name="cover_image_file" 
+            accept="image/*" 
+            onChange={handleCoverImageChange}
+            className="w-full text-sm text-muted bg-header/30 border border-border p-2 rounded-md" 
+          />
+          
+          {(previewCoverUrl || post?.cover_image_url) && (
+            <div className="mt-3 flex flex-col items-start gap-2 bg-header/20 p-3 rounded-md border border-border/50 max-w-xs">
+              <span className="text-[10px] font-bold text-muted uppercase">Cover Aspect Preview (2:3):</span>
+              <div className="relative w-28 aspect-[2/3] bg-background rounded border border-border shadow-lg overflow-hidden">
+                <img 
+                  src={previewCoverUrl || post.cover_image_url} 
+                  className="absolute inset-0 w-full h-full object-cover" 
+                  alt="Cover preview" 
+                />
+              </div>
+              <p className="text-[10px] text-accent-blue italic">
+                {previewCoverUrl ? "✨ Ready to upload! Click Save Post to store." : "✅ Saved in library."}
+              </p>
+            </div>
+          )}
+          <input type="hidden" name="existing_cover_image_url" value={post?.cover_image_url || ''} />
+        </div>
+
+        <div>
           <label className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5 block">Attach Audio Read-Over (Optional)</label>
           <input type="file" name="audio_file" accept="audio/*" className="w-full text-sm text-muted bg-header/30 border border-border p-2 rounded-md" />
           {post?.audio_url && <p className="text-xs text-accent-blue mt-2">Currently attached audio. Uploading a new one will replace it.</p>}
@@ -106,55 +155,81 @@ export function PostEditor({ post }: { post?: any }) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Markdown Content</label>
-            <textarea
-              name="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-              rows={25}
-              className="w-full bg-header/50 border border-border rounded-md px-4 py-3 text-sm text-foreground font-mono focus:outline-none focus:border-accent-blue resize-y leading-relaxed"
-              placeholder="# Write your post here..."
-            />
-          </div>
-          
-          <div className="flex flex-col gap-1.5 h-full">
-            <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Live Preview</label>
-            <div className="w-full h-full min-h-[500px] border border-border rounded-md p-6 overflow-y-auto bg-background glow">
-              <div className="max-w-none">
+        {/* GitHub style write vs preview tab selector */}
+        <div className="mt-4 flex items-center border-b border-border/60 gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("write")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === "write"
+                ? "border-accent-blue text-accent-blue bg-accent-blue/5"
+                : "border-transparent text-muted hover:text-foreground hover:bg-header/30"
+            }`}
+          >
+            <Edit3 size={16} />
+            Write Markdown
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("preview")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === "preview"
+                ? "border-accent-blue text-accent-blue bg-accent-blue/5"
+                : "border-transparent text-muted hover:text-foreground hover:bg-header/30"
+            }`}
+          >
+            <Eye size={16} />
+            Live Preview
+          </button>
+        </div>
+
+        <div className="mt-3">
+          {activeTab === "write" ? (
+            <div className="flex flex-col gap-1.5">
+              <textarea
+                name="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                required
+                rows={28}
+                className="w-full bg-header/50 border border-border rounded-md px-4 py-3 text-sm text-foreground font-mono focus:outline-none focus:border-accent-blue resize-y leading-relaxed"
+                placeholder="# Write your post here..."
+              />
+            </div>
+          ) : (
+            <div className="w-full min-h-[600px] border border-border rounded-md p-6 md:p-8 overflow-y-auto bg-background glow">
+              <div className="max-w-3xl mx-auto">
                 <ReactMarkdown
                   components={{
-                    h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-foreground mt-4 mb-2 border-b border-border pb-1" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="text-xl font-bold text-foreground mt-4 mb-2" {...props} />,
-                    h3: ({node, ...props}) => <h3 className="text-lg font-bold text-foreground mt-4 mb-2" {...props} />,
-                    p: ({node, ...props}) => <div className="text-sm text-muted mb-4 leading-relaxed" {...props} />,
-                    ul: ({node, ...props}) => <ul className="list-disc list-inside text-sm text-muted mb-4" {...props} />,
-                    ol: ({node, ...props}) => <ol className="list-decimal list-inside text-sm text-muted mb-4" {...props} />,
-                    a: ({node, ...props}) => <a className="text-accent-blue hover:underline" {...props} />,
+                    h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-foreground mt-6 mb-4 border-b border-border pb-2" {...props} />,
+                    h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-foreground mt-6 mb-3 pb-1 border-b border-border/30" {...props} />,
+                    h3: ({node, ...props}) => <h3 className="text-xl font-bold text-foreground mt-5 mb-2" {...props} />,
+                    p: ({node, ...props}) => <p className="text-base text-muted mb-5 leading-relaxed" {...props} />,
+                    ul: ({node, ...props}) => <ul className="list-disc pl-6 text-base text-muted mb-5 space-y-1" {...props} />,
+                    ol: ({node, ...props}) => <ol className="list-decimal pl-6 text-base text-muted mb-5 space-y-1" {...props} />,
+                    a: ({node, ...props}) => <a className="text-accent-blue hover:underline font-medium" {...props} />,
                     code: ({node, className, children, ...props}) => {
                       const isInline = !className?.includes('language-');
                       return isInline ? (
-                        <code className="bg-header px-1.5 py-0.5 rounded text-accent-blue text-xs font-mono border border-border" {...props}>
+                        <code className="bg-header px-1.5 py-0.5 rounded text-accent-blue text-sm font-mono border border-border" {...props}>
                           {children}
                         </code>
                       ) : (
-                        <pre className="bg-header p-4 rounded-lg text-xs font-mono text-foreground border border-border mb-4 overflow-x-auto">
+                        <pre className="bg-header p-4 rounded-xl text-sm font-mono text-foreground border border-border mb-5 overflow-x-auto">
                           <code className={className} {...props}>
                             {children}
                           </code>
                         </pre>
                       );
                     },
-                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-accent-blue pl-4 italic text-muted my-4" {...props} />
+                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-accent-blue bg-accent-blue/5 px-5 py-3 italic text-muted my-5 rounded-r-lg" {...props} />
                   }}
                 >
                   {content || '*Live preview will appear here...*'}
                 </ReactMarkdown>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </form>

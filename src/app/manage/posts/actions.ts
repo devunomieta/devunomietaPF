@@ -21,9 +21,11 @@ export async function savePost(formData: FormData) {
 
   let audio_url = formData.get('existing_audio_url') as string || null;
   let pdf_url = formData.get('existing_pdf_url') as string || null;
-
+  let cover_image_url = formData.get('existing_cover_image_url') as string || null;
+  
   const audioFile = formData.get('audio_file') as File | null;
   const pdfFile = formData.get('pdf_file') as File | null;
+  const coverFile = formData.get('cover_image_file') as File | null;
 
   // Supabase Storage Uploads
   if (audioFile && audioFile.size > 0) {
@@ -46,6 +48,16 @@ export async function savePost(formData: FormData) {
     }
   }
 
+  if (coverFile && coverFile.size > 0) {
+    const fileExt = coverFile.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+    const { data, error } = await supabase.storage.from('media').upload(`covers/${fileName}`, coverFile)
+    if (!error && data) {
+      const { data: urlData } = supabase.storage.from('media').getPublicUrl(`covers/${fileName}`)
+      cover_image_url = urlData.publicUrl
+    }
+  }
+
   const postData = {
     title,
     slug,
@@ -54,6 +66,7 @@ export async function savePost(formData: FormData) {
     post_type,
     audio_url,
     pdf_url,
+    cover_image_url,
     read_time,
     updated_at: new Date().toISOString()
   }

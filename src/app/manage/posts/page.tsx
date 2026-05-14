@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, ChevronLeft, ChevronRight, Eye, Heart, MessageSquare } from 'lucide-react'
 import { deletePost } from './actions'
 import { redirect } from 'next/navigation'
 
@@ -20,15 +20,34 @@ export default async function ManagePostsPage({ searchParams }: PageProps) {
 
   let query = supabase
     .from('posts')
-    .select('id, title, is_published, created_at', { count: 'exact' })
+    .select('id, title, is_published, created_at, likes, views, comments(count)', { count: 'exact' })
 
   if (searchQuery) {
     query = query.ilike('title', `%${searchQuery}%`)
   }
 
-  const { data: posts, count } = await query
+  let { data: posts, count, error } = await query
     .order('created_at', { ascending: false })
     .range((page - 1) * pageSize, page * pageSize - 1)
+
+  // Bulletproof Fallback: If new analytics query fails (e.g., before SQL migration is executed)
+  // instantly fallback to core columns to guarantee zero dashboard downtime!
+  if (error) {
+    let fallbackQuery = supabase
+      .from('posts')
+      .select('id, title, is_published, created_at', { count: 'exact' })
+
+    if (searchQuery) {
+      fallbackQuery = fallbackQuery.ilike('title', `%${searchQuery}%`)
+    }
+
+    const fallbackResult = await fallbackQuery
+      .order('created_at', { ascending: false })
+      .range((page - 1) * pageSize, page * pageSize - 1)
+    
+    posts = fallbackResult.data
+    count = fallbackResult.count
+  }
 
   const totalPages = count ? Math.ceil(count / pageSize) : 0
 
@@ -87,8 +106,22 @@ export default async function ManagePostsPage({ searchParams }: PageProps) {
             ) : (
               posts.map((post) => (
                 <tr key={post.id} className="hover:bg-accent-blue/5 transition-colors group">
-                  <td className="px-6 py-4 font-medium text-foreground">
-                    {post.title}
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-foreground leading-snug">{post.title}</div>
+                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted select-none font-medium tracking-wide">
+                      <span className="flex items-center gap-1" title="Post Views">
+                        <Eye size={12} className="text-accent-blue/70" /> 
+                        {post.views || 0} views
+                      </span>
+                      <span className="flex items-center gap-1" title="Post Likes">
+                        <Heart size={12} className="text-red-400/70" /> 
+                        {post.likes || 0} likes
+                      </span>
+                      <span className="flex items-center gap-1" title="Total Comments">
+                        <MessageSquare size={12} className="text-accent-green/70" /> 
+                        {post.comments?.[0]?.count || 0} comments
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     {post.is_published ? (

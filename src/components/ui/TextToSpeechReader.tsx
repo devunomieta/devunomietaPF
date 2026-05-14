@@ -72,75 +72,88 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
     return list.filter((el) => (el.textContent?.trim().length ?? 0) > 0);
   };
 
-  const speakCurrentElement = () => {
+  const queueReadingSequence = (startIndex: number) => {
     if (!window.speechSynthesis) return;
+    
+    // Stop all active/queued utterances immediately
     window.speechSynthesis.cancel();
 
-    const index = currentIndexRef.current;
-    if (index >= elementsRef.current.length) {
+    const blocks = elementsRef.current;
+    if (!blocks || blocks.length === 0) return;
+
+    if (startIndex < 0 || startIndex >= blocks.length) {
       updatePlayingStatus(false, false);
-      setProgress({ current: elementsRef.current.length, total: elementsRef.current.length });
       clearAllHighlights();
       return;
     }
 
-    const activeElement = elementsRef.current[index];
-    setProgress({ current: index + 1, total: elementsRef.current.length });
-    
-    activeElement.scrollIntoView({ behavior: "smooth", block: "center" });
-    highlightElement(activeElement);
-
-    const text = activeElement.textContent || "";
-    const utterance = new SpeechSynthesisUtterance(text);
-    
     const voices = window.speechSynthesis.getVoices();
     const englishVoice = voices.find(
       (v) => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Natural"))
     ) || voices.find((v) => v.lang.startsWith("en"));
-    
-    if (englishVoice) {
-      utterance.voice = englishVoice;
+
+    // Mobile Fix: Pre-queue all utterances synchronously inside the same click execution cycle.
+    // This instructs standard mobile WebKit to trust the batch and play sequentially!
+    for (let i = startIndex; i < blocks.length; i++) {
+      const el = blocks[i];
+      const text = el.textContent || "";
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+      
+      utterance.volume = isMutedRef.current ? 0 : 1;
+      utterance.rate = 1.0;
+
+      utterance.onstart = () => {
+        // If state switched off while transitioning, cancel immediate queue execution
+        if (!isPlayingRef.current) {
+          window.speechSynthesis.cancel();
+          return;
+        }
+
+        currentIndexRef.current = i;
+        setProgress({ current: i + 1, total: blocks.length });
+        
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        highlightElement(el);
+      };
+
+      utterance.onend = () => {
+        if (i === blocks.length - 1) {
+          updatePlayingStatus(false, false);
+          clearAllHighlights();
+          setProgress({ current: blocks.length, total: blocks.length });
+        }
+      };
+
+      utterance.onerror = (event) => {
+        if (event.error !== "interrupted") {
+          console.error("TTS Error:", event);
+          updatePlayingStatus(false, false);
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
     }
-
-    utterance.volume = isMutedRef.current ? 0 : 1;
-    utterance.rate = 1.0;
-    
-    utterance.onend = () => {
-      // Fix the stale closure by referencing the active ref
-      if (isPlayingRef.current) {
-        currentIndexRef.current += 1;
-        speakCurrentElement();
-      }
-    };
-
-    utterance.onerror = (event) => {
-      if (event.error !== "interrupted") {
-        console.error("TTS utterance error:", event);
-        updatePlayingStatus(false, false);
-      }
-    };
-
-    window.speechSynthesis.speak(utterance);
   };
 
   const handlePlayPause = () => {
     if (!window.speechSynthesis) return;
 
     if (isPlaying) {
-      // Pause current playing
       updatePlayingStatus(false, true);
-      window.speechSynthesis.cancel();
+      window.speechSynthesis.cancel(); // Clears native queue immediately
       return;
     }
 
     if (isPaused) {
-      // Resume
       updatePlayingStatus(true, false);
-      speakCurrentElement();
+      queueReadingSequence(currentIndexRef.current);
       return;
     }
 
-    // Start new
     const blocks = parseContent();
     if (blocks.length === 0) return;
 
@@ -150,11 +163,11 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
     
     if (window.speechSynthesis.getVoices().length === 0) {
       window.speechSynthesis.onvoiceschanged = () => {
-        speakCurrentElement();
+        queueReadingSequence(0);
         window.speechSynthesis.onvoiceschanged = null;
       };
     } else {
-      speakCurrentElement();
+      queueReadingSequence(0);
     }
   };
 
@@ -172,7 +185,8 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
     setIsMuted(newState);
     isMutedRef.current = newState;
     if (isPlaying) {
-      speakCurrentElement();
+      // Re-queue from current element to update volume pipeline immediately
+      queueReadingSequence(currentIndexRef.current);
     }
   };
 
