@@ -181,11 +181,11 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
   const percentage = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-5 bg-header/60 border border-border/80 p-5 rounded-2xl shadow-xl glow mb-8 w-full backdrop-blur-sm transition-all duration-300">
-      {/* Big circular toggle play button matches standard audio player */}
+    <div className="flex items-center gap-3 sm:gap-5 bg-header/60 border border-border/80 p-3 sm:p-5 rounded-2xl shadow-xl glow mb-8 w-full backdrop-blur-sm transition-all duration-300">
+      {/* Left: Main Toggle Play Button */}
       <button
         onClick={handlePlayPause}
-        className={`w-14 h-14 rounded-full text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0 shadow-lg ${
+        className={`w-11 h-11 sm:w-14 sm:h-14 rounded-full text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0 shadow-lg ${
           isPlaying 
             ? "bg-accent-blue/20 border-2 border-accent-blue text-accent-blue hover:bg-accent-blue/30 shadow-accent-blue/10" 
             : "bg-accent-blue hover:bg-accent-blue/90 shadow-accent-blue/20"
@@ -193,35 +193,38 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
         title={isPlaying ? "Pause Reading" : "Read Article"}
       >
         {isPlaying ? (
-          <Pause size={22} className="fill-current" />
+          <Pause size={18} className="fill-current sm:scale-110" />
         ) : (
-          <Play size={22} className="fill-current ml-1" />
+          <Play size={18} className="fill-current ml-0.5 sm:scale-110" />
         )}
       </button>
 
-      {/* Flex Content Center */}
-      <div className="flex-1 w-full flex flex-col gap-2.5">
-        <div className="flex justify-between items-end text-xs font-mono text-muted">
-          <div className="flex items-center gap-2">
-            <span className="text-accent-blue text-[10px] uppercase tracking-widest font-sans font-bold bg-accent-blue/10 px-2.5 py-0.5 rounded-full border border-accent-blue/20 flex items-center gap-1 shadow-sm">
-              <Headphones size={11} className={isPlaying ? "animate-pulse" : ""} />
-              AI Voice Reader
+      {/* Center: Flexible progress track and badges */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5 sm:gap-2.5">
+        <div className="flex justify-between items-center text-xs font-mono text-muted gap-2">
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            <span className="text-accent-blue text-[9px] sm:text-[10px] uppercase tracking-widest font-sans font-bold bg-accent-blue/10 px-2 py-0.5 rounded-full border border-accent-blue/20 flex items-center gap-1 shadow-sm shrink-0">
+              <Headphones size={10} className={isPlaying ? "animate-pulse" : ""} />
+              AI Reader
             </span>
             {isPlaying && (
-              <span className="text-[10px] text-accent-green animate-pulse font-bold uppercase">Listening</span>
+              <span className="text-[9px] sm:text-[10px] text-accent-green animate-pulse font-bold uppercase shrink-0 truncate">Listening</span>
             )}
           </div>
-          {progress.total > 0 ? (
-            <span className="text-[11px] font-semibold text-foreground/80">
-              Section {progress.current} of {progress.total} ({percentage}%)
-            </span>
-          ) : (
-            <span className="text-[11px] text-muted">Click Play to listen & auto-scroll</span>
-          )}
+
+          <div className="shrink-0 text-right">
+            {progress.total > 0 ? (
+              <span className="text-[10px] sm:text-[11px] font-semibold text-foreground/80">
+                {progress.current}/{progress.total}
+              </span>
+            ) : (
+              <span className="text-[9px] sm:text-[11px] text-muted truncate max-w-[90px] sm:max-w-none inline-block">Click Play</span>
+            )}
+          </div>
         </div>
 
-        {/* Custom progress track matches standard slider UI */}
-        <div className="w-full h-2 bg-background/80 border border-border/40 rounded-full overflow-hidden relative">
+        {/* Custom visual progress bar */}
+        <div className="w-full h-1.5 sm:h-2 bg-background/80 border border-border/40 rounded-full overflow-hidden relative">
           <div
             style={{ width: `${percentage}%` }}
             className="h-full bg-gradient-to-r from-accent-blue to-blue-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(88,166,255,0.4)]"
@@ -229,46 +232,25 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
         </div>
       </div>
 
-      {/* Quick Controls Panel on Right */}
-      <div className="flex items-center gap-1.5 shrink-0 border-l border-border/60 pl-4 hidden sm:flex">
+      {/* Right: Controls deck */}
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 pl-2 border-l border-border/40">
         {(isPlaying || isPaused) && (
           <button
             onClick={handleStop}
-            className="text-muted hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center w-10 h-10 rounded-xl group"
-            title="Stop and Reset"
+            className="text-muted hover:text-red-400 transition-all flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl hover:bg-red-500/10"
+            title="Stop"
           >
-            <Square size={16} className="fill-current opacity-70 group-hover:opacity-100" />
+            <Square size={14} className="fill-current" />
           </button>
         )}
 
         <button
           onClick={toggleMute}
-          className="text-muted hover:text-foreground hover:bg-background transition-all flex items-center justify-center w-10 h-10 rounded-xl"
+          className="text-muted hover:text-foreground transition-all flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl hover:bg-white/5"
           title={isMuted ? "Unmute" : "Mute"}
         >
-          {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-        </button>
-      </div>
-      
-      {/* Mobile controls block */}
-      <div className="flex sm:hidden w-full items-center justify-between border-t border-border/40 pt-3 mt-1">
-        <button
-          onClick={toggleMute}
-          className="text-xs text-muted flex items-center gap-2"
-        >
           {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          <span>{isMuted ? "Unmute" : "Mute"}</span>
         </button>
-        
-        {(isPlaying || isPaused) && (
-          <button
-            onClick={handleStop}
-            className="text-xs text-muted hover:text-red-400 flex items-center gap-1.5 bg-background px-3 py-1.5 rounded-lg border border-border"
-          >
-            <Square size={12} className="fill-current" />
-            Stop Reader
-          </button>
-        )}
       </div>
     </div>
   );

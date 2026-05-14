@@ -79,24 +79,24 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
           {post.title}
         </h1>
         
-        <div className="flex items-center gap-4 text-sm text-muted">
-          <div className="flex items-center gap-1.5">
-            <User size={16} className="text-accent-blue" />
-            <span>Joseph Unomieta</span>
+        <div className="flex flex-wrap items-center gap-y-2 gap-x-4 sm:gap-x-6 text-xs sm:text-sm text-muted">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <User size={14} className="text-accent-blue sm:w-4 sm:h-4" />
+            <span className="whitespace-nowrap">Joseph Unomieta</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Calendar size={16} />
-            <time dateTime={post.created_at}>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Calendar size={14} className="sm:w-4 sm:h-4" />
+            <time className="whitespace-nowrap" dateTime={post.created_at}>
               {new Date(post.created_at).toLocaleDateString('en-US', {
                 year: 'numeric',
-                month: 'long',
+                month: 'short',
                 day: 'numeric'
               })}
             </time>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Clock size={16} className="text-muted" />
-            <span>{post.read_time || 1} min read</span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Clock size={14} className="text-muted sm:w-4 sm:h-4" />
+            <span className="whitespace-nowrap">{post.read_time || 1} min read</span>
           </div>
         </div>
       </div>
