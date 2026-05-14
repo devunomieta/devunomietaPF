@@ -45,7 +45,7 @@ export default async function ManagePostsPage({ searchParams }: PageProps) {
       .order('created_at', { ascending: false })
       .range((page - 1) * pageSize, page * pageSize - 1)
     
-    posts = fallbackResult.data
+    posts = fallbackResult.data as any
     count = fallbackResult.count
   }
 
