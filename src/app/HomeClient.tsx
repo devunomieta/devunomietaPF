@@ -2,8 +2,9 @@
 
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
-import { BookOpen, Users, MapPin, Link as LinkIcon, Mail, FileText, Zap, ChevronRight, Terminal, Cpu, Layout, Database, History as HistoryIcon } from "lucide-react";
+import { BookOpen, Users, MapPin, Link as LinkIcon, Mail, FileText, Zap, ChevronRight, Terminal, Cpu, Layout, Database, History as HistoryIcon, Eye, Heart, MessageSquare } from "lucide-react";
 import { ContributionGraph } from "@/components/ui/ContributionGraph";
+import { BookCard } from "@/components/ui/BookCard";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
@@ -56,9 +57,10 @@ interface HomeClientProps {
   };
   activityData?: Record<string, number>;
   featuredProjects?: Project[];
+  pinnedPosts?: any[];
 }
 
-export default function HomeClient({ profile, stats, activityData, featuredProjects = [] }: HomeClientProps) {
+export default function HomeClient({ profile, stats, activityData, featuredProjects = [], pinnedPosts = [] }: HomeClientProps) {
   const titles = profile?.titles?.length
     ? profile.titles
     : ["Senior Software Engineer & Architect", "CTO", "Product Growth Manager"];
@@ -318,6 +320,72 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                 Contribution Activity
               </h2>
               <ContributionGraph activityData={activityData} />
+            </div>
+
+            {/* Pinned Publications: Premium Library Shelf Stack */}
+            <div className="border border-border rounded-xl p-6 bg-background shadow-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-foreground text-xl font-bold flex items-center gap-3">
+                  <BookOpen size={24} className="text-accent-blue" />
+                  Featured Publications
+                </h2>
+                <Link href="/blog" className="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
+                  Read more articles <ChevronRight size={14} />
+                </Link>
+              </div>
+
+              {pinnedPosts.length === 0 ? (
+                <div className="py-8 text-center text-muted border border-dashed border-border rounded-xl font-medium">
+                  No publications pinned yet. Check back soon!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-10 pt-4 relative">
+                  {pinnedPosts.map((post) => {
+                    // Precise 15-character stripped excerpt logic
+                    const rawText = (post.content || "").replace(/[#*_`\[\]()\-!]/g, "").trim();
+                    const snippet = rawText.length > 15 ? rawText.substring(0, 15) + "..." : rawText;
+
+                    return (
+                      <div key={post.id} className="flex flex-col items-center group">
+                        {/* Tactile 3D Floating Book Jacket */}
+                        <div className="w-28 aspect-[2/3] mb-6 relative select-none scale-100 group-hover:scale-[1.02] transition-transform duration-300">
+                          <BookCard post={post} />
+                        </div>
+
+                        {/* Ledge Base Shadows under each specific book to complete stack vibe */}
+                        <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-border to-transparent my-1 opacity-80 group-hover:opacity-100 transition-opacity" />
+
+                        {/* Content Details */}
+                        <div className="text-center mt-3 flex flex-col items-center w-full">
+                          <h4 className="text-foreground text-xs font-bold leading-snug tracking-wide mb-1 group-hover:text-accent-blue transition-colors line-clamp-2 min-h-[2rem]">
+                            {post.title}
+                          </h4>
+                          
+                          <p className="text-muted text-[10px] font-mono italic tracking-tight px-1 mb-3 leading-relaxed">
+                            &quot;{snippet}&quot;
+                          </p>
+
+                          {/* Interactive Glassmorphic Metrics Pill */}
+                          <div className="flex items-center justify-center gap-2.5 text-[9px] font-bold tracking-wider text-muted bg-header/40 px-2.5 py-1 rounded-full border border-border/50 shadow-sm">
+                            <span className="flex items-center gap-1" title="Views">
+                              <Eye size={10} className="text-accent-blue/80" />
+                              {post.views || 0}
+                            </span>
+                            <span className="flex items-center gap-1" title="Likes">
+                              <Heart size={10} className="text-red-400/80" />
+                              {post.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1" title="Comments">
+                              <MessageSquare size={10} className="text-accent-green/80" />
+                              {post.comments?.[0]?.count || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

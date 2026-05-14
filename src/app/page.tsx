@@ -43,6 +43,24 @@ export default async function Home() {
     supabase.from('experience').select('created_at')
   ])
 
+  // Secure Fetch for Pinned Publications to guarantee absolute Home uptime even prior to migration execution
+  let pinnedPosts: any[] = []
+  try {
+    const { data, error: pinnedError } = await supabase
+      .from('posts')
+      .select('id, title, content, slug, cover_image_url, created_at, likes, views, comments(count)')
+      .eq('is_published', true)
+      .eq('is_pinned', true)
+      .order('created_at', { ascending: false })
+      .limit(3)
+    
+    if (!pinnedError && data) {
+      pinnedPosts = data
+    }
+  } catch (e) {
+    console.error('Home Pinned Posts fallback triggered:', e)
+  }
+
   // Aggregate all activity dates into a map of { YYYY-MM-DD: count }
   const activityMap: Record<string, number> = {};
   const allDates = [
@@ -71,6 +89,7 @@ export default async function Home() {
       }}
       activityData={activityMap}
       featuredProjects={featuredProjects || []}
+      pinnedPosts={pinnedPosts}
     />
   )
 }

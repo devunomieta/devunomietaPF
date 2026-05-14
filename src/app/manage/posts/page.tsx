@@ -1,8 +1,9 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, ChevronLeft, ChevronRight, Eye, Heart, MessageSquare } from 'lucide-react'
+import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, ChevronLeft, ChevronRight, Eye, Heart, MessageSquare, Pin } from 'lucide-react'
 import { deletePost } from './actions'
 import { redirect } from 'next/navigation'
+import { BroadcastActionButton } from './BroadcastActionButton'
 
 export const revalidate = 0
 
@@ -20,7 +21,7 @@ export default async function ManagePostsPage({ searchParams }: PageProps) {
 
   let query = supabase
     .from('posts')
-    .select('id, title, is_published, created_at, likes, views, comments(count)', { count: 'exact' })
+    .select('id, title, is_published, created_at, likes, views, is_pinned, comments(count)', { count: 'exact' })
 
   if (searchQuery) {
     query = query.ilike('title', `%${searchQuery}%`)
@@ -104,10 +105,17 @@ export default async function ManagePostsPage({ searchParams }: PageProps) {
                 </td>
               </tr>
             ) : (
-              posts.map((post) => (
+              posts.map((post: any) => (
                 <tr key={post.id} className="hover:bg-accent-blue/5 transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="font-medium text-foreground leading-snug">{post.title}</div>
+                    <div className="flex items-center gap-2 font-medium text-foreground leading-snug">
+                      {post.title}
+                      {post.is_pinned && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[9px] font-bold uppercase tracking-wider select-none flex-shrink-0" title="Pinned to Homepage">
+                          <Pin size={8} className="fill-current" /> Pinned
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted select-none font-medium tracking-wide">
                       <span className="flex items-center gap-1" title="Post Views">
                         <Eye size={12} className="text-accent-blue/70" /> 
@@ -138,14 +146,17 @@ export default async function ManagePostsPage({ searchParams }: PageProps) {
                     {new Date(post.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right flex items-center justify-end gap-3">
-                    <Link href={`/manage/posts/${post.id}`} className="text-muted hover:text-accent-blue transition-colors" title="Edit Post">
+                    <Link href={`/manage/posts/${post.id}`} className="text-muted hover:text-accent-blue transition-colors p-1.5 rounded-md hover:bg-accent-blue/10 flex items-center justify-center" title="Edit Post">
                       <Edit2 size={16} />
                     </Link>
+                    {post.is_published && (
+                      <BroadcastActionButton postId={post.id} postTitle={post.title} />
+                    )}
                     <form action={async () => {
                       'use server'
                       await deletePost(post.id)
                     }}>
-                      <button type="submit" className="text-muted hover:text-red-400 transition-colors" title="Delete Post">
+                      <button type="submit" className="text-muted hover:text-red-400 transition-colors p-1.5 rounded-md hover:bg-red-400/10 flex items-center justify-center" title="Delete Post">
                         <Trash2 size={16} />
                       </button>
                     </form>

@@ -13,6 +13,7 @@ export async function savePost(formData: FormData) {
   const slug = formData.get('slug') as string
   const content = formData.get('content') as string
   const is_published = formData.get('is_published') === 'on'
+  const is_pinned = formData.get('is_pinned') === 'on'
   const post_type = formData.get('post_type') as string || 'markdown'
 
   // Calculate read time
@@ -68,6 +69,7 @@ export async function savePost(formData: FormData) {
     pdf_url,
     cover_image_url,
     read_time,
+    is_pinned,
     updated_at: new Date().toISOString()
   }
 

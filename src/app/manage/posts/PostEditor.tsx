@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { savePost, broadcastPostAction } from "./actions";
-import { ArrowLeft, Save, Edit3, Eye, Loader2, Mail, Check, X } from "lucide-react";
+import { ArrowLeft, Save, Edit3, Eye, Loader2, Mail, Check, X, Pin } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 
@@ -14,6 +14,7 @@ export function PostEditor({ post }: { post?: any }) {
   const [slug, setSlug] = useState(post?.slug || "");
   const [content, setContent] = useState(post?.content || "");
   const [isPublished, setIsPublished] = useState(post?.is_published || false);
+  const [isPinned, setIsPinned] = useState(post?.is_pinned || false);
   const [postType, setPostType] = useState(post?.post_type || "markdown");
   const [autoSlug, setAutoSlug] = useState(!post); 
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
@@ -62,6 +63,7 @@ export function PostEditor({ post }: { post?: any }) {
     try {
       const formData = new FormData(e.currentTarget);
       formData.set("is_published", isPublished ? "on" : "off");
+      formData.set("is_pinned", isPinned ? "on" : "off");
 
       const response = await savePost(formData);
       
@@ -167,16 +169,33 @@ export function PostEditor({ post }: { post?: any }) {
           />
         </div>
 
-        <div className="flex items-center gap-2 mt-1">
-          <input 
-            type="checkbox" 
-            name="is_published" 
-            id="is_published"
-            checked={isPublished}
-            onChange={(e) => setIsPublished(e.target.checked)}
-            className="w-4 h-4 rounded border-border"
-          />
-          <label htmlFor="is_published" className="text-sm font-medium text-foreground">Published (visible to public)</label>
+        <div className="flex flex-wrap items-center gap-6 mt-1 select-none bg-header/20 p-3 rounded-lg border border-border/40">
+          <div className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              name="is_published" 
+              id="is_published"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+              className="w-4 h-4 rounded border-border text-accent-blue focus:ring-accent-blue"
+            />
+            <label htmlFor="is_published" className="text-sm font-semibold text-foreground cursor-pointer hover:text-accent-blue transition-colors">Published (visible to public)</label>
+          </div>
+
+          <div className="flex items-center gap-2 border-l border-border/60 pl-6">
+            <input 
+              type="checkbox" 
+              name="is_pinned" 
+              id="is_pinned"
+              checked={isPinned}
+              onChange={(e) => setIsPinned(e.target.checked)}
+              className="w-4 h-4 rounded border-border text-yellow-500 focus:ring-yellow-500"
+            />
+            <label htmlFor="is_pinned" className="text-sm font-semibold text-foreground flex items-center gap-1.5 cursor-pointer hover:text-yellow-500 transition-colors">
+              <Pin size={13} className={isPinned ? "text-yellow-500 fill-current" : "text-muted"} />
+              Pin to Homepage (Max 3)
+            </label>
+          </div>
         </div>
 
         <div>
