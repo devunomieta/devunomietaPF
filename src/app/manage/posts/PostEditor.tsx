@@ -1,20 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { savePost } from "./actions";
-import { ArrowLeft, Save, Edit3, Eye } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { savePost, broadcastPostAction } from "./actions";
+import { ArrowLeft, Save, Edit3, Eye, Loader2, Mail, Check, X } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 
 export function PostEditor({ post }: { post?: any }) {
+  const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
   const [title, setTitle] = useState(post?.title || "");
   const [slug, setSlug] = useState(post?.slug || "");
   const [content, setContent] = useState(post?.content || "");
   const [isPublished, setIsPublished] = useState(post?.is_published || false);
   const [postType, setPostType] = useState(post?.post_type || "markdown");
-  const [autoSlug, setAutoSlug] = useState(!post); // Auto-generate slug only for new posts
+  const [autoSlug, setAutoSlug] = useState(!post); 
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
   const [previewCoverUrl, setPreviewCoverUrl] = useState<string>("");
+
+  // Broadcast Flow State
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [savedPostInfo, setSavedPostInfo] = useState<{ id: string; title: string; slug: string } | null>(null);
+  const [broadcastState, setBroadcastState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [broadcastCount, setBroadcastCount] = useState(0);
+  const [broadcastErrorMessage, setBroadcastErrorMessage] = useState("");
 
   useEffect(() => {
     if (autoSlug && title) {
@@ -45,14 +55,85 @@ export function PostEditor({ post }: { post?: any }) {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      formData.set("is_published", isPublished ? "on" : "off");
+
+      const response = await savePost(formData);
+      
+      if (response.success && response.post) {
+        setSavedPostInfo({
+          id: response.post.id!,
+          title: response.post.title,
+          slug: response.post.slug!
+        });
+
+        if (isPublished) {
+          setShowBroadcastModal(true);
+        } else {
+          router.push("/manage/posts");
+        }
+      } else {
+        alert(`Error while saving post: ${response.error}`);
+      }
+    } catch (err) {
+      console.error("Failure submitting post:", err);
+      alert("An unexpected networking exception halted saving.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleBroadcastNow = async () => {
+    if (!savedPostInfo) return;
+    setBroadcastState("sending");
+
+    try {
+      const response = await broadcastPostAction(savedPostInfo.id);
+      if (response.success) {
+        setBroadcastCount(response.sentCount || 0);
+        setBroadcastState("success");
+      } else {
+        setBroadcastErrorMessage(response.error || "Database rejected mail queue.");
+        setBroadcastState("error");
+      }
+    } catch (err) {
+      setBroadcastErrorMessage("Internet timeout connecting to Brevo relay.");
+      setBroadcastState("error");
+    }
+  };
+
+  const handleCloseAndRedirect = () => {
+    router.push("/manage/posts");
+  };
+
   return (
-    <form action={savePost} className="flex flex-col gap-6">
+    <>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex items-center justify-between border-b border-border pb-4">
         <Link href="/manage/posts" className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors">
           <ArrowLeft size={16} /> Back
         </Link>
-        <button type="submit" className="flex items-center gap-2 bg-accent-green hover:bg-accent-green/90 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors">
-          <Save size={16} /> Save Post
+        <button 
+          type="submit" 
+          disabled={isSaving}
+          className={`flex items-center gap-2 bg-accent-green hover:bg-accent-green/90 text-white px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+            isSaving ? "opacity-50 cursor-wait" : ""
+          }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 size={16} className="animate-spin" /> Saving...
+            </>
+          ) : (
+            <>
+              <Save size={16} /> Save Post
+            </>
+          )}
         </button>
       </div>
 
@@ -233,5 +314,102 @@ export function PostEditor({ post }: { post?: any }) {
         </div>
       </div>
     </form>
+
+      {showBroadcastModal && savedPostInfo && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          {/* Glassy overlay background */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-[6px]" />
+          
+          {/* Inner card modal */}
+          <div className="relative w-full max-w-md bg-[#0f172a] border border-border/80 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 glow">
+            <div className="p-7 flex flex-col items-center text-center">
+              
+              {broadcastState === 'idle' && (
+                <>
+                  <div className="w-16 h-16 bg-accent-blue/10 text-accent-blue rounded-full flex items-center justify-center mb-5 border border-accent-blue/20">
+                    <Mail size={30} className="animate-pulse" />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground mb-2">📬 Post Saved Successfully!</h2>
+                  <p className="text-sm text-muted mb-6 leading-relaxed">
+                    Your publication <strong>"{savedPostInfo.title}"</strong> is now live. Would you like to broadcast this release as a beautiful dual-mode newsletter to all subscribers right now?
+                  </p>
+                  <div className="flex flex-col w-full gap-3 mt-1">
+                    <button
+                      onClick={handleBroadcastNow}
+                      className="w-full bg-accent-blue hover:bg-accent-blue/90 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-accent-blue/10 hover:shadow-accent-blue/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    >
+                      <Mail size={16} /> Yes, Send Broadcast Mail
+                    </button>
+                    <button
+                      onClick={handleCloseAndRedirect}
+                      className="w-full bg-header/50 border border-border hover:bg-header text-muted hover:text-foreground py-3 rounded-xl font-semibold text-xs tracking-wide transition-all"
+                    >
+                      Maybe Later
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {broadcastState === 'sending' && (
+                <>
+                  <div className="w-16 h-16 bg-accent-blue/5 text-accent-blue rounded-full flex items-center justify-center mb-5 border border-accent-blue/10">
+                    <Loader2 size={32} className="animate-spin" />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground mb-2">Broadcasting Emails...</h2>
+                  <p className="text-sm text-muted mb-6 leading-relaxed">
+                    Compiling and formatting premium dark/light mode layouts. Batch sending via Brevo relays in parallel. Keep this window open...
+                  </p>
+                </>
+              )}
+
+              {broadcastState === 'success' && (
+                <>
+                  <div className="w-16 h-16 bg-accent-green/10 text-accent-green rounded-full flex items-center justify-center mb-5 border border-accent-green/20 animate-bounce">
+                    <Check size={32} />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground mb-2">✨ Successfully Sent!</h2>
+                  <p className="text-sm text-muted mb-6 leading-relaxed">
+                    Everything went perfectly! Your post newsletter was broadcasted successfully to <strong>{broadcastCount}</strong> active subscribers.
+                  </p>
+                  <button
+                    onClick={handleCloseAndRedirect}
+                    className="w-full bg-accent-blue hover:bg-accent-blue/90 text-white py-3.5 rounded-xl font-bold text-sm shadow-md transition-all"
+                  >
+                    Back to Dashboard
+                  </button>
+                </>
+              )}
+
+              {broadcastState === 'error' && (
+                <>
+                  <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mb-5 border border-red-500/20">
+                    <X size={32} />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground mb-2">Broadcast Encountered Errors</h2>
+                  <p className="text-sm text-red-400/80 mb-6 leading-relaxed bg-red-500/5 p-3 rounded-lg border border-red-500/10">
+                    {broadcastErrorMessage}
+                  </p>
+                  <div className="flex flex-col w-full gap-3 mt-1">
+                    <button
+                      onClick={handleBroadcastNow}
+                      className="w-full bg-accent-blue hover:bg-accent-blue/90 text-white py-3 rounded-xl font-bold text-sm transition-all"
+                    >
+                      Retry Sending
+                    </button>
+                    <button
+                      onClick={handleCloseAndRedirect}
+                      className="w-full bg-header/40 border border-border hover:bg-header text-muted py-3 rounded-xl font-semibold text-xs transition-all"
+                    >
+                      Close & Skip
+                    </button>
+                  </div>
+                </>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
