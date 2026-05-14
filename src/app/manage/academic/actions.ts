@@ -26,6 +26,7 @@ export async function saveAcademic(formData: FormData, id?: string) {
 
   if (error) return { error: error.message }
   revalidatePath('/manage/academic')
+  revalidatePath('/academic')
   revalidatePath('/')
   return { success: true }
 }
@@ -35,5 +36,6 @@ export async function deleteAcademic(id: string) {
   const { error } = await supabase.from('academic').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/manage/academic')
+  revalidatePath('/academic')
   return { success: true }
 }

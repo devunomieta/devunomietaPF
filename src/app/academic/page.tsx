@@ -8,6 +8,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: 
   Code,
   Shield,
   Zap,
+  Droplets,
 };
 
 function getIcon(iconName: string) {
@@ -22,8 +23,9 @@ export default async function Academic() {
     .select("*")
     .order("sort_order", { ascending: true });
 
-  const degrees = (items || []).filter((i) => i.category === "degree");
-  const certifications = (items || []).filter((i) => i.category === "certification");
+  const degrees = (items || []).filter((i) => i.category === "degree" || i.category === "profile");
+  const certifications = (items || []).filter((i) => i.category === "certification" || i.category === "coursework");
+  const researchItems = (items || []).filter((i) => i.category === "research");
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-8">
@@ -97,22 +99,41 @@ export default async function Academic() {
             <h2 className="text-xl font-medium text-foreground">Research Lab</h2>
           </div>
           <div className="space-y-6">
-            <div>
-              <h3 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
-                <span className="text-accent-blue">{"{ }"}</span> Web3 Infrastructure
-              </h3>
-              <p className="text-sm text-muted leading-relaxed">
-                Exploring scalable layer-1 and layer-2 solutions. Primary focus on <strong>Solana</strong> program development and <strong>EVM-compatible</strong> smart contracts, aiming to bridge traditional finance with decentralized architectures.
-              </p>
-            </div>
-            <div className="pt-4 border-t border-border/50">
-              <h3 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Droplets className="text-accent-green" size={16} /> Sustainable Energy
-              </h3>
-              <p className="text-sm text-muted leading-relaxed">
-                Researching the intersection of technology and green infrastructure. Building software tools to optimize energy consumption, logistics routing, and carbon offset tracking.
-              </p>
-            </div>
+            {researchItems.length > 0 ? (
+              researchItems.map((item, idx) => {
+                const Icon = getIcon(item.icon_name);
+                return (
+                  <div key={item.id} className={idx > 0 ? "pt-4 border-t border-border/50" : ""}>
+                    <h3 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
+                      <Icon className={item.icon_name === 'Droplets' ? "text-accent-green" : "text-accent-blue"} size={16} />
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-muted leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                );
+              })
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <span className="text-accent-blue">{"{ }"}</span> Web3 Infrastructure
+                  </h3>
+                  <p className="text-sm text-muted leading-relaxed">
+                    Exploring scalable layer-1 and layer-2 solutions. Primary focus on <strong>Solana</strong> program development and <strong>EVM-compatible</strong> smart contracts, aiming to bridge traditional finance with decentralized architectures.
+                  </p>
+                </div>
+                <div className="pt-4 border-t border-border/50">
+                  <h3 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Droplets className="text-accent-green" size={16} /> Sustainable Energy
+                  </h3>
+                  <p className="text-sm text-muted leading-relaxed">
+                    Researching the intersection of technology and green infrastructure. Building software tools to optimize energy consumption, logistics routing, and carbon offset tracking.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </section>
 

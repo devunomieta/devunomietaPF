@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { saveAcademic, deleteAcademic } from './actions'
-import { Plus, Edit, Trash2, GraduationCap, Loader2, X, BookOpen, Zap } from 'lucide-react'
+import { Plus, Edit, Trash2, GraduationCap, Loader2, X, BookOpen, Zap, Code, Droplets } from 'lucide-react'
 
 export default function AcademicManager({ initialAcademic }: { initialAcademic: any[] }) {
   const [items, setItems] = useState(initialAcademic)
@@ -14,6 +14,8 @@ export default function AcademicManager({ initialAcademic }: { initialAcademic: 
     'GraduationCap': GraduationCap,
     'BookOpen': BookOpen,
     'Zap': Zap,
+    'Code': Code,
+    'Droplets': Droplets,
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -94,10 +96,10 @@ export default function AcademicManager({ initialAcademic }: { initialAcademic: 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-muted uppercase">Category</label>
-                  <select name="category" defaultValue={editingItem?.category || 'profile'} className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none">
-                    <option value="profile">Profile</option>
-                    <option value="coursework">Coursework</option>
-                    <option value="research">Research</option>
+                  <select name="category" defaultValue={editingItem?.category || 'degree'} className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none">
+                    <option value="degree">Degree</option>
+                    <option value="certification">Certification</option>
+                    <option value="research">Research Project</option>
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -106,6 +108,8 @@ export default function AcademicManager({ initialAcademic }: { initialAcademic: 
                     <option value="GraduationCap">Graduation Cap</option>
                     <option value="BookOpen">Book Open</option>
                     <option value="Zap">Zap (Interests)</option>
+                    <option value="Code">Code ({ })</option>
+                    <option value="Droplets">Droplets (Green Energy)</option>
                   </select>
                 </div>
               </div>
