@@ -108,6 +108,9 @@ export default async function Academic() {
                       <Icon className={item.icon_name === 'Droplets' ? "text-accent-green" : "text-accent-blue"} size={16} />
                       {item.title}
                     </h3>
+                    {item.subtitle && (
+                      <p className="text-sm font-medium text-accent-blue mb-1">{item.subtitle}</p>
+                    )}
                     <p className="text-sm text-muted leading-relaxed">
                       {item.description}
                     </p>
