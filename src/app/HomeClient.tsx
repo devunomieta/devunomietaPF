@@ -112,14 +112,14 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
           <div className="relative w-full max-w-[300px] aspect-square rounded-full border border-border overflow-hidden glow mx-auto md:mx-0">
             <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/20 to-transparent z-10 pointer-events-none mix-blend-overlay" />
             {profile?.avatar_url ? (
-                <Image
-                  src={profile.avatar_url}
-                  alt={profile.name || "Avatar"}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 300px"
-                  className="object-cover"
-                  priority
-                />
+              <Image
+                src={profile.avatar_url}
+                alt={profile.name || "Avatar"}
+                fill
+                sizes="(max-width: 768px) 100vw, 300px"
+                className="object-cover"
+                priority
+              />
             ) : (
               <div className="w-full h-full bg-header flex items-center justify-center text-muted font-mono text-sm">
                 [Avatar Placeholder]
@@ -127,7 +127,7 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
             )}
           </div>
 
-          <div>
+          <div className="text-center md:text-left w-full">
             <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate-none sm:truncate">
               {profile?.name || "Joseph Unomieta"}
             </h1>
@@ -251,8 +251,8 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
               </h2>
               <div className="prose prose-invert prose-p:text-muted prose-a:text-accent-blue prose-li:text-muted max-w-none mb-8">
                 <ReactMarkdown>
-                  {profile?.about_me 
-                    ? profile.about_me.replace(/\\n/g, '\n') 
+                  {profile?.about_me
+                    ? profile.about_me.replace(/\\n/g, '\n')
                     : "I am a Senior Software Engineer, CTO, and Product Growth Manager. I specialize in architecting scalable web applications, optimizing engineering workflows, and driving product success."}
                 </ReactMarkdown>
               </div>
@@ -327,28 +327,28 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-foreground text-xl font-bold flex items-center gap-3">
                   <BookOpen size={24} className="text-accent-blue" />
-                  Featured Publications
+                  Featured Articles
                 </h2>
                 <Link href="/blog" className="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
-                  Read more articles <ChevronRight size={14} />
+                  Read more<ChevronRight size={14} />
                 </Link>
               </div>
 
               {pinnedPosts.length === 0 ? (
                 <div className="py-8 text-center text-muted border border-dashed border-border rounded-xl font-medium">
-                  No publications pinned yet. Check back soon!
+                  No Articles pinned yet. Check back soon!
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-10 pt-4 relative">
+                <div className="flex -mx-6 px-6 overflow-x-auto snap-x snap-mandatory pb-4 gap-8 sm:grid sm:mx-0 sm:px-0 sm:grid-cols-3 sm:gap-x-8 sm:gap-y-10 pt-4 relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {pinnedPosts.map((post) => {
                     // Precise 15-character stripped excerpt logic
                     const rawText = (post.content || "").replace(/[#*_`\[\]()\-!]/g, "").trim();
                     const snippet = rawText.length > 15 ? rawText.substring(0, 15) + "..." : rawText;
 
                     return (
-                      <div key={post.id} className="flex flex-col items-center group">
+                      <div key={post.id} className="flex flex-col items-center group shrink-0 w-[75%] sm:w-auto snap-center max-w-[240px] sm:max-w-none ml-auto mr-auto sm:ml-0 sm:mr-0">
                         {/* Tactile 3D Floating Book Jacket */}
-                        <div className="w-28 aspect-[2/3] mb-6 relative select-none scale-100 group-hover:scale-[1.02] transition-transform duration-300">
+                        <div className="w-32 sm:w-28 aspect-[2/3] mb-6 relative select-none scale-100 group-hover:scale-[1.02] transition-transform duration-300">
                           <BookCard post={post} />
                         </div>
 
@@ -360,7 +360,7 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                           <h4 className="text-foreground text-xs font-bold leading-snug tracking-wide mb-1 group-hover:text-accent-blue transition-colors line-clamp-2 min-h-[2rem]">
                             {post.title}
                           </h4>
-                          
+
                           <p className="text-muted text-[10px] font-mono italic tracking-tight px-1 mb-3 leading-relaxed">
                             &quot;{snippet}&quot;
                           </p>

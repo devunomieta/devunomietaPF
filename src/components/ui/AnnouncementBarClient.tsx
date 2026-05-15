@@ -39,20 +39,31 @@ export function AnnouncementBarClient({ text, link }: AnnouncementBarClientProps
           <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between relative gap-4">
             <div className="flex items-center gap-3 w-full flex-1 md:justify-center min-w-0">
               <div className="hidden sm:flex shrink-0 items-center justify-center h-6 px-2 rounded bg-white/20 backdrop-blur-sm text-[10px] uppercase font-bold tracking-widest animate-pulse shadow-sm">
-                Notice
+                UPDATE
               </div>
-              <div className="flex items-center gap-2 min-w-0">
-                <Megaphone size={15} className="shrink-0 text-white/90" />
-                <p className="text-xs sm:text-sm truncate font-semibold tracking-wide">
-                  {text}
-                </p>
+              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden whitespace-nowrap relative">
+                <Megaphone size={15} className="shrink-0 text-white/90 bg-inherit z-10 pr-1" />
+                <div className="flex animate-ticker whitespace-nowrap hover:[animation-play-state:paused] cursor-default">
+                  <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                  <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                  <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                </div>
+                <style>{`
+                  @keyframes tickerScroll {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-33.33%); }
+                  }
+                  .animate-ticker {
+                    animation: tickerScroll 30s linear infinite;
+                  }
+                `}</style>
               </div>
               {link && (
                 <Link
                   href={link}
                   className="shrink-0 text-xs bg-white text-fuchsia-700 font-bold px-3 py-1 rounded-md shadow-md hover:bg-fuchsia-50 transition-all flex items-center gap-1 group"
                 >
-                  <span>Read More</span>
+                  <span>OPEN</span>
                   <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               )}
