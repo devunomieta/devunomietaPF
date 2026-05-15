@@ -18,8 +18,11 @@ export async function subscribeAction(email: string, name?: string) {
   const displayName = name || cleanEmail.split('@')[0]
   const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(displayName)}`
 
+  const { createAdminClient } = await import('@/utils/supabase/admin')
+  const adminDb = createAdminClient()
+
   // Use a more robust upsert/insert logic
-  const { error } = await supabase.from('subscribers').upsert([
+  const { error } = await adminDb.from('subscribers').upsert([
     { 
       email: cleanEmail, 
       name: name || displayName,

@@ -44,7 +44,9 @@ export async function submitInquiry(formData: FormData) {
 
   // Optionally subscribe to newsletter
   if (subscribe && !error) {
-    await supabase.from('subscribers').upsert([
+    const { createAdminClient } = await import('@/utils/supabase/admin')
+    const adminDb = createAdminClient()
+    await adminDb.from('subscribers').upsert([
       { email, name, status: 'active' }
     ], { onConflict: 'email' })
   }

@@ -8,12 +8,12 @@ import { requireAdmin } from '@/lib/requireAdmin'
 
 // ── Public ──────────────────────────────────────────────────────────────────
 export async function subscribe(formData: FormData) {
-  const supabase = await createClient()
+  const adminDb = createAdminClient()
   const email = formData.get('email') as string
   const name = formData.get('name') as string
 
   // Use upsert to handle re-subscriptions
-  const { error } = await supabase
+  const { error } = await adminDb
     .from('subscribers')
     .upsert([{ email, name, status: 'active' }], { onConflict: 'email' })
 
