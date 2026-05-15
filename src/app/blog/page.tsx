@@ -3,6 +3,12 @@ import { createClient } from '@/utils/supabase/server'
 import { FileText } from 'lucide-react'
 import { BookCard } from '@/components/ui/BookCard'
 import { NewsletterSection } from '@/components/ui/NewsletterSection'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'The Digital Library | DevUnomieta Blog',
+  description: 'A curated collection of thoughts, technical deep dives, and computer science literature by Joseph Unomieta. Browse the shelves and join the discussion.',
+}
 
 export const revalidate = 0
 

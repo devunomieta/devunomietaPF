@@ -13,6 +13,15 @@ export async function subscribeAction(formData: FormData) {
 
   if (!name || !display_name || !email) return { error: 'All fields are required.' }
 
+  if (name.length > 100 || display_name.length > 100 || email.length > 254) {
+    return { error: 'Maximum parameter size exceeded.' }
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    return { error: 'Invalid email format.' }
+  }
+
   const supabase = await createClient()
 
   // Generate random avatar using DiceBear bottts style
@@ -52,7 +61,8 @@ export async function postCommentAction(postId: string, content: string, parentI
   const subscriberId = cookieStore.get('subscriber_id')?.value
 
   if (!subscriberId) return { error: 'You must join the newsletter to comment.' }
-  if (!content.trim()) return { error: 'Comment cannot be empty.' }
+  if (!content.trim() || content.length < 3) return { error: 'Comment must be at least 3 characters.' }
+  if (content.length > 1000) return { error: 'Comment is too long (maximum 1000 characters).' }
 
   const supabase = await createClient()
 

@@ -1,6 +1,12 @@
 import { TimelineBranch } from "@/components/ui/TimelineBranch";
 import { GitBranch } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: 'Experience & Work | Joseph Unomieta',
+  description: 'Professional timeline, commitment history, engineering tenures, and software architecture roles executed by Joseph Unomieta.',
+}
 
 export default async function Experience() {
   const supabase = await createClient();

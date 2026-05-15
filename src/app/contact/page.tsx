@@ -2,6 +2,12 @@ import { Suspense } from 'react'
 import ContactForm from './ContactForm'
 import { Mail, MessageSquare, CheckCircle2 } from 'lucide-react'
 import { NewsletterSection } from '@/components/ui/NewsletterSection'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Contact | Joseph Unomieta',
+  description: 'Get in touch for hiring requests, architectural consultations, project proposals, or general inquiries. Direct scheduling and message form available.',
+}
 
 export default function ContactPage({
   searchParams,

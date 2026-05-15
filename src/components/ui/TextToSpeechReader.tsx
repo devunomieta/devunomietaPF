@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Square, Volume2, VolumeX, Headphones, RotateCcw } from "lucide-react";
+import { Play, Pause, Square, Volume2, VolumeX, Headphones } from "lucide-react";
 
 interface TextToSpeechReaderProps {
   containerId: string;
@@ -19,25 +19,6 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
   const isMutedRef = useRef<boolean>(false);
   const isPlayingRef = useRef<boolean>(false);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      setIsSupported(true);
-    }
-    
-    return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        clearAllHighlights();
-      }
-    };
-  }, []);
-
-  const updatePlayingStatus = (playing: boolean, paused: boolean) => {
-    setIsPlaying(playing);
-    setIsPaused(paused);
-    isPlayingRef.current = playing;
-  };
-
   const clearAllHighlights = () => {
     document.querySelectorAll(".tts-highlight").forEach((el) => {
       el.classList.remove(
@@ -51,6 +32,25 @@ export function TextToSpeechReader({ containerId }: TextToSpeechReaderProps) {
       );
     });
   };
+
+  const updatePlayingStatus = (playing: boolean, paused: boolean) => {
+    setIsPlaying(playing);
+    setIsPaused(paused);
+    isPlayingRef.current = playing;
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      setIsSupported(true);
+    }
+    
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        clearAllHighlights();
+      }
+    };
+  }, []);
 
   const highlightElement = (el: HTMLElement) => {
     clearAllHighlights();

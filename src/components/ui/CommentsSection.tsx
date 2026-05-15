@@ -120,6 +120,8 @@ export function CommentsSection({
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder={`Reply to ${comment.subscriber.display_name}...`}
+                  maxLength={1000}
+                  minLength={3}
                   className="w-full bg-header/30 border border-border rounded-md p-3 text-sm focus:border-accent-blue outline-none resize-none h-20"
                   required
                 />
@@ -161,6 +163,9 @@ export function CommentsSection({
             onChange={(e) => setNewComment(e.target.value)}
             onClick={() => { if (!isSubscribed) setIsModalOpen(true); }}
             placeholder="Share your thoughts..."
+            maxLength={1000}
+            minLength={3}
+            required
             className="w-full bg-header/50 border border-border rounded-lg p-4 text-sm focus:border-accent-blue outline-none resize-none h-24"
             readOnly={!isSubscribed}
           />

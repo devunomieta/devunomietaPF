@@ -26,6 +26,7 @@ export default function ContactForm({ error }: { error?: string }) {
             name="name"
             type="text"
             required
+            maxLength={100}
             placeholder="John Doe"
             className="w-full bg-header/50 border border-border rounded-md px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-colors placeholder:text-muted/50"
           />
@@ -37,6 +38,7 @@ export default function ContactForm({ error }: { error?: string }) {
             name="email"
             type="email"
             required
+            maxLength={254}
             placeholder="john@example.com"
             className="w-full bg-header/50 border border-border rounded-md px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-colors placeholder:text-muted/50"
           />
@@ -137,6 +139,8 @@ export default function ContactForm({ error }: { error?: string }) {
           id="message"
           name="message"
           required
+          minLength={10}
+          maxLength={5000}
           rows={5}
           placeholder={purpose === "hiring" ? "Tell me about your project requirements..." : "How can I help you?"}
           className="w-full bg-header/50 border border-border rounded-md px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-colors resize-y placeholder:text-muted/50"

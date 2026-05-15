@@ -54,12 +54,14 @@ export function NewsletterForm() {
           type="text"
           placeholder="Your Name (Optional)"
           value={name}
+          maxLength={100}
           onChange={(e) => setName(e.target.value)}
           className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-foreground outline-none focus:border-accent-blue transition-all"
         />
         <input
           type="email"
           required
+          maxLength={254}
           placeholder="email@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

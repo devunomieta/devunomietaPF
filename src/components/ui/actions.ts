@@ -5,8 +5,13 @@ import { createClient } from '@/utils/supabase/server'
 export async function subscribeAction(email: string, name?: string) {
   const supabase = await createClient()
 
-  if (!email || !email.includes('@')) {
-    return { error: 'Invalid email address' }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!email || email.length > 254 || !emailRegex.test(email)) {
+    return { error: 'Invalid email format.' }
+  }
+
+  if (name && name.length > 100) {
+    return { error: 'Name is too long.' }
   }
 
   const cleanEmail = email.toLowerCase()

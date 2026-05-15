@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { ThumbsUp, MessageSquare } from 'lucide-react'
 
 export function BookCard({ post }: { post: any }) {
@@ -23,9 +24,11 @@ export function BookCard({ post }: { post: any }) {
       >
         {/* Featured Jacket Art Background */}
         {post.cover_image_url && (
-          <img 
+          <Image 
             src={post.cover_image_url} 
-            alt="" 
+            alt={post.title || 'Cover art'} 
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
             className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-105 transition-all duration-700 ease-out z-0"
           />
         )}

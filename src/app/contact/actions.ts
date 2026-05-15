@@ -17,6 +17,15 @@ export async function submitInquiry(formData: FormData) {
     return redirect('/contact?error=All fields are required')
   }
 
+  if (name.length > 100 || email.length > 254 || message.length > 5000) {
+    return redirect('/contact?error=Max string limit exceeded')
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    return redirect('/contact?error=Invalid email syntax')
+  }
+
   const metadata: Record<string, string> = {}
   if (budget) metadata.budget = budget
   if (timeline) metadata.timeline = timeline

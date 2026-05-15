@@ -1,6 +1,12 @@
 import { Book, GraduationCap, Award, Code, Shield, Zap, Droplets } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { NewsletterSection } from "@/components/ui/NewsletterSection";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: 'Wiki & Academics | Joseph Unomieta',
+  description: 'Explore Joseph Unomieta\'s academic credentials, active technical certifications, published computer science research labs, and dynamic Wiki profile.',
+}
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   GraduationCap,

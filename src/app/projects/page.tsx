@@ -1,6 +1,12 @@
 import { RepoCard } from "@/components/ui/RepoCard";
 import { FolderGit2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: 'Open Source Projects | Joseph Unomieta',
+  description: 'Explore featured open-source projects, repositories, utilities, and full-stack architectures engineered by Joseph Unomieta (@DevUnomieta).',
+}
 
 export default async function Projects() {
   const supabase = await createClient();
