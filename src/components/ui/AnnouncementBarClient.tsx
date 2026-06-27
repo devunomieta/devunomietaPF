@@ -42,11 +42,13 @@ export function AnnouncementBarClient({ text, link }: AnnouncementBarClientProps
                 UPDATE
               </div>
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden whitespace-nowrap relative">
-                <Megaphone size={15} className="shrink-0 text-white/90 bg-inherit z-10 pr-1" />
-                <div className="flex animate-ticker whitespace-nowrap hover:[animation-play-state:paused] cursor-default">
-                  <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
-                  <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
-                  <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                <Megaphone size={15} className="shrink-0 text-white/90 z-10" />
+                <div className="flex-1 overflow-hidden relative mask-fade-edges">
+                  <div className="flex animate-ticker whitespace-nowrap hover:[animation-play-state:paused] cursor-default">
+                    <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                    <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                    <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                  </div>
                 </div>
                 <style>{`
                   @keyframes tickerScroll {
@@ -55,6 +57,10 @@ export function AnnouncementBarClient({ text, link }: AnnouncementBarClientProps
                   }
                   .animate-ticker {
                     animation: tickerScroll 30s linear infinite;
+                  }
+                  .mask-fade-edges {
+                    mask-image: linear-gradient(to right, transparent, black 10px, black calc(100% - 10px), transparent);
+                    -webkit-mask-image: linear-gradient(to right, transparent, black 10px, black calc(100% - 10px), transparent);
                   }
                 `}</style>
               </div>
