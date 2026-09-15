@@ -172,6 +172,48 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
         />
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted">X (Twitter) Profile URL</label>
+          <input
+            name="twitter_url"
+            defaultValue={initialData?.twitter_url || initialData?.x_url || "https://x.com/DevUnomieta"}
+            placeholder="https://x.com/yourusername"
+            className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none transition-all text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted">LinkedIn Profile URL</label>
+          <input
+            name="linkedin_url"
+            defaultValue={initialData?.linkedin_url || "https://linkedin.com/in/joseph-unomieta"}
+            placeholder="https://linkedin.com/in/yourprofile"
+            className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none transition-all text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted">Resume URL / File Link</label>
+          <input
+            name="resume_url"
+            defaultValue={initialData?.resume_url || "/resume.pdf"}
+            placeholder="/resume.pdf or https://..."
+            className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none transition-all text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted">Hire Me Button Link</label>
+          <input
+            name="hire_me_url"
+            defaultValue={initialData?.hire_me_url || "/contact?purpose=hiring"}
+            placeholder="/contact?purpose=hiring or https://wa.me/..."
+            className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none transition-all text-sm"
+          />
+        </div>
+      </div>
+
       <div className="space-y-4 pt-4 border-t border-border">
         <div>
           <label className="text-xs font-semibold uppercase tracking-wider text-muted block mb-2">Core Tech Stack</label>

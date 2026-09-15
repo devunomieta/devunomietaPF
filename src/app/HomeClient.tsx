@@ -33,6 +33,11 @@ interface Profile {
   website?: string;
   titles?: string[];
   tech_stack?: string[];
+  twitter_url?: string;
+  x_url?: string;
+  linkedin_url?: string;
+  resume_url?: string;
+  hire_me_url?: string;
 }
 
 interface Project {
@@ -148,8 +153,9 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
             {/* Official Social Logos */}
             <div className="flex items-center gap-3 mb-4">
               <a
-                href="https://x.com/DevUnomieta"
+                href={profile?.twitter_url || profile?.x_url || "https://x.com/DevUnomieta"}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-header border border-border text-foreground hover:border-accent-blue hover:text-accent-blue transition-all"
                 title="Follow on X"
               >
@@ -158,8 +164,9 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                 </svg>
               </a>
               <a
-                href="https://linkedin.com/in/joseph-unomieta"
+                href={profile?.linkedin_url || "https://linkedin.com/in/joseph-unomieta"}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-header border border-border text-foreground hover:border-accent-blue hover:text-accent-blue transition-all"
                 title="Connect on LinkedIn"
               >
@@ -168,8 +175,9 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                 </svg>
               </a>
               <a
-                href="/resume.pdf"
+                href={profile?.resume_url || "/resume.pdf"}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center py-2.5 rounded-md bg-accent-blue text-white hover:bg-accent-blue/90 transition-all shadow-lg shadow-accent-blue/20"
                 title="Download Resume"
               >
@@ -177,12 +185,14 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
               </a>
             </div>
 
-            <Link
-              href="/contact?purpose=hiring"
+            <a
+              href={profile?.hire_me_url || "/contact?purpose=hiring"}
+              target={profile?.hire_me_url?.startsWith("http") ? "_blank" : "_self"}
+              rel="noopener noreferrer"
               className="w-full flex items-center justify-center py-2 px-3 rounded-md border border-accent-blue/50 text-accent-blue hover:bg-accent-blue/10 transition-all text-sm font-bold mb-6"
             >
               Hire me
-            </Link>
+            </a>
 
             <div className="flex flex-col gap-3 text-sm text-muted">
               <div className="flex flex-col gap-3 p-4 rounded-xl bg-header/20 border border-border/50 glow-sm">
@@ -200,13 +210,6 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                     <span className="font-medium">Blog Posts</span>
                   </div>
                   <strong className="text-foreground font-mono">{stats.posts}</strong>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                  <div className="flex items-center gap-2">
-                    <Zap size={14} className="text-yellow-500 fill-current" />
-                    <span className="font-medium text-foreground">Engagement</span>
-                  </div>
-                  <strong className="text-accent-blue font-mono">{stats.engagement}%</strong>
                 </div>
               </div>
 
@@ -320,72 +323,6 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                 Contribution Activity
               </h2>
               <ContributionGraph activityData={activityData} />
-            </div>
-
-            {/* Pinned Publications: Premium Library Shelf Stack */}
-            <div className="border border-border rounded-xl p-6 bg-background shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-foreground text-xl font-bold flex items-center gap-3">
-                  <BookOpen size={24} className="text-accent-blue" />
-                  Featured Articles
-                </h2>
-                <Link href="/blog" className="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
-                  Read more<ChevronRight size={14} />
-                </Link>
-              </div>
-
-              {pinnedPosts.length === 0 ? (
-                <div className="py-8 text-center text-muted border border-dashed border-border rounded-xl font-medium">
-                  No Articles pinned yet. Check back soon!
-                </div>
-              ) : (
-                <div className="flex -mx-6 px-6 overflow-x-auto snap-x snap-mandatory pb-4 gap-8 sm:grid sm:mx-0 sm:px-0 sm:grid-cols-3 sm:gap-x-8 sm:gap-y-10 pt-4 relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  {pinnedPosts.map((post) => {
-                    // Precise 15-character stripped excerpt logic
-                    const rawText = (post.content || "").replace(/[#*_`\[\]()\-!]/g, "").trim();
-                    const snippet = rawText.length > 15 ? rawText.substring(0, 15) + "..." : rawText;
-
-                    return (
-                      <div key={post.id} className="flex flex-col items-center group shrink-0 w-[75%] sm:w-auto snap-center max-w-[240px] sm:max-w-none ml-auto mr-auto sm:ml-0 sm:mr-0">
-                        {/* Tactile 3D Floating Book Jacket */}
-                        <div className="w-32 sm:w-28 aspect-[2/3] mb-6 relative select-none scale-100 group-hover:scale-[1.02] transition-transform duration-300">
-                          <BookCard post={post} />
-                        </div>
-
-                        {/* Ledge Base Shadows under each specific book to complete stack vibe */}
-                        <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-border to-transparent my-1 opacity-80 group-hover:opacity-100 transition-opacity" />
-
-                        {/* Content Details */}
-                        <div className="text-center mt-3 flex flex-col items-center w-full">
-                          <h4 className="text-foreground text-xs font-bold leading-snug tracking-wide mb-1 group-hover:text-accent-blue transition-colors line-clamp-2 min-h-[2rem]">
-                            {post.title}
-                          </h4>
-
-                          <p className="text-muted text-[10px] font-mono italic tracking-tight px-1 mb-3 leading-relaxed">
-                            &quot;{snippet}&quot;
-                          </p>
-
-                          {/* Interactive Glassmorphic Metrics Pill */}
-                          <div className="flex items-center justify-center gap-2.5 text-[9px] font-bold tracking-wider text-muted bg-header/40 px-2.5 py-1 rounded-full border border-border/50 shadow-sm">
-                            <span className="flex items-center gap-1" title="Views">
-                              <Eye size={10} className="text-accent-blue/80" />
-                              {post.views || 0}
-                            </span>
-                            <span className="flex items-center gap-1" title="Likes">
-                              <Heart size={10} className="text-red-400/80" />
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1" title="Comments">
-                              <MessageSquare size={10} className="text-accent-green/80" />
-                              {post.comments?.[0]?.count || 0}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
         </div>
