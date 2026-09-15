@@ -1,12 +1,17 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import HomeClient from './HomeClient'
+
+export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const supabase = await createClient()
+  const adminDb = createAdminClient()
 
   // Fetch everything we need for the homepage
   const [
     { data: profile },
+    { data: settingsRows },
     { count: subscriberCount },
     { count: postCount },
     { count: inquiryCount },
@@ -18,9 +23,10 @@ export default async function Home() {
   ] = await Promise.all([
     supabase
       .from('profile')
-      .select('name, handle, bio, about_me, avatar_url, location, email, website, titles, tech_stack, twitter_url, linkedin_url, resume_url, hire_me_url')
+      .select('name, handle, bio, about_me, avatar_url, location, email, website, titles, tech_stack')
       .limit(1)
       .single(),
+    adminDb.from('site_settings').select('key, value'),
     supabase
       .from('subscribers')
       .select('*', { count: 'exact', head: true }),
@@ -42,6 +48,19 @@ export default async function Home() {
     supabase.from('projects').select('created_at'),
     supabase.from('experience').select('created_at')
   ])
+
+  const settings: Record<string, string> = {}
+  for (const row of settingsRows || []) {
+    settings[row.key] = row.value ?? ''
+  }
+
+  const profileWithLinks = {
+    ...profile,
+    twitter_url: settings['twitter_url'] || 'https://x.com/DevUnomieta',
+    linkedin_url: settings['linkedin_url'] || 'https://linkedin.com/in/joseph-unomieta',
+    resume_url: settings['resume_url'] || '/resume.pdf',
+    hire_me_url: settings['hire_me_url'] || '/contact?purpose=hiring',
+  }
 
   // Secure Fetch for Pinned Publications to guarantee absolute Home uptime even prior to migration execution
   let pinnedPosts: any[] = []
@@ -81,7 +100,7 @@ export default async function Home() {
 
   return (
     <HomeClient 
-      profile={profile} 
+      profile={profileWithLinks} 
       stats={{
         subscribers: subscriberCount || 0,
         posts: postCount || 0,

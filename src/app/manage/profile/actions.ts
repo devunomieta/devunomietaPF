@@ -42,10 +42,6 @@ export async function updateProfile(formData: FormData) {
     location: formData.get('location') as string,
     email: formData.get('email') as string,
     website: formData.get('website') as string,
-    twitter_url: formData.get('twitter_url') as string,
-    linkedin_url: formData.get('linkedin_url') as string,
-    resume_url: formData.get('resume_url') as string,
-    hire_me_url: formData.get('hire_me_url') as string,
     titles: titlesRaw ? titlesRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
     tech_stack: techStackRaw ? techStackRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
     updated_at: new Date().toISOString(),
@@ -62,6 +58,18 @@ export async function updateProfile(formData: FormData) {
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Store custom link settings in site_settings table (key-value schema)
+  const linkSettings = [
+    { key: 'twitter_url', value: (formData.get('twitter_url') as string) || '' },
+    { key: 'linkedin_url', value: (formData.get('linkedin_url') as string) || '' },
+    { key: 'resume_url', value: (formData.get('resume_url') as string) || '' },
+    { key: 'hire_me_url', value: (formData.get('hire_me_url') as string) || '' },
+  ]
+
+  for (const item of linkSettings) {
+    await adminDb.from('site_settings').upsert(item, { onConflict: 'key' })
   }
 
   revalidatePath('/')

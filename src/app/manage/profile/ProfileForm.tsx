@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateProfile } from './actions'
 import { uploadAsset } from '../settings/actions'
 import { Save, Loader2, Upload, User } from 'lucide-react'
 
 export default function ProfileForm({ initialData }: { initialData: any }) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string>(initialData?.avatar_url || '')
@@ -37,7 +39,10 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
     const fd = new FormData()
     fd.append('file', file)
     const res = await uploadAsset(fd, 'avatar')
-    if (res?.url) setAvatarUrl(res.url)
+    if (res?.url) {
+      setAvatarUrl(res.url)
+      router.refresh()
+    }
     setAvatarLoading(false)
   }
 
@@ -54,6 +59,7 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
       setMessage({ type: 'error', text: result.error })
     } else {
       setMessage({ type: 'success', text: 'Profile updated successfully!' })
+      router.refresh()
     }
     setLoading(false)
   }
