@@ -9,11 +9,12 @@ export const metadata: Metadata = {
   description: 'Get in touch for hiring requests, architectural consultations, project proposals, or general inquiries. Direct scheduling and message form available.',
 }
 
-export default function ContactPage({
+export default async function ContactPage({
   searchParams,
 }: {
-  searchParams: { success?: string; error?: string }
+  searchParams: Promise<{ success?: string; error?: string }>
 }) {
+  const resolvedSearchParams = await searchParams
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-8">
       <div className="flex items-center gap-3 border-b border-border pb-4">
@@ -34,7 +35,7 @@ export default function ContactPage({
           </p>
         </div>
 
-        {searchParams.success ? (
+        {resolvedSearchParams.success ? (
           <div className="bg-accent-green/10 border border-accent-green/20 rounded-lg p-6 flex flex-col items-center justify-center text-center gap-3 relative z-10">
             <CheckCircle2 size={48} className="text-accent-green" />
             <div>
@@ -44,12 +45,12 @@ export default function ContactPage({
               <div className="mt-6 p-4 bg-accent-blue/10 rounded-lg border border-accent-blue/20 max-w-sm mx-auto">
                 <p className="text-xs text-foreground font-medium mb-3 italic">Want to skip the wait?</p>
                 <a 
-                  href="https://cal.com/devunomieta" 
+                  href={`https://wa.me/2347049898962?text=${encodeURIComponent("Hi, this is an urgent message, my name is ")}`}
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-accent-blue text-white px-4 py-2 rounded-md text-xs font-bold hover:bg-accent-blue/80 transition-all"
+                  className="inline-flex items-center gap-2 bg-accent-green text-white px-4 py-2 rounded-md text-xs font-bold hover:bg-accent-green/90 transition-all shadow-md"
                 >
-                  Schedule a Call on Cal.com
+                  Chat on WhatsApp
                 </a>
               </div>
             </div>
@@ -59,7 +60,7 @@ export default function ContactPage({
           </div>
         ) : (
           <Suspense fallback={<div className="h-[400px] flex items-center justify-center text-muted text-sm italic">Loading form...</div>}>
-            <ContactForm error={searchParams.error} />
+            <ContactForm error={resolvedSearchParams.error} />
           </Suspense>
         )}
       </div>
