@@ -100,6 +100,7 @@ export default function AcademicManager({ initialAcademic }: { initialAcademic: 
                     <option value="degree">Degree</option>
                     <option value="certification">Certification</option>
                     <option value="research">Research Project</option>
+                    <option value="skill">Skill Group</option>
                   </select>
                 </div>
                 <div className="space-y-2">

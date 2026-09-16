@@ -32,6 +32,20 @@ export default async function Academic() {
   const degrees = (items || []).filter((i) => i.category === "degree" || i.category === "profile");
   const certifications = (items || []).filter((i) => i.category === "certification" || i.category === "coursework");
   const researchItems = (items || []).filter((i) => i.category === "research");
+  const dbSkillItems = (items || []).filter((i) => i.category === "skill");
+
+  const defaultSkills = [
+    { label: "Frontend", skills: "React, Next.js, TypeScript, HTML/CSS" },
+    { label: "Backend", skills: "Node.js, Supabase, PostgreSQL, REST APIs" },
+    { label: "Tools", skills: "Git, GitHub, CI/CD, Vercel, Netlify" },
+    { label: "CMS / No-Code", skills: "WordPress, Shopify, GoHighLevel" },
+    { label: "Project Mgmt", skills: "Agile, PMI, Stakeholder Mgmt, CRM" },
+    { label: "Web3", skills: "Solana, EVM, Smart Contracts (in progress)" },
+  ];
+
+  const skillList = dbSkillItems.length > 0
+    ? dbSkillItems.map(i => ({ label: i.title, skills: i.description || i.subtitle || "" }))
+    : defaultSkills;
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-8">
@@ -153,16 +167,9 @@ export default async function Academic() {
             <h2 className="text-xl font-medium text-foreground">Skills</h2>
           </div>
           <div className="space-y-3">
-            {[
-              { label: "Frontend", skills: "React, Next.js, TypeScript, HTML/CSS" },
-              { label: "Backend", skills: "Node.js, Supabase, PostgreSQL, REST APIs" },
-              { label: "Tools", skills: "Git, GitHub, CI/CD, Vercel, Netlify" },
-              { label: "CMS / No-Code", skills: "WordPress, Shopify, GoHighLevel" },
-              { label: "Project Mgmt", skills: "Agile, PMI, Stakeholder Mgmt, CRM" },
-              { label: "Web3", skills: "Solana, EVM, Smart Contracts (in progress)" },
-            ].map(({ label, skills }) => (
+            {skillList.map(({ label, skills }) => (
               <div key={label} className="flex gap-3 text-sm">
-                <span className="text-accent-blue font-mono w-24 shrink-0">{label}</span>
+                <span className="text-accent-blue font-mono w-28 shrink-0 font-medium">{label}</span>
                 <span className="text-muted">{skills}</span>
               </div>
             ))}
