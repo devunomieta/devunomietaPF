@@ -4,16 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Search, X, Zap } from "lucide-react";
+import { Menu, Search, X, Zap, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HeaderClientProps {
   logoUrl: string;
   faviconUrl: string;
   siteName: string;
+  resumeUrl?: string;
 }
 
-export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProps) {
+export function HeaderClient({ logoUrl, faviconUrl, siteName, resumeUrl = "/resume.pdf" }: HeaderClientProps) {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -136,14 +137,16 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName }: HeaderClientProp
             </nav>
 
             <div className="mt-auto pt-10">
-              <Link
-                href="/contact?purpose=hiring"
+              <a
+                href={resumeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => setIsMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 py-4 bg-accent-green text-white rounded-xl font-bold shadow-lg"
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-xl font-bold shadow-lg transition-all"
               >
-                <Zap size={18} className="fill-current" />
-                Contact
-              </Link>
+                <FileText size={18} />
+                View Resume
+              </a>
             </div>
           </div>
         </div>

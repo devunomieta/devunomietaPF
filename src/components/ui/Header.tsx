@@ -7,7 +7,7 @@ export async function Header() {
   const adminDb = createAdminClient()
 
   const [{ data: profile }, { data: settingsRows }] = await Promise.all([
-    supabase.from('profile').select('name, handle, avatar_url').limit(1).single(),
+    supabase.from('profile').select('name, handle, avatar_url, resume_url').limit(1).single(),
     adminDb.from('site_settings').select('key, value'),
   ])
 
@@ -16,11 +16,14 @@ export async function Header() {
     settings[row.key] = row.value ?? ''
   }
 
+  const resumeUrl = settings['resume_url'] || profile?.resume_url || '/resume.pdf'
+
   return (
     <HeaderClient
       logoUrl={settings['logo_url'] || ''}
       faviconUrl={settings['favicon_url'] || ''}
       siteName={profile?.handle || settings['site_name'] || 'DevUnomieta'}
+      resumeUrl={resumeUrl}
     />
   )
 }
