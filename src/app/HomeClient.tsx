@@ -134,17 +134,17 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
             <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate-none sm:truncate">
               {profile?.name || "Joseph Unomieta"}
             </h1>
-            <h2 className="text-lg sm:text-xl font-light text-muted mb-4">
+            <h2 className="text-sm sm:text-lg font-light text-muted mb-2 sm:mb-3">
               {profile?.handle || "DevUnomieta"}
             </h2>
 
             {/* Typewriter titles */}
-            <div className="min-h-[4rem] sm:min-h-[3rem] mb-4 font-mono text-sm text-foreground leading-relaxed whitespace-normal break-words">
+            <div className="min-h-[2.5rem] sm:min-h-[3rem] mb-2 sm:mb-4 font-mono text-sm text-foreground leading-relaxed whitespace-normal break-words">
               <span className="text-accent-blue font-bold">{">"}</span> {displayText}
               <span className="animate-pulse bg-accent-blue ml-0.5 inline-block w-1.5 h-4 align-middle"></span>
             </div>
 
-            <p className="text-sm text-foreground mb-6 leading-relaxed">
+            <p className="text-sm text-foreground mb-4 sm:mb-6 leading-relaxed">
               {profile?.bio || "Building web products that work and helping them grow. Strategist, architect, and hands-on builder."}
             </p>
 
@@ -256,10 +256,10 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
             <div className="border border-border rounded-xl p-6 bg-background shadow-xl">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-foreground text-xl font-bold flex items-center gap-3">
-                  <Layout size={24} className="text-accent-blue" />
+                  <Layout size={24} className="text-accent-blue shrink-0" />
                   Featured Repositories
                 </h2>
-                <Link href="/projects" className="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
+                <Link href="/projects" className="hidden sm:flex text-xs text-accent-blue font-bold items-center gap-1 hover:underline shrink-0">
                   View all repositories <ChevronRight size={14} />
                 </Link>
               </div>
@@ -281,6 +281,11 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
                     No pinned repositories found. Manage them in the admin dashboard.
                   </div>
                 )}
+              </div>
+              <div className="mt-4 sm:hidden pt-3 border-t border-border/40 text-center">
+                <Link href="/projects" className="inline-flex text-xs text-accent-blue font-bold items-center gap-1 hover:underline">
+                  View all repositories <ChevronRight size={14} />
+                </Link>
               </div>
             </div>
 

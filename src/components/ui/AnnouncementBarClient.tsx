@@ -34,20 +34,21 @@ export function AnnouncementBarClient({ text, link }: AnnouncementBarClientProps
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-          className="overflow-hidden relative w-full bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500 text-white font-medium select-none shadow-lg border-b border-white/10 z-50"
+          className="overflow-hidden relative w-full bg-white text-slate-900 font-medium select-none shadow-sm border-b border-slate-200 z-50"
         >
-          <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between relative gap-4">
+          <div className="max-w-7xl mx-auto px-4 py-2.5 sm:px-6 lg:px-8 flex items-center justify-between relative gap-4">
             <div className="flex items-center gap-3 w-full flex-1 md:justify-center min-w-0">
-              <div className="hidden sm:flex shrink-0 items-center justify-center h-6 px-2 rounded bg-white/20 backdrop-blur-sm text-[10px] uppercase font-bold tracking-widest animate-pulse shadow-sm">
+              <div className="hidden sm:flex shrink-0 items-center justify-center h-5 px-2 rounded bg-accent-blue/10 border border-accent-blue/30 text-accent-blue text-[10px] font-bold tracking-widest uppercase">
                 UPDATE
               </div>
+
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden whitespace-nowrap relative">
-                <Megaphone size={15} className="shrink-0 text-white/90 z-10" />
+                <Megaphone size={15} className="shrink-0 text-accent-blue z-10" />
                 <div className="flex-1 overflow-hidden relative mask-fade-edges">
                   <div className="flex animate-ticker whitespace-nowrap hover:[animation-play-state:paused] cursor-default">
-                    <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
-                    <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
-                    <span className="text-xs sm:text-sm font-semibold tracking-wide pr-12 inline-block">{text}</span>
+                    <span className="text-xs sm:text-sm font-medium tracking-wide text-slate-800 pr-12 inline-block">{text}</span>
+                    <span className="text-xs sm:text-sm font-medium tracking-wide text-slate-800 pr-12 inline-block">{text}</span>
+                    <span className="text-xs sm:text-sm font-medium tracking-wide text-slate-800 pr-12 inline-block">{text}</span>
                   </div>
                 </div>
                 <style>{`
@@ -64,10 +65,11 @@ export function AnnouncementBarClient({ text, link }: AnnouncementBarClientProps
                   }
                 `}</style>
               </div>
+
               {link && (
                 <Link
                   href={link}
-                  className="shrink-0 text-xs bg-white text-fuchsia-700 font-bold px-3 py-1 rounded-md shadow-md hover:bg-fuchsia-50 transition-all flex items-center gap-1 group"
+                  className="shrink-0 text-xs bg-accent-blue hover:bg-accent-blue/90 text-white font-semibold px-3 py-1 rounded-md shadow-sm transition-all flex items-center gap-1 group"
                 >
                   <span>OPEN</span>
                   <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
@@ -77,10 +79,10 @@ export function AnnouncementBarClient({ text, link }: AnnouncementBarClientProps
 
             <button
               onClick={handleDismiss}
-              className="p-1 rounded-full hover:bg-white/20 active:bg-white/30 transition-colors shrink-0 focus:outline-none"
+              className="p-1 rounded-md hover:bg-slate-100 transition-colors shrink-0 focus:outline-none"
               aria-label="Dismiss notice"
             >
-              <X size={18} className="text-white/90 hover:text-white" />
+              <X size={16} className="text-slate-500 hover:text-slate-800" />
             </button>
           </div>
         </motion.div>
