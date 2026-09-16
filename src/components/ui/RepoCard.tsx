@@ -1,4 +1,4 @@
-import { BookIcon, Star, GitFork, Circle } from "lucide-react";
+import { BookIcon, Star, GitFork } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RepoCardProps {
@@ -27,39 +27,49 @@ export function RepoCard({
   return (
     <a
       href={link}
+      target="_blank"
+      rel="noopener noreferrer"
       className={cn(
-        "block p-4 bg-background border border-border rounded-xl hover:border-accent-blue/50 transition-colors border-beam group",
+        "group relative flex flex-col justify-between p-5 bg-header/20 hover:bg-header/40 border border-border/80 hover:border-accent-blue/50 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-accent-blue/5 hover:-translate-y-0.5 overflow-hidden",
         className
       )}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <BookIcon size={16} className="text-muted group-hover:text-accent-blue transition-colors" />
-          <h3 className="text-[15px] font-semibold text-accent-blue hover:underline">
-            {name}
-          </h3>
+      <div className="absolute top-0 right-0 w-24 h-24 bg-accent-blue/5 rounded-full blur-2xl group-hover:bg-accent-blue/10 transition-all pointer-events-none" />
+
+      <div>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-lg bg-header border border-border/60 group-hover:border-accent-blue/40 text-muted group-hover:text-accent-blue transition-colors shrink-0">
+              <BookIcon size={15} />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground group-hover:text-accent-blue transition-colors truncate">
+              {name}
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono font-medium text-muted bg-header/60 border border-border/60 px-2 py-0.5 rounded-md shrink-0 capitalize">
+            {visibility}
+          </span>
         </div>
-        <span className="text-xs text-muted border border-border px-2 py-0.5 rounded-full">
-          {visibility}
-        </span>
+
+        <p className="text-muted text-xs leading-relaxed mb-4 line-clamp-2 font-normal">
+          {description}
+        </p>
       </div>
-      <p className="text-muted text-xs mb-4 min-h-[32px] line-clamp-2">
-        {description}
-      </p>
-      <div className="flex items-center gap-4 text-xs text-muted">
+
+      <div className="flex items-center gap-4 text-[11px] font-mono text-muted/80 pt-3 border-t border-border/40">
         <div className="flex items-center gap-1.5">
-          <Circle size={10} fill={languageColor} className="text-transparent" />
-          <span>{language}</span>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: languageColor || '#3178c6' }} />
+          <span className="text-foreground/90 font-sans font-medium">{language}</span>
         </div>
         {stars > 0 && (
-          <div className="flex items-center gap-1 hover:text-accent-blue transition-colors">
-            <Star size={14} />
+          <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+            <Star size={12} className="text-amber-400 fill-amber-400/20" />
             <span>{stars}</span>
           </div>
         )}
         {forks > 0 && (
-          <div className="flex items-center gap-1 hover:text-accent-blue transition-colors">
-            <GitFork size={14} />
+          <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+            <GitFork size={12} />
             <span>{forks}</span>
           </div>
         )}

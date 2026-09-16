@@ -5,6 +5,7 @@ import Image from "next/image";
 import { BookOpen, Users, MapPin, Link as LinkIcon, Mail, FileText, Zap, ChevronRight, Terminal, Cpu, Layout, Database, History as HistoryIcon, Eye, Heart, MessageSquare } from "lucide-react";
 import { ContributionGraph } from "@/components/ui/ContributionGraph";
 import { BookCard } from "@/components/ui/BookCard";
+import { RepoCard } from "@/components/ui/RepoCard";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
@@ -192,24 +193,6 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
             </a>
 
             <div className="flex flex-col gap-3 text-sm text-muted">
-              <div className="flex flex-col gap-3 p-4 rounded-xl bg-header/20 border border-border/50 glow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users size={14} className="text-accent-blue" />
-                    <span className="font-medium">Subscribers</span>
-                  </div>
-                  {/* <strong className="text-foreground font-mono">{stats.subscribers}</strong> */}
-                  <strong className="text-foreground font-mono">12,065</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BookOpen size={14} className="text-accent-green" />
-                    <span className="font-medium">Blog Posts</span>
-                  </div>
-                  <strong className="text-foreground font-mono">{stats.posts}</strong>
-                </div>
-              </div>
-
               <div className="mt-4 space-y-3 px-1">
                 {profile?.location && (
                   <div className="flex items-center gap-3">
@@ -282,29 +265,17 @@ export default function HomeClient({ profile, stats, activityData, featuredProje
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {featuredProjects.map((project) => (
-                  <a
+                  <RepoCard
                     key={project.id}
-                    href={project.link}
-                    target="_blank"
-                    className="p-5 rounded-xl border border-border bg-header/10 hover:border-accent-blue/30 transition-all cursor-pointer group relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <Terminal size={40} />
-                    </div>
-                    <h4 className="text-accent-blue text-lg font-bold group-hover:underline flex items-center justify-between">
-                      {project.name}
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20 capitalize">{project.visibility}</span>
-                    </h4>
-                    <p className="text-sm text-muted mt-2 leading-relaxed line-clamp-2">{project.description}</p>
-                    <div className="mt-4 flex items-center gap-4 text-[10px] text-muted">
-                      <span className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: project.language_color || '#3178c6' }} />
-                        {project.language}
-                      </span>
-                      <span>⭐ {project.stars}</span>
-                      <span>forks {project.forks}</span>
-                    </div>
-                  </a>
+                    name={project.name}
+                    description={project.description}
+                    language={project.language}
+                    languageColor={project.language_color}
+                    stars={project.stars}
+                    forks={project.forks}
+                    visibility={project.visibility === "private" ? "Private" : "Public"}
+                    link={project.link || "#"}
+                  />
                 ))}
                 {featuredProjects.length === 0 && (
                   <div className="col-span-2 py-8 text-center text-muted border border-dashed border-border rounded-xl">
