@@ -35,7 +35,13 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: settings['favicon_url'] || '/favicon.ico',
     },
     openGraph: {
-      images: settings['og_image_url'] ? [settings['og_image_url']] : [],
+      images: settings['og_image_url'] 
+        ? [settings['og_image_url']] 
+        : settings['logo_url'] 
+          ? [settings['logo_url']] 
+          : settings['favicon_url'] 
+            ? [settings['favicon_url']] 
+            : [],
     }
   };
 }
