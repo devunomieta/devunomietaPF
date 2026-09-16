@@ -26,10 +26,10 @@ export async function generateMetadata(): Promise<Metadata> {
   for (const row of settingsRows || []) {
     settings[row.key] = row.value ?? '';
   }
-
+ 
   return {
-    title: settings['site_name'] ? `${settings['site_name']} | ${settings['site_tagline']}` : "Joseph Unomieta | Senior Software Engineer & Architect",
-    description: settings['site_description'] || "Personal website of Joseph Unomieta (@DevUnomieta). Building web products that work and helping them grow.",
+    title: settings['site_name'] ? `${settings['site_name']} | ${settings['site_tagline']}` : "Joseph Unomieta | Software Engineer & Product Manager",
+    description: settings['site_description'] || "I solve business problems that happen to need software. Six years building and leading products end-to-end, across Sports, Fintech, E-Commerce, and Education.", 
     icons: {
       icon: settings['favicon_url'] || '/favicon.ico',
       apple: settings['favicon_url'] || '/favicon.ico',
