@@ -38,7 +38,6 @@ export default async function Projects() {
               languageColor={project.language_color}
               stars={project.stars}
               forks={project.forks}
-              visibility={project.visibility === "private" ? "Private" : "Public"}
               link={project.link || "#"}
             />
           ))}

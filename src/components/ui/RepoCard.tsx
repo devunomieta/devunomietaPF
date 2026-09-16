@@ -20,14 +20,16 @@ export function RepoCard({
   languageColor,
   stars = 0,
   forks = 0,
-  visibility = "Public",
   link = "#",
   className,
 }: RepoCardProps) {
+  const isLive = Boolean(link && link.trim() !== "" && link.trim() !== "#" && link.trim() !== "javascript:void(0)");
+  const statusBadge = isLive ? "Live" : "Locally Hosted";
+
   return (
     <a
       href={link}
-      target="_blank"
+      target={isLive ? "_blank" : "_self"}
       rel="noopener noreferrer"
       className={cn(
         "group relative flex flex-col justify-between p-5 bg-header/20 hover:bg-header/40 border border-border/80 hover:border-accent-blue/50 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-accent-blue/5 hover:-translate-y-0.5 overflow-hidden",
@@ -46,8 +48,15 @@ export function RepoCard({
               {name}
             </h3>
           </div>
-          <span className="text-[10px] font-mono font-medium text-muted bg-header/60 border border-border/60 px-2 py-0.5 rounded-md shrink-0 capitalize">
-            {visibility}
+          <span
+            className={cn(
+              "text-[10px] font-mono font-medium px-2 py-0.5 rounded-md shrink-0 border transition-colors",
+              isLive
+                ? "bg-accent-blue/10 border-accent-blue/30 text-accent-blue"
+                : "bg-header/60 border-border/60 text-muted"
+            )}
+          >
+            {statusBadge}
           </span>
         </div>
 
