@@ -1,12 +1,11 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const adminDb = createAdminClient()
   const { data: settingsRows } = await adminDb.from('site_settings').select('key, value')
-  
+
   const settings: Record<string, string> = {}
   for (const row of settingsRows || []) {
     settings[row.key] = row.value ?? ''
@@ -15,7 +14,15 @@ export async function GET() {
   const faviconUrl = settings['favicon_url'] || settings['logo_url']
 
   if (faviconUrl) {
-    redirect(faviconUrl)
+    const imageRes = await fetch(faviconUrl)
+    if (imageRes.ok) {
+      return new Response(imageRes.body, {
+        headers: {
+          'Content-Type': imageRes.headers.get('content-type') || 'image/png',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      })
+    }
   }
 
   return new Response(
