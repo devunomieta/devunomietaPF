@@ -29,22 +29,45 @@ export async function generateMetadata(): Promise<Metadata> {
     settings[row.key] = row.value ?? '';
   }
  
+  const ogImages = settings['og_image_url'] 
+    ? [settings['og_image_url']] 
+    : settings['logo_url'] 
+      ? [settings['logo_url']] 
+      : settings['favicon_url'] 
+        ? [settings['favicon_url']] 
+        : []
+
+  const title = settings['site_name'] && settings['site_tagline']
+    ? `${settings['site_name']} | ${settings['site_tagline']}`
+    : settings['site_name']
+      ? settings['site_name']
+      : "Joseph Unomieta | Software Engineer & Product Manager"
+
+  const description = settings['site_description'] || "I solve business problems that happen to need software. Six years building and leading products end-to-end, across Sports, Fintech, E-Commerce, and Education."
+
   return {
-    title: settings['site_name'] ? `${settings['site_name']} | ${settings['site_tagline']}` : "Joseph Unomieta | Software Engineer & Product Manager",
-    description: settings['site_description'] || "I solve business problems that happen to need software. Six years building and leading products end-to-end, across Sports, Fintech, E-Commerce, and Education.", 
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://devunomieta.xyz'),
+    title,
+    description,
     icons: {
-      icon: settings['favicon_url'] || '/favicon.ico',
-      apple: settings['favicon_url'] || '/favicon.ico',
+      icon: settings['favicon_url'] || '/api/favicon',
+      apple: settings['favicon_url'] || '/api/favicon',
     },
     openGraph: {
-      images: settings['og_image_url'] 
-        ? [settings['og_image_url']] 
-        : settings['logo_url'] 
-          ? [settings['logo_url']] 
-          : settings['favicon_url'] 
-            ? [settings['favicon_url']] 
-            : [],
-    }
+      title,
+      description,
+      url: 'https://devunomieta.xyz',
+      siteName: settings['site_name'] || 'Joseph Unomieta',
+      images: ogImages.map(img => ({ url: img })),
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ogImages,
+      creator: '@DevUnomieta',
+    },
   };
 }
 
