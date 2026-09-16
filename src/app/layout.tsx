@@ -60,6 +60,10 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
     >
+      <head>
+        <link rel="icon" href="/api/favicon" sizes="any" />
+        <link rel="apple-touch-icon" href="/api/favicon" />
+      </head>
       <body 
         className="min-h-screen flex flex-col bg-background text-foreground selection:bg-accent-blue selection:text-white"
         suppressHydrationWarning
