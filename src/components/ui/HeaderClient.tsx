@@ -101,53 +101,47 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName, resumeUrl = "/resu
 
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsMenuOpen(false)}
-          />
-          <div className="absolute top-0 left-0 bottom-0 w-3/4 max-w-sm bg-header border-r border-border p-6 shadow-2xl animate-in slide-in-from-left duration-300">
-            <div className="flex items-center justify-between mb-8">
-              <span className="font-bold text-lg text-foreground">Menu</span>
-              <button onClick={() => setIsMenuOpen(false)} className="text-muted p-2">
-                <X size={24} />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200 bg-header flex flex-col p-6 overflow-y-auto">
+          <div className="flex items-center justify-between mb-8">
+            <span className="font-bold text-lg text-foreground">Menu</span>
+            <button onClick={() => setIsMenuOpen(false)} className="text-muted p-2 hover:text-foreground">
+              <X size={24} />
+            </button>
+          </div>
 
-            <nav className="flex flex-col gap-2">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.path;
-                return (
-                  <Link
-                    key={link.path}
-                    href={link.path}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={cn(
-                      "px-4 py-3 rounded-xl text-base transition-all flex items-center justify-between",
-                      isActive
-                        ? "bg-accent-blue/10 text-accent-blue font-bold"
-                        : "text-foreground hover:bg-white/5"
-                    )}
-                  >
-                    {link.name}
-                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-accent-blue" />}
-                  </Link>
-                );
-              })}
-            </nav>
+          <nav className="flex flex-col gap-2">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.path;
+              return (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={cn(
+                    "px-4 py-3 rounded-xl text-base transition-all flex items-center justify-between",
+                    isActive
+                      ? "bg-accent-blue/10 text-accent-blue font-bold"
+                      : "text-foreground hover:bg-white/5"
+                  )}
+                >
+                  {link.name}
+                  {isActive && <div className="w-1.5 h-1.5 rounded-full bg-accent-blue" />}
+                </Link>
+              );
+            })}
+          </nav>
 
-            <div className="mt-auto pt-10">
-              <a
-                href={resumeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setIsMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-xl font-bold shadow-lg transition-all"
-              >
-                <FileText size={18} />
-                View Resume
-              </a>
-            </div>
+          <div className="mt-auto pt-10">
+            <a
+              href={resumeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setIsMenuOpen(false)}
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-xl font-bold shadow-lg transition-all"
+            >
+              <FileText size={18} />
+              View Resume
+            </a>
           </div>
         </div>
       )}
