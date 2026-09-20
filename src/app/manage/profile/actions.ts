@@ -63,6 +63,7 @@ export async function updateProfile(formData: FormData) {
   // Store custom link settings in site_settings table (key-value schema)
   const linkSettings = [
     { key: 'twitter_url', value: (formData.get('twitter_url') as string) || '' },
+    { key: 'github_url', value: (formData.get('github_url') as string) || '' },
     { key: 'linkedin_url', value: (formData.get('linkedin_url') as string) || '' },
     { key: 'resume_url', value: (formData.get('resume_url') as string) || '' },
     { key: 'hire_me_url', value: (formData.get('hire_me_url') as string) || '' },

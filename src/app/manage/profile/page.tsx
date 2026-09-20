@@ -22,6 +22,7 @@ export default async function ManageProfile() {
   const profileWithLinks = {
     ...profile,
     twitter_url: settings['twitter_url'] || 'https://x.com/DevUnomieta',
+    github_url: settings['github_url'] || 'https://github.com/devunomieta',
     linkedin_url: settings['linkedin_url'] || 'https://linkedin.com/in/joseph-unomieta',
     resume_url: settings['resume_url'] || '/resume.pdf',
     hire_me_url: settings['hire_me_url'] || '/contact?purpose=hiring',

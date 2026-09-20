@@ -178,13 +178,22 @@ export default function ProfileForm({ initialData }: { initialData: any }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border">
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted">X (Twitter) Profile URL</label>
           <input
             name="twitter_url"
             defaultValue={initialData?.twitter_url || initialData?.x_url || "https://x.com/DevUnomieta"}
             placeholder="https://x.com/yourusername"
+            className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none transition-all text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted">GitHub Profile URL</label>
+          <input
+            name="github_url"
+            defaultValue={initialData?.github_url || "https://github.com/devunomieta"}
+            placeholder="https://github.com/yourusername"
             className="w-full bg-header/30 border border-border rounded-lg px-4 py-2 text-foreground focus:border-accent-blue outline-none transition-all text-sm"
           />
         </div>
