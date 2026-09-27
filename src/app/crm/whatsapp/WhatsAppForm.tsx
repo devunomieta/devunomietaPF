@@ -47,8 +47,13 @@ export function WhatsAppForm({
     const formData = new FormData(e.currentTarget);
     const result = mode === "single" ? await sendSingleWhatsApp(formData) : await createBulkWhatsApp(formData);
     setLoading(false);
-    if ("success" in result) router.refresh();
-    else toast(result.error);
+    if ("success" in result) {
+      const warning = (result as { warning?: string }).warning;
+      toast(warning || "Sent.", warning ? "error" : "success");
+      router.refresh();
+    } else {
+      toast(result.error);
+    }
   }
 
   return (

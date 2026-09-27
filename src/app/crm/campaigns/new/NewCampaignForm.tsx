@@ -46,6 +46,8 @@ export function NewCampaignForm({
     const result = mode === "single" ? await sendSingleEmail(formData) : await createBulkCampaign(formData);
     setLoading(false);
     if ("success" in result) {
+      const warning = (result as { warning?: string }).warning;
+      if (warning) toast(warning);
       router.push("/crm/campaigns");
     } else {
       toast(result.error);

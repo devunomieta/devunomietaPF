@@ -168,7 +168,7 @@ export async function processBulkSendJobBatch(
     const personalizedHtml = html.replace(/\{\{\s*first_name\s*\}\}/gi, recipient.name?.split(" ")[0] || "there");
     const result = await sendEmail({ to: [{ email: recipient.email, name: recipient.name }], subject, htmlContent: personalizedHtml });
 
-    await supabase.from("crm_email_events").insert([
+    const { error: logError } = await supabase.from("crm_email_events").insert([
       {
         campaign_id: campaignId,
         client_id: recipient.clientId || null,
@@ -179,6 +179,7 @@ export async function processBulkSendJobBatch(
         meta: "error" in result ? { error: result.error } : {},
       },
     ]);
+    if (logError) console.error(`crm_email_events insert failed for ${recipient.email}:`, logError.message);
     if (!("error" in result)) sentCount++;
   }
 
@@ -217,7 +218,7 @@ export async function processBulkWhatsAppJobBatch(
   for (const recipient of batch) {
     const personalized = message.replace(/\{\{\s*first_name\s*\}\}/gi, recipient.name?.split(" ")[0] || "there");
     const result = await sendWhatsAppMessage({ phone: recipient.phone, message: personalized });
-    await supabase.from("crm_whatsapp_events").insert([
+    const { error: logError } = await supabase.from("crm_whatsapp_events").insert([
       {
         client_id: recipient.clientId || null,
         lead_id: recipient.leadId || null,
@@ -228,6 +229,7 @@ export async function processBulkWhatsAppJobBatch(
         provider_message_id: "messageId" in result ? result.messageId : null,
       },
     ]);
+    if (logError) console.error(`crm_whatsapp_events insert failed for ${recipient.phone}:`, logError.message);
     // Space sends out — GREEN-API/WhatsApp penalizes rapid-fire bulk messages.
     await new Promise((r) => setTimeout(r, 1200));
   }

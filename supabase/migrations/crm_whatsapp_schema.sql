@@ -18,4 +18,5 @@ create index if not exists idx_crm_whatsapp_events_lead on public.crm_whatsapp_e
 
 alter table public.crm_whatsapp_events enable row level security;
 
+drop policy if exists "Admins can manage crm_whatsapp_events" on public.crm_whatsapp_events;
 create policy "Admins can manage crm_whatsapp_events" on public.crm_whatsapp_events for all using (auth.role() = 'authenticated');

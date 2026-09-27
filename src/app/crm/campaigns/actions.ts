@@ -6,7 +6,9 @@ import { sendEmail } from "@/lib/brevo";
 import { processBulkSendJobBatch, getTodaysSentEmailCount } from "@/lib/crm/jobs";
 import type { ActionResult } from "@/lib/crm/types";
 
-export async function sendSingleEmail(formData: FormData): Promise<ActionResult> {
+type SendResult = { success: true; warning?: string } | { error: string };
+
+export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
   const supabase = await requireAdmin();
 
   const email = (formData.get("email") as string)?.trim();
@@ -30,7 +32,7 @@ export async function sendSingleEmail(formData: FormData): Promise<ActionResult>
 
   const result = await sendEmail({ to: [{ email, name }], subject, htmlContent: html });
 
-  await supabase.from("crm_email_events").insert([
+  const { error: logError } = await supabase.from("crm_email_events").insert([
     {
       campaign_id: campaign.id,
       client_id: clientId,
@@ -41,6 +43,7 @@ export async function sendSingleEmail(formData: FormData): Promise<ActionResult>
       meta: "error" in result ? { error: result.error } : {},
     },
   ]);
+  if (logError) console.error(`crm_email_events insert failed for ${email}:`, logError.message);
 
   await supabase
     .from("crm_email_campaigns")
@@ -52,6 +55,10 @@ export async function sendSingleEmail(formData: FormData): Promise<ActionResult>
   revalidatePath("/crm/campaigns");
   if (clientId) revalidatePath(`/crm/clients/${clientId}`);
   if (leadId) revalidatePath(`/crm/leads/${leadId}`);
+
+  if (logError) {
+    return { success: true, warning: `Sent, but couldn't save it to the activity log: ${logError.message}` };
+  }
   return { success: true };
 }
 

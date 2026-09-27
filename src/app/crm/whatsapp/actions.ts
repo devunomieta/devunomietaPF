@@ -6,7 +6,9 @@ import { sendWhatsAppMessage } from "@/lib/crm/green-api";
 import { processBulkWhatsAppJobBatch } from "@/lib/crm/jobs";
 import type { ActionResult } from "@/lib/crm/types";
 
-export async function sendSingleWhatsApp(formData: FormData): Promise<ActionResult> {
+type SendResult = { success: true; warning?: string } | { error: string };
+
+export async function sendSingleWhatsApp(formData: FormData): Promise<SendResult> {
   const supabase = await requireAdmin();
 
   const phone = (formData.get("phone") as string)?.trim();
@@ -18,7 +20,7 @@ export async function sendSingleWhatsApp(formData: FormData): Promise<ActionResu
 
   const result = await sendWhatsAppMessage({ phone, message });
 
-  await supabase.from("crm_whatsapp_events").insert([
+  const { error: logError } = await supabase.from("crm_whatsapp_events").insert([
     {
       client_id: clientId,
       lead_id: leadId,
@@ -35,6 +37,10 @@ export async function sendSingleWhatsApp(formData: FormData): Promise<ActionResu
   revalidatePath("/crm/whatsapp");
   if (clientId) revalidatePath(`/crm/clients/${clientId}`);
   if (leadId) revalidatePath(`/crm/leads/${leadId}`);
+
+  if (logError) {
+    return { success: true, warning: `Sent, but couldn't save it to the activity log: ${logError.message}` };
+  }
   return { success: true };
 }
 

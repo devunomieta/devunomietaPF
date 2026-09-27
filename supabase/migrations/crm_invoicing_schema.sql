@@ -53,7 +53,9 @@ create index if not exists idx_crm_invoice_payments_invoice on public.crm_invoic
 alter table public.crm_invoices enable row level security;
 alter table public.crm_invoice_payments enable row level security;
 
+drop policy if exists "Admins can manage crm_invoices" on public.crm_invoices;
 create policy "Admins can manage crm_invoices" on public.crm_invoices for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_invoice_payments" on public.crm_invoice_payments;
 create policy "Admins can manage crm_invoice_payments" on public.crm_invoice_payments for all using (auth.role() = 'authenticated');
 
 -- Storage buckets: receipts stay private (served via signed URL), logo is public (read in the PDF/UI)

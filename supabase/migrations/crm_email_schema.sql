@@ -52,7 +52,11 @@ alter table public.crm_email_campaigns enable row level security;
 alter table public.crm_email_events enable row level security;
 alter table public.crm_suppressions enable row level security;
 
+drop policy if exists "Admins can manage crm_email_templates" on public.crm_email_templates;
 create policy "Admins can manage crm_email_templates" on public.crm_email_templates for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_email_campaigns" on public.crm_email_campaigns;
 create policy "Admins can manage crm_email_campaigns" on public.crm_email_campaigns for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_email_events" on public.crm_email_events;
 create policy "Admins can manage crm_email_events" on public.crm_email_events for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_suppressions" on public.crm_suppressions;
 create policy "Admins can manage crm_suppressions" on public.crm_suppressions for all using (auth.role() = 'authenticated');

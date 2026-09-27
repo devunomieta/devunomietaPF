@@ -139,10 +139,17 @@ alter table public.crm_stage_events enable row level security;
 alter table public.crm_jobs enable row level security;
 alter table public.crm_settings enable row level security;
 
+drop policy if exists "Admins can manage crm_clients" on public.crm_clients;
 create policy "Admins can manage crm_clients" on public.crm_clients for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_leads" on public.crm_leads;
 create policy "Admins can manage crm_leads" on public.crm_leads for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_contacts" on public.crm_contacts;
 create policy "Admins can manage crm_contacts" on public.crm_contacts for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_journeys" on public.crm_journeys;
 create policy "Admins can manage crm_journeys" on public.crm_journeys for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_stage_events" on public.crm_stage_events;
 create policy "Admins can manage crm_stage_events" on public.crm_stage_events for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_jobs" on public.crm_jobs;
 create policy "Admins can manage crm_jobs" on public.crm_jobs for all using (auth.role() = 'authenticated');
+drop policy if exists "Admins can manage crm_settings" on public.crm_settings;
 create policy "Admins can manage crm_settings" on public.crm_settings for all using (auth.role() = 'authenticated');
