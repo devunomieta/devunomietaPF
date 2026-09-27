@@ -7,32 +7,39 @@ import {
   Send,
   Users,
   Smile,
-  Image as ImageIcon,
-  Link as LinkIcon,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  Heading2,
   ShieldAlert,
   ShieldCheck,
-  ChevronDown,
-  Sparkles,
   Tag,
   Eye,
-  Code,
   Search,
   Check,
   X,
+  Mail,
+  Bookmark,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
-import { sendSingleEmail, createBulkCampaign, previewAudienceCount, uploadCampaignImage } from "../actions";
+import { sendSingleEmail, createBulkCampaign, previewAudienceCount, saveCampaignDraft } from "../actions";
 import { analyzeEmailSpam, type SpamAnalysis } from "@/lib/crm/emailSpamScore";
-import { SUPPORTED_PERSONALIZATION_VARIABLES } from "@/lib/crm/personalization";
+import { RichEmailEditor } from "@/components/crm/campaigns/RichEmailEditor";
+import { CampaignPreviewModal } from "@/components/crm/campaigns/CampaignPreviewModal";
+import { TestSendModal } from "@/components/crm/campaigns/TestSendModal";
 
 type PrefillRecipient = { id: string; name: string; email: string | null; clientId: string | null; leadId: string | null };
+
+type InitialDraft = {
+  id: string;
+  subject: string;
+  html: string;
+  audience?: {
+    segment?: "clients" | "leads" | "all";
+    tags?: string[];
+    stageKey?: string;
+  };
+};
 
 const COMMON_EMOJIS = [
   "👋", "🚀", "✨", "🔥", "💡", "🎯", "🎉", "🤝", "📈", "💼", "⭐", "📢", "💬", "❤️", "⚡", "📩",
@@ -42,49 +49,44 @@ export function NewCampaignForm({
   stages,
   availableTags = [],
   prefillRecipient,
+  initialDraft,
 }: {
   stages: CrmJourneyStage[];
   availableTags?: string[];
   prefillRecipient: PrefillRecipient | null;
+  initialDraft?: InitialDraft | null;
 }) {
   const router = useRouter();
   const { toast } = useCrmFeedback();
+  const [draftId, setDraftId] = useState<string | null>(initialDraft?.id || null);
   const [mode, setMode] = useState<"single" | "bulk">(prefillRecipient ? "single" : "bulk");
-  const [segment, setSegment] = useState<"clients" | "leads" | "all">("leads");
+  const [segment, setSegment] = useState<"clients" | "leads" | "all">(initialDraft?.audience?.segment || "leads");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [stageKey, setStageKey] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>(initialDraft?.audience?.tags || []);
+  const [stageKey, setStageKey] = useState(initialDraft?.audience?.stageKey || "");
   const [loading, setLoading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
 
   // Form State
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(initialDraft?.subject || "");
   const [bodyHtml, setBodyHtml] = useState(
-    "<p>Hi {{first_name}},</p><p><br></p><p>We are reaching out to share a quick update...</p>"
+    initialDraft?.html ||
+      "<p>Hi {{first_name}},</p><p><br></p><p>We are reaching out to share a quick update with you today...</p>"
   );
 
-  // UI state for popovers & editor
+  // Scheduling State
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("09:00");
+
+  // UI Modals
   const [showEmojiSubject, setShowEmojiSubject] = useState(false);
-  const [showEmojiBody, setShowEmojiBody] = useState(false);
-  const [showTokens, setShowTokens] = useState(false);
-  const [viewSource, setViewSource] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [showFullPreviewModal, setShowFullPreviewModal] = useState(false);
+  const [showTestSendModal, setShowTestSendModal] = useState(false);
 
   // Spam analysis state
   const [spamAnalysis, setSpamAnalysis] = useState<SpamAnalysis | null>(null);
   const [showSpamDetails, setShowSpamDetails] = useState(false);
-
-  // Refs
-  const editorRef = useRef<HTMLDivElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-
-  // Sync editor initial HTML once
-  useEffect(() => {
-    if (editorRef.current && !viewSource) {
-      editorRef.current.innerHTML = bodyHtml;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewSource]);
 
   // Recalculate audience on changes
   useEffect(() => {
@@ -156,67 +158,30 @@ export function NewCampaignForm({
       )
     : availableTags.slice(0, 5);
 
-  // Formatting helpers
-  function executeCommand(command: string, value: string | undefined = undefined) {
-    if (viewSource) return;
-    document.execCommand(command, false, value);
-    if (editorRef.current) {
-      setBodyHtml(editorRef.current.innerHTML);
-    }
-  }
-
   function insertEmojiIntoSubject(emoji: string) {
     setSubject((prev) => prev + emoji);
     setShowEmojiSubject(false);
   }
 
-  function insertEmojiIntoBody(emoji: string) {
-    if (viewSource) {
-      setBodyHtml((prev) => prev + emoji);
-    } else {
-      executeCommand("insertText", emoji);
-    }
-    setShowEmojiBody(false);
-  }
-
-  function insertVariable(tag: string) {
-    if (viewSource) {
-      setBodyHtml((prev) => prev + tag);
-    } else {
-      executeCommand("insertText", tag);
-    }
-    setShowTokens(false);
-  }
-
-  function handleInsertLink() {
-    const url = prompt("Enter hyperlink URL (e.g. https://example.com):");
-    if (!url) return;
-    executeCommand("createLink", url.trim());
-  }
-
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingImage(true);
+  async function handleSaveDraft() {
+    setSavingDraft(true);
     const fd = new FormData();
-    fd.append("file", file);
+    if (draftId) fd.set("draftId", draftId);
+    fd.set("subject", subject || "(Untitled Draft)");
+    fd.set("html", bodyHtml);
+    fd.set("segment", segment);
+    fd.set("tags", selectedTags.join(","));
+    fd.set("stageKey", stageKey);
 
-    const res = await uploadCampaignImage(fd);
-    setUploadingImage(false);
+    const res = await saveCampaignDraft(fd);
+    setSavingDraft(false);
 
-    if ("success" in res && res.url) {
-      if (viewSource) {
-        setBodyHtml((prev) => prev + `\n<img src="${res.url}" alt="Campaign Image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0;" />\n`);
-      } else {
-        executeCommand("insertHTML", `<img src="${res.url}" alt="Campaign Image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0;" />`);
-      }
-      toast("Image uploaded and embedded into email!");
+    if ("success" in res) {
+      setDraftId(res.draftId);
+      toast("Draft saved successfully! You can resume anytime.");
     } else {
-      toast("error" in res ? res.error : "Failed to upload image");
+      toast(res.error);
     }
-
-    if (imageInputRef.current) imageInputRef.current.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -232,17 +197,23 @@ export function NewCampaignForm({
 
     setLoading(true);
     const formData = new FormData(e.currentTarget);
+    if (draftId) formData.set("draftId", draftId);
     formData.set("subject", subject);
     formData.set("html", bodyHtml);
     formData.set("segment", segment);
     formData.set("tags", selectedTags.join(","));
     formData.set("stageKey", stageKey);
 
+    if (isScheduled && scheduledDate) {
+      formData.set("scheduledAt", `${scheduledDate}T${scheduledTime || "09:00"}:00Z`);
+    }
+
     const result = mode === "single" ? await sendSingleEmail(formData) : await createBulkCampaign(formData);
     setLoading(false);
     if ("success" in result) {
       const warning = (result as { warning?: string }).warning;
       if (warning) toast(warning);
+      toast(isScheduled ? "Campaign successfully scheduled!" : "Campaign successfully launched!");
       router.push("/crm/campaigns");
     } else {
       toast(result.error);
@@ -250,7 +221,8 @@ export function NewCampaignForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-header/20 border border-border rounded-xl p-5 sm:p-6 flex flex-col gap-5">
+    <>
+      <form onSubmit={handleSubmit} className="bg-header/20 border border-border rounded-xl p-5 sm:p-6 flex flex-col gap-5">
       {/* Mode Selector */}
       <div className="flex gap-2">
         <button
@@ -554,227 +526,97 @@ export function NewCampaignForm({
         />
       </div>
 
-      {/* Rich Text Editor and Tools */}
+      {/* Advanced Rich Text Editor & Live Tools */}
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <label className={crmLabelClass} style={{ marginBottom: 0 }}>
             Message Content *
           </label>
 
-          {/* Editor Action Bar */}
-          <div className="flex flex-wrap items-center gap-1">
-            {/* Rich text formatting buttons */}
-            {!viewSource && (
-              <div className="flex items-center gap-0.5 bg-header/40 border border-border/70 rounded-lg p-0.5">
-                <button
-                  type="button"
-                  onClick={() => executeCommand("bold")}
-                  className="p-1.5 rounded hover:bg-white/10 text-muted hover:text-foreground"
-                  title="Bold (Ctrl+B)"
-                >
-                  <Bold size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => executeCommand("italic")}
-                  className="p-1.5 rounded hover:bg-white/10 text-muted hover:text-foreground"
-                  title="Italic (Ctrl+I)"
-                >
-                  <Italic size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => executeCommand("underline")}
-                  className="p-1.5 rounded hover:bg-white/10 text-muted hover:text-foreground"
-                  title="Underline"
-                >
-                  <Underline size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => executeCommand("formatBlock", "<h2>")}
-                  className="p-1.5 rounded hover:bg-white/10 text-muted hover:text-foreground"
-                  title="Heading 2"
-                >
-                  <Heading2 size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => executeCommand("insertUnorderedList")}
-                  className="p-1.5 rounded hover:bg-white/10 text-muted hover:text-foreground"
-                  title="Bullet list"
-                >
-                  <List size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleInsertLink}
-                  className="p-1.5 rounded hover:bg-white/10 text-muted hover:text-foreground"
-                  title="Embed Hyperlink"
-                >
-                  <LinkIcon size={13} />
-                </button>
-              </div>
-            )}
-
-            {/* Image upload button */}
-            <input
-              type="file"
-              ref={imageInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              className="hidden"
-            />
+          {/* Quick Preview & Test Send Buttons */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={uploadingImage}
-              onClick={() => imageInputRef.current?.click()}
-              className="flex items-center gap-1 px-2.5 py-1 bg-header/40 border border-border rounded-lg text-xs text-muted hover:text-foreground hover:bg-white/5 transition-all"
-              title="Upload and embed image"
+              onClick={() => setShowTestSendModal(true)}
+              className="px-2.5 py-1 rounded-lg border border-border bg-header/30 hover:bg-header text-xs text-muted hover:text-foreground flex items-center gap-1.5 transition"
+              title="Send a quick test email to yourself"
             >
-              {uploadingImage ? <Loader2 size={12} className="animate-spin" /> : <ImageIcon size={12} />}
-              <span>{uploadingImage ? "Uploading…" : "Add Image"}</span>
+              <Mail size={13} className="text-accent-blue" />
+              <span>Send Test</span>
             </button>
-
-            {/* Emoji body button */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowEmojiBody(!showEmojiBody)}
-                className="flex items-center gap-1 px-2 py-1 bg-header/40 border border-border rounded-lg text-xs text-muted hover:text-foreground hover:bg-white/5"
-                title="Insert emoji into body"
-              >
-                <Smile size={12} className="text-yellow-400" />
-              </button>
-              {showEmojiBody && (
-                <div className="absolute right-0 top-7 z-30 bg-header border border-border shadow-xl rounded-xl p-2 grid grid-cols-8 gap-1.5 w-60">
-                  {COMMON_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => insertEmojiIntoBody(emoji)}
-                      className="text-base p-1 hover:bg-white/10 rounded text-center transition-all hover:scale-125"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Personalization dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowTokens(!showTokens)}
-                className="flex items-center gap-1 px-2.5 py-1 bg-accent-blue/10 border border-accent-blue/30 text-accent-blue rounded-lg text-xs font-semibold hover:bg-accent-blue/20 transition-colors"
-                title="Insert personalization variable"
-              >
-                <Sparkles size={12} />
-                <span>Personalize</span>
-                <ChevronDown size={11} />
-              </button>
-              {showTokens && (
-                <div className="absolute right-0 top-8 z-30 bg-header border border-border shadow-xl rounded-xl p-2 min-w-[200px] flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-muted uppercase tracking-wider px-2 py-1">
-                    Insert Variable
-                  </span>
-                  {SUPPORTED_PERSONALIZATION_VARIABLES.map((v) => (
-                    <button
-                      key={v.tag}
-                      type="button"
-                      onClick={() => insertVariable(v.tag)}
-                      className="flex items-center justify-between gap-3 text-left px-2 py-1.5 rounded-lg text-xs hover:bg-white/5 text-foreground transition-colors"
-                    >
-                      <span className="font-medium">{v.label}</span>
-                      <code className="text-[10px] text-accent-blue bg-accent-blue/10 px-1.5 py-0.5 rounded">
-                        {v.tag}
-                      </code>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Toggle Source Code / Preview */}
             <button
               type="button"
-              onClick={() => {
-                if (viewSource && editorRef.current) {
-                  editorRef.current.innerHTML = bodyHtml;
-                }
-                setViewSource(!viewSource);
-              }}
-              className={`p-1.5 rounded-lg border text-xs transition-colors ${
-                viewSource ? "bg-accent-blue text-white border-accent-blue" : "border-border text-muted hover:text-foreground"
-              }`}
-              title={viewSource ? "Switch to Visual Editor" : "View raw HTML source"}
-            >
-              <Code size={13} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowPreview(!showPreview)}
-              className={`p-1.5 rounded-lg border text-xs transition-colors ${
-                showPreview ? "bg-accent-blue text-white border-accent-blue" : "border-border text-muted hover:text-foreground"
-              }`}
-              title="Preview email output"
+              onClick={() => setShowFullPreviewModal(true)}
+              className="px-2.5 py-1 rounded-lg border border-border bg-accent-blue/10 hover:bg-accent-blue/20 text-xs text-accent-blue font-medium flex items-center gap-1.5 transition"
+              title="Mailchimp-style multi-device & dark mode preview"
             >
               <Eye size={13} />
+              <span>Full Preview (Desktop/Mobile)</span>
             </button>
           </div>
         </div>
 
-        {/* Visual Content Editable vs HTML Source */}
-        {showPreview ? (
-          <div className="bg-white text-zinc-900 border border-border rounded-xl p-6 min-h-[220px] max-h-[400px] overflow-y-auto font-sans leading-relaxed shadow-inner">
-            <div className="border-b border-zinc-200 pb-2 mb-4 text-xs text-zinc-500">
-              <strong>Preview:</strong> Subject: {subject.replace(/\{\{\s*first_name\s*\}\}/gi, "Jane") || "(No subject)"}
-            </div>
-            <div
-              dangerouslySetInnerHTML={{
-                __html: bodyHtml
-                  .replace(/\{\{\s*first_name\s*\}\}/gi, "Jane")
-                  .replace(/\{\{\s*name\s*\}\}/gi, "Jane Doe")
-                  .replace(/\{\{\s*company\s*\}\}/gi, "Acme Corp")
-                  .replace(/\{\{\s*email\s*\}\}/gi, "jane@example.com"),
-              }}
-            />
-          </div>
-        ) : viewSource ? (
-          <textarea
-            value={bodyHtml}
-            onChange={(e) => setBodyHtml(e.target.value)}
-            rows={10}
-            className={`${crmInputClass} font-mono text-xs leading-relaxed`}
-            placeholder="<html>...</html>"
-          />
-        ) : (
-          <div
-            ref={editorRef}
-            contentEditable
-            onInput={() => {
-              if (editorRef.current) {
-                setBodyHtml(editorRef.current.innerHTML);
-              }
-            }}
-            className="w-full min-h-[220px] max-h-[450px] overflow-y-auto bg-header/30 border border-border rounded-xl p-4 text-sm text-foreground focus:outline-none focus:border-accent-blue transition-all"
-            style={{ minHeight: "220px" }}
-          />
-        )}
-
-        <div className="flex flex-wrap items-center justify-between text-xs text-muted pt-1">
-          <p>
-            Supported personalization:{" "}
-            <code className="text-accent-blue">{"{{first_name}}"}</code>,{" "}
-            <code className="text-accent-blue">{"{{last_name}}"}</code>,{" "}
-            <code className="text-accent-blue">{"{{company}}"}</code>,{" "}
-            <code className="text-accent-blue">{"{{email}}"}</code>
-          </p>
-          <span>Rich HTML & links supported</span>
-        </div>
+        {/* Advanced Rich WYSIWYG Message Editor */}
+        <RichEmailEditor
+          value={bodyHtml}
+          onChange={(html) => setBodyHtml(html)}
+          placeholder="Hi {{first_name}}, write your email content here..."
+        />
       </div>
+
+      {/* Campaign Scheduling Bar (Bulk mode only) */}
+      {mode === "bulk" && (
+        <div className="border border-border/80 bg-background/50 rounded-xl p-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-accent-blue" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">Schedule Campaign</p>
+                <p className="text-[11px] text-muted">Send immediately or set a future date and time</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isScheduled}
+                onChange={(e) => setIsScheduled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-blue" />
+            </label>
+          </div>
+
+          {isScheduled && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/40 animate-in fade-in duration-150">
+              <div>
+                <label className="block text-[11px] text-muted mb-1 flex items-center gap-1">
+                  <Calendar size={12} /> Send Date
+                </label>
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className={crmInputClass}
+                  required={isScheduled}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-muted mb-1 flex items-center gap-1">
+                  <Clock size={12} /> Send Time (UTC)
+                </label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className={crmInputClass}
+                  required={isScheduled}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Real-time Spam Checker Safety Feedback Widget */}
       {spamAnalysis && (
@@ -824,16 +666,51 @@ export function NewCampaignForm({
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3 pt-2 border-t border-border/50">
-        <button type="button" onClick={() => router.back()} className={crmSecondaryBtnClass}>
-          Cancel
-        </button>
-        <button type="submit" disabled={loading} className={crmPrimaryBtnClass}>
-          {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-          {mode === "single" ? "Send email" : "Launch campaign"}
-        </button>
+      {/* Action Buttons: Cancel, Save Draft, Launch/Schedule */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/50">
+        <div>
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={savingDraft || loading}
+            className="px-3.5 py-1.5 rounded-lg border border-border bg-header/40 hover:bg-header text-xs text-foreground font-medium flex items-center gap-1.5 transition disabled:opacity-50"
+            title="Save progress and resume later"
+          >
+            {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Bookmark size={14} />}
+            <span>Save Draft</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => router.back()} className={crmSecondaryBtnClass}>
+            Cancel
+          </button>
+          <button type="submit" disabled={loading} className={crmPrimaryBtnClass}>
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+            {mode === "single"
+              ? "Send email"
+              : isScheduled
+              ? "Schedule campaign"
+              : "Launch campaign"}
+          </button>
+        </div>
       </div>
     </form>
+
+    {/* Interactive Modals rendered OUTSIDE the form to prevent HTML nested form hydration and premature submit */}
+    <CampaignPreviewModal
+      isOpen={showFullPreviewModal}
+      onClose={() => setShowFullPreviewModal(false)}
+      subject={subject}
+      contentHtml={bodyHtml}
+    />
+
+    <TestSendModal
+      isOpen={showTestSendModal}
+      onClose={() => setShowTestSendModal(false)}
+      subject={subject}
+      contentHtml={bodyHtml}
+    />
+  </>
   );
 }

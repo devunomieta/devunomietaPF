@@ -38,9 +38,22 @@ export default async function CrmCampaignsPage() {
     {
       header: "Subject",
       cell: (c) => (
-        <Link href={`/crm/campaigns/${c.id}`} className="font-medium text-foreground hover:text-accent-blue">
-          {c.subject}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={c.status === "draft" ? `/crm/campaigns/new?draftId=${c.id}` : `/crm/campaigns/${c.id}`}
+            className="font-medium text-foreground hover:text-accent-blue"
+          >
+            {c.subject || "(Untitled Draft)"}
+          </Link>
+          {c.status === "draft" && (
+            <Link
+              href={`/crm/campaigns/new?draftId=${c.id}`}
+              className="text-[11px] px-2 py-0.5 rounded bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25 font-medium transition"
+            >
+              Resume
+            </Link>
+          )}
+        </div>
       ),
     },
     { header: "Kind", cell: (c) => <span className="text-muted text-xs capitalize">{c.kind}</span> },

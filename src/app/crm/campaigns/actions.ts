@@ -31,10 +31,17 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
   if (campaignError) return { error: campaignError.message };
 
   const { personalizeText } = await import("@/lib/crm/personalization");
+  const { renderBulletproofEmail } = await import("@/lib/crm/emailTemplate");
   const personalizedSubject = personalizeText(subject, { name, email });
-  const personalizedHtml = personalizeText(html, { name, email });
+  const personalizedBody = personalizeText(html, { name, email });
+  const fullHtml = renderBulletproofEmail({
+    subject: personalizedSubject,
+    contentHtml: personalizedBody,
+    brandName: "Joseph Unomieta",
+    senderAddress: "Joseph Unomieta",
+  });
 
-  const result = await sendEmail({ to: [{ email, name }], subject: personalizedSubject, htmlContent: personalizedHtml });
+  const result = await sendEmail({ to: [{ email, name }], subject: personalizedSubject, htmlContent: fullHtml });
 
   const { error: logError } = await supabase.from("crm_email_events").insert([
     {
@@ -157,14 +164,119 @@ export async function uploadCampaignImage(formData: FormData): Promise<{ success
   return { success: true, url: publicUrl };
 }
 
+export async function sendTestCampaignEmail({
+  emails,
+  subject,
+  html,
+}: {
+  emails: string[];
+  subject: string;
+  html: string;
+}): Promise<{ success: true } | { error: string }> {
+  await requireAdmin();
+
+  if (!emails || emails.length === 0) return { error: "No recipient emails provided." };
+  if (!subject || !html) return { error: "Subject and content are required for test email." };
+
+  const { renderBulletproofEmail } = await import("@/lib/crm/emailTemplate");
+  const { personalizeText } = await import("@/lib/crm/personalization");
+
+  // Sample recipient for token preview
+  const sampleRecipient = {
+    name: "Dr. Sarah Johnson",
+    first_name: "Sarah",
+    last_name: "Johnson",
+    company: "Apex Diagnostic Laboratories",
+    phone: "+1 (555) 234-8890",
+  };
+
+  const personalizedSubject = personalizeText(`[TEST] ${subject}`, sampleRecipient);
+  const personalizedHtml = personalizeText(html, sampleRecipient);
+
+  const fullEmailHtml = renderBulletproofEmail({
+    subject: personalizedSubject,
+    contentHtml: personalizedHtml,
+    brandName: "Joseph Unomieta",
+    senderAddress: "Joseph Unomieta · Full-Stack Healthcare & Software Consultant",
+  });
+
+  const sendResults = await Promise.all(
+    emails.map((email) =>
+      sendEmail({
+        to: [{ email, name: "Test Recipient" }],
+        subject: personalizedSubject,
+        htmlContent: fullEmailHtml,
+      })
+    )
+  );
+
+  const firstError = sendResults.find((r) => "error" in r);
+  if (firstError && "error" in firstError) {
+    return { error: firstError.error };
+  }
+
+  return { success: true };
+}
+
+export async function saveCampaignDraft(formData: FormData): Promise<{ success: true; draftId: string } | { error: string }> {
+  const supabase = await requireAdmin();
+
+  const draftId = (formData.get("draftId") as string) || null;
+  const subject = (formData.get("subject") as string)?.trim() || "(Untitled Draft)";
+  const html = (formData.get("html") as string) || "";
+  const segment = (formData.get("segment") as "clients" | "leads" | "all") || "leads";
+  const stageKey = (formData.get("stageKey") as string) || "";
+  const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
+
+  const audience: Audience = { segment, tags, stageKey };
+
+  if (draftId) {
+    const { error } = await supabase
+      .from("crm_email_campaigns")
+      .update({
+        subject,
+        html,
+        audience,
+        status: "draft",
+      })
+      .eq("id", draftId);
+
+    if (error) return { error: error.message };
+    revalidatePath("/crm/campaigns");
+    return { success: true, draftId };
+  }
+
+  const { data, error } = await supabase
+    .from("crm_email_campaigns")
+    .insert([
+      {
+        subject,
+        html,
+        audience,
+        kind: "bulk",
+        status: "draft",
+        total_recipients: 0,
+      },
+    ])
+    .select("id")
+    .single();
+
+  if (error || !data) return { error: error?.message || "Failed to save draft." };
+
+  revalidatePath("/crm/campaigns");
+  return { success: true, draftId: data.id };
+}
+
 export async function createBulkCampaign(formData: FormData): Promise<ActionResult> {
   const supabase = await requireAdmin();
 
+  const draftId = (formData.get("draftId") as string) || null;
   const subject = (formData.get("subject") as string)?.trim();
   const html = formData.get("html") as string;
   const segment = (formData.get("segment") as "clients" | "leads" | "all") || "leads";
   const stageKey = (formData.get("stageKey") as string) || "";
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
+  const scheduledAt = (formData.get("scheduledAt") as string)?.trim() || null;
 
   if (!subject || !html) return { error: "Subject and message are required." };
 
@@ -172,12 +284,60 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
   const recipients = await resolveAudience(supabase, audience);
   if (recipients.length === 0) return { error: "No recipients match that audience." };
 
-  const { data: campaign, error: campaignError } = await supabase
-    .from("crm_email_campaigns")
-    .insert([{ subject, html, kind: "bulk", status: "queued", audience, total_recipients: recipients.length }])
-    .select("id")
-    .single();
-  if (campaignError) return { error: campaignError.message };
+  const { renderBulletproofEmail } = await import("@/lib/crm/emailTemplate");
+  const wrappedHtml = renderBulletproofEmail({
+    subject,
+    contentHtml: html,
+    brandName: "Joseph Unomieta",
+    senderAddress: "Joseph Unomieta · Full-Stack Healthcare & Software Consultant",
+  });
+
+  const isScheduled = !!scheduledAt && new Date(scheduledAt).getTime() > Date.now();
+  const initialStatus = isScheduled ? "queued" : "queued";
+
+  let campaignId = draftId;
+
+  if (draftId) {
+    const { error: updateErr } = await supabase
+      .from("crm_email_campaigns")
+      .update({
+        subject,
+        html: wrappedHtml,
+        kind: "bulk",
+        status: initialStatus,
+        scheduled_at: isScheduled ? new Date(scheduledAt).toISOString() : null,
+        audience,
+        total_recipients: recipients.length,
+      })
+      .eq("id", draftId);
+
+    if (updateErr) return { error: updateErr.message };
+  } else {
+    const { data: campaign, error: campaignError } = await supabase
+      .from("crm_email_campaigns")
+      .insert([
+        {
+          subject,
+          html: wrappedHtml,
+          kind: "bulk",
+          status: initialStatus,
+          scheduled_at: isScheduled ? new Date(scheduledAt).toISOString() : null,
+          audience,
+          total_recipients: recipients.length,
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (campaignError || !campaign) return { error: campaignError?.message || "Failed to create campaign." };
+    campaignId = campaign.id;
+  }
+
+  // If scheduled for later, do not dispatch immediately
+  if (isScheduled) {
+    revalidatePath("/crm/campaigns");
+    return { success: true };
+  }
 
   const { data: job, error: jobError } = await supabase
     .from("crm_jobs")
@@ -185,7 +345,7 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
       {
         type: "bulk_send",
         status: "processing",
-        payload: { campaignId: campaign.id, recipients, subject, html },
+        payload: { campaignId, recipients, subject, html: wrappedHtml },
         total: recipients.length,
         progress: 0,
       },
