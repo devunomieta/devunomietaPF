@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/brevo";
 import { sendWhatsAppMessage } from "@/lib/crm/green-api";
 import type { CrmJourneyStage } from "@/lib/crm/types";
+import { personalizeText } from "@/lib/crm/personalization";
 
 const IMPORT_BATCH_SIZE = 200;
 const BULK_SEND_BATCH_SIZE = 20;
@@ -165,8 +166,9 @@ export async function processBulkSendJobBatch(
   for (const recipient of batch) {
     if (suppressedSet.has(recipient.email.toLowerCase())) continue;
 
-    const personalizedHtml = html.replace(/\{\{\s*first_name\s*\}\}/gi, recipient.name?.split(" ")[0] || "there");
-    const result = await sendEmail({ to: [{ email: recipient.email, name: recipient.name }], subject, htmlContent: personalizedHtml });
+    const personalizedSubject = personalizeText(subject, recipient);
+    const personalizedHtml = personalizeText(html, recipient);
+    const result = await sendEmail({ to: [{ email: recipient.email, name: recipient.name }], subject: personalizedSubject, htmlContent: personalizedHtml });
 
     const { error: logError } = await supabase.from("crm_email_events").insert([
       {
@@ -216,7 +218,7 @@ export async function processBulkWhatsAppJobBatch(
   }
 
   for (const recipient of batch) {
-    const personalized = message.replace(/\{\{\s*first_name\s*\}\}/gi, recipient.name?.split(" ")[0] || "there");
+    const personalized = personalizeText(message, recipient);
     const result = await sendWhatsAppMessage({ phone: recipient.phone, message: personalized });
     const { error: logError } = await supabase.from("crm_whatsapp_events").insert([
       {

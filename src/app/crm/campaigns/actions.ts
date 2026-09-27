@@ -30,7 +30,11 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
     .single();
   if (campaignError) return { error: campaignError.message };
 
-  const result = await sendEmail({ to: [{ email, name }], subject, htmlContent: html });
+  const { personalizeText } = await import("@/lib/crm/personalization");
+  const personalizedSubject = personalizeText(subject, { name, email });
+  const personalizedHtml = personalizeText(html, { name, email });
+
+  const result = await sendEmail({ to: [{ email, name }], subject: personalizedSubject, htmlContent: personalizedHtml });
 
   const { error: logError } = await supabase.from("crm_email_events").insert([
     {
@@ -62,28 +66,58 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
   return { success: true };
 }
 
-type Audience = { segment: "clients" | "leads"; tags: string[]; stageKey: string };
+type Audience = { segment: "clients" | "leads" | "all"; tags: string[]; stageKey: string };
 
 async function resolveAudience(supabase: Awaited<ReturnType<typeof requireAdmin>>, audience: Audience) {
-  const table = audience.segment === "clients" ? "crm_clients" : "crm_leads";
-  let query = supabase.from(table).select("id, name, email").not("email", "is", null);
-  if (audience.tags.length > 0) query = query.overlaps("tags", audience.tags);
-  if (audience.segment === "leads" && audience.stageKey) query = query.eq("current_stage_key", audience.stageKey);
+  const rows: Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    company?: string | null;
+    phone?: string | null;
+    isClient?: boolean;
+    isLead?: boolean;
+  }> = [];
 
-  const { data } = await query;
-  const rows = data || [];
+  if (audience.segment === "all" || audience.segment === "clients") {
+    let clientsQuery = supabase.from("crm_clients").select("id, name, email, company, phone, tags").not("email", "is", null);
+    if (audience.tags.length > 0) clientsQuery = clientsQuery.overlaps("tags", audience.tags);
+    const { data: clientsData } = await clientsQuery;
+    (clientsData || []).forEach((c) => rows.push({ ...c, isClient: true }));
+  }
 
-  const emails = rows.map((r) => r.email!.toLowerCase());
+  if (audience.segment === "all" || audience.segment === "leads") {
+    let leadsQuery = supabase.from("crm_leads").select("id, name, email, company, phone, tags, current_stage_key").not("email", "is", null);
+    if (audience.tags.length > 0) leadsQuery = leadsQuery.overlaps("tags", audience.tags);
+    if (audience.stageKey && audience.segment === "leads") leadsQuery = leadsQuery.eq("current_stage_key", audience.stageKey);
+    const { data: leadsData } = await leadsQuery;
+    (leadsData || []).forEach((l) => rows.push({ ...l, isLead: true }));
+  }
+
+  // De-duplicate if someone is both in clients & leads when 'all' is selected
+  const seenEmails = new Set<string>();
+  const uniqueRows: typeof rows = [];
+  for (const r of rows) {
+    if (!r.email) continue;
+    const cleanEmail = r.email.trim().toLowerCase();
+    if (!cleanEmail || seenEmails.has(cleanEmail)) continue;
+    seenEmails.add(cleanEmail);
+    uniqueRows.push(r);
+  }
+
+  const emails = uniqueRows.map((r) => r.email!.toLowerCase());
   const { data: suppressed } = emails.length > 0 ? await supabase.from("crm_suppressions").select("email").in("email", emails) : { data: [] };
   const suppressedSet = new Set((suppressed || []).map((s) => String(s.email).toLowerCase()));
 
-  return rows
+  return uniqueRows
     .filter((r) => r.email && !suppressedSet.has(r.email.toLowerCase()))
     .map((r) => ({
       email: r.email as string,
       name: r.name as string,
-      clientId: audience.segment === "clients" ? r.id : undefined,
-      leadId: audience.segment === "leads" ? r.id : undefined,
+      company: r.company || null,
+      phone: r.phone || null,
+      clientId: r.isClient ? r.id : undefined,
+      leadId: r.isLead ? r.id : undefined,
     }));
 }
 
@@ -93,12 +127,42 @@ export async function previewAudienceCount(audience: Audience): Promise<{ count:
   return { count: recipients.length };
 }
 
+export async function uploadCampaignImage(formData: FormData): Promise<{ success: true; url: string } | { error: string }> {
+  await requireAdmin();
+  const { createAdminClient } = await import("@/utils/supabase/admin");
+  const adminDb = createAdminClient();
+
+  const file = formData.get("file") as File;
+  if (!file || file.size === 0) return { error: "No image file provided." };
+
+  if (!file.type.startsWith("image/")) {
+    return { error: "File must be an image (JPEG, PNG, WebP, GIF, SVG)." };
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: "Image size must be less than 5MB." };
+  }
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const path = `campaigns/img-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+
+  const bytes = await file.arrayBuffer();
+  const { error: uploadError } = await adminDb.storage
+    .from("assets")
+    .upload(path, bytes, { contentType: file.type, upsert: true });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: { publicUrl } } = adminDb.storage.from("assets").getPublicUrl(path);
+  return { success: true, url: publicUrl };
+}
+
 export async function createBulkCampaign(formData: FormData): Promise<ActionResult> {
   const supabase = await requireAdmin();
 
   const subject = (formData.get("subject") as string)?.trim();
   const html = formData.get("html") as string;
-  const segment = (formData.get("segment") as "clients" | "leads") || "leads";
+  const segment = (formData.get("segment") as "clients" | "leads" | "all") || "leads";
   const stageKey = (formData.get("stageKey") as string) || "";
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
 
