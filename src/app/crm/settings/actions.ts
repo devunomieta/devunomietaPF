@@ -34,7 +34,7 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
       brand_color: (formData.get("brand_color") as string) || "#58a6ff",
       invoice_prefix: (formData.get("invoice_prefix") as string)?.trim() || "INV",
       invoice_footer_note: (formData.get("invoice_footer_note") as string)?.trim() || null,
-      default_currency: (formData.get("default_currency") as string)?.trim() || "USD",
+      default_currency: (formData.get("default_currency") as string)?.trim() || "NGN",
       default_tax_rate: parseFloat(formData.get("default_tax_rate") as string) || 0,
       brevo_daily_cap: parseInt(formData.get("brevo_daily_cap") as string) || 300,
       bounce_alert_threshold: parseFloat(formData.get("bounce_alert_threshold") as string) || 5,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+import { formatMoney } from "@/lib/crm/currency";
 import { createInvoice } from "../actions";
 
 type LineItem = { description: string; qty: string; unit_price: string };
@@ -23,6 +24,7 @@ export function NewInvoiceForm({
   const router = useRouter();
   const { toast } = useCrmFeedback();
   const [items, setItems] = useState<LineItem[]>([{ description: "", qty: "1", unit_price: "" }]);
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [taxRate, setTaxRate] = useState(String(defaultTaxRate));
   const [loading, setLoading] = useState(false);
 
@@ -117,7 +119,7 @@ export function NewInvoiceForm({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className={crmLabelClass} htmlFor="currency">Currency</label>
-          <input id="currency" name="currency" defaultValue={defaultCurrency} className={crmInputClass} />
+          <input id="currency" name="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={crmInputClass} />
         </div>
         <div>
           <label className={crmLabelClass} htmlFor="taxRate">Tax rate (%)</label>
@@ -136,9 +138,9 @@ export function NewInvoiceForm({
 
       <div className="flex justify-end">
         <div className="w-56 flex flex-col gap-1 text-sm">
-          <div className="flex justify-between text-muted"><span>Subtotal</span><span>{subtotal.toFixed(2)}</span></div>
-          <div className="flex justify-between text-muted"><span>Tax</span><span>{taxAmount.toFixed(2)}</span></div>
-          <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1"><span>Total</span><span>{total.toFixed(2)}</span></div>
+          <div className="flex justify-between text-muted"><span>Subtotal</span><span>{formatMoney(subtotal, currency)}</span></div>
+          <div className="flex justify-between text-muted"><span>Tax</span><span>{formatMoney(taxAmount, currency)}</span></div>
+          <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1"><span>Total</span><span>{formatMoney(total, currency)}</span></div>
         </div>
       </div>
 

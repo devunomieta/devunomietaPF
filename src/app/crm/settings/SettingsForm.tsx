@@ -94,7 +94,7 @@ export function SettingsForm({ settings, whatsappConfigured }: { settings: CrmSe
           </div>
           <div>
             <label className={crmLabelClass} htmlFor="default_currency">Default currency</label>
-            <input id="default_currency" name="default_currency" defaultValue={settings?.default_currency || "USD"} className={crmInputClass} />
+            <input id="default_currency" name="default_currency" defaultValue={settings?.default_currency || "NGN"} className={crmInputClass} />
           </div>
           <div>
             <label className={crmLabelClass} htmlFor="default_tax_rate">Default tax rate (%)</label>

@@ -79,11 +79,32 @@ body {
   50% { opacity: 0.6; filter: brightness(1.5); }
 }
 
+@keyframes cursor-blink {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes glitch-shift {
+  0%, 100% { transform: translate(0, 0); opacity: 1; }
+  20% { transform: translate(-2px, 1px); opacity: 0.85; }
+  40% { transform: translate(2px, -1px); opacity: 1; }
+  60% { transform: translate(-1px, 0); opacity: 0.9; }
+  80% { transform: translate(1px, 1px); opacity: 1; }
+}
+
 @layer utilities {
   .animate-pulse-cell {
     animation: pulse-cell 3s infinite;
   }
-  
+
+  .animate-cursor-blink {
+    animation: cursor-blink 1s steps(1) infinite;
+  }
+
+  .animate-glitch {
+    animation: glitch-shift 4s ease-in-out infinite;
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
   }

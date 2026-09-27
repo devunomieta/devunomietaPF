@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+import { formatMoney } from "@/lib/crm/currency";
 import type { CrmClient, CrmContact, CrmStageEvent, CrmInvoice } from "@/lib/crm/types";
 import { ClientForm } from "../ClientForm";
 import { addContact, deleteContact } from "../actions";
@@ -147,7 +148,7 @@ export function ClientDetailClient({
                 className="flex items-center justify-between gap-2 text-sm py-2 px-2 rounded-lg hover:bg-accent-blue/5 border-b border-border/50 last:border-0"
               >
                 <span className="text-foreground font-medium">{inv.number}</span>
-                <span className="text-muted">{inv.currency} {inv.total.toFixed(2)}</span>
+                <span className="text-muted">{formatMoney(inv.total, inv.currency)}</span>
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-blue/15 text-accent-blue">{inv.status}</span>
               </Link>
             ))}

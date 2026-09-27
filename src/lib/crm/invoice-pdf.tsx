@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { formatMoneyPlain } from "@/lib/crm/currency";
 import type { CrmInvoice, CrmSettings } from "@/lib/crm/types";
 
 const styles = StyleSheet.create({
@@ -25,7 +26,7 @@ const styles = StyleSheet.create({
 });
 
 function money(n: number, currency: string) {
-  return `${currency} ${n.toFixed(2)}`;
+  return formatMoneyPlain(n, currency);
 }
 
 export async function renderInvoicePdf(

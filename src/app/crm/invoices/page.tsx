@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Plus } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { crmPrimaryBtnClass } from "@/components/crm/CrmModal";
+import { formatMoney } from "@/lib/crm/currency";
 
 export const metadata = { title: "Invoices · CRM" };
 
@@ -46,7 +47,7 @@ export default async function CrmInvoicesPage() {
       ),
     },
     { header: "Client", cell: (i) => i.crm_clients?.name || <span className="text-muted">—</span> },
-    { header: "Total", cell: (i) => `${i.currency} ${Number(i.total).toFixed(2)}` },
+    { header: "Total", cell: (i) => formatMoney(Number(i.total), i.currency) },
     { header: "Due", cell: (i) => (i.due_date ? new Date(i.due_date).toLocaleDateString() : "—") },
     {
       header: "Status",

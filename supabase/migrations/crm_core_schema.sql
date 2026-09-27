@@ -95,7 +95,7 @@ create table if not exists public.crm_settings (
   brand_color text not null default '#58a6ff',
   invoice_prefix text not null default 'INV',
   invoice_footer_note text,
-  default_currency text not null default 'USD',
+  default_currency text not null default 'NGN',
   default_tax_rate numeric not null default 0,
   brevo_daily_cap integer not null default 300,
   whatsapp_enabled boolean not null default false,

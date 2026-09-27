@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Send, Download, Ban, Plus, FileText } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+import { formatMoney } from "@/lib/crm/currency";
 import type { CrmInvoice, CrmInvoicePayment } from "@/lib/crm/types";
 import { sendInvoice, recordPayment, voidInvoice, getReceiptSignedUrl } from "../actions";
 
@@ -156,8 +157,8 @@ export function InvoiceDetailClient({
                 <tr key={i} className="border-b border-border/50 last:border-0">
                   <td className="py-2">{item.description}</td>
                   <td className="py-2 text-right">{item.qty}</td>
-                  <td className="py-2 text-right">{item.unit_price.toFixed(2)}</td>
-                  <td className="py-2 text-right">{(item.qty * item.unit_price).toFixed(2)}</td>
+                  <td className="py-2 text-right">{formatMoney(item.unit_price, invoice.currency)}</td>
+                  <td className="py-2 text-right">{formatMoney(item.qty * item.unit_price, invoice.currency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -165,11 +166,11 @@ export function InvoiceDetailClient({
         </div>
         <div className="flex justify-end mt-3">
           <div className="w-56 flex flex-col gap-1 text-sm">
-            <div className="flex justify-between text-muted"><span>Subtotal</span><span>{invoice.subtotal.toFixed(2)}</span></div>
-            {invoice.tax_rate > 0 && <div className="flex justify-between text-muted"><span>Tax ({invoice.tax_rate}%)</span><span>{invoice.tax_amount.toFixed(2)}</span></div>}
-            <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1"><span>Total</span><span>{invoice.currency} {invoice.total.toFixed(2)}</span></div>
-            <div className="flex justify-between text-accent-green"><span>Paid</span><span>{invoice.currency} {totalPaid.toFixed(2)}</span></div>
-            <div className="flex justify-between font-semibold"><span>Balance</span><span>{invoice.currency} {balance.toFixed(2)}</span></div>
+            <div className="flex justify-between text-muted"><span>Subtotal</span><span>{formatMoney(invoice.subtotal, invoice.currency)}</span></div>
+            {invoice.tax_rate > 0 && <div className="flex justify-between text-muted"><span>Tax ({invoice.tax_rate}%)</span><span>{formatMoney(invoice.tax_amount, invoice.currency)}</span></div>}
+            <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1"><span>Total</span><span>{formatMoney(invoice.total, invoice.currency)}</span></div>
+            <div className="flex justify-between text-accent-green"><span>Paid</span><span>{formatMoney(totalPaid, invoice.currency)}</span></div>
+            <div className="flex justify-between font-semibold"><span>Balance</span><span>{formatMoney(balance, invoice.currency)}</span></div>
           </div>
         </div>
       </div>
@@ -186,7 +187,7 @@ export function InvoiceDetailClient({
           {payments.map((p) => (
             <div key={p.id} className="flex items-center justify-between gap-2 text-sm py-2 border-b border-border/50 last:border-0">
               <div>
-                <p className="text-foreground">{invoice.currency} {Number(p.amount).toFixed(2)} <span className="text-muted">· {CHANNEL_LABELS[p.channel]}</span></p>
+                <p className="text-foreground">{formatMoney(Number(p.amount), invoice.currency)} <span className="text-muted">· {CHANNEL_LABELS[p.channel]}</span></p>
                 <p className="text-xs text-muted">{new Date(p.paid_at).toLocaleDateString()}{p.reference ? ` · ${p.reference}` : ""}</p>
               </div>
               {p.receipt_url && (

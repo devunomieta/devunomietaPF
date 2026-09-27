@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { formatMoney } from "@/lib/crm/currency";
 import type { CrmInvoice, CrmInvoicePayment } from "@/lib/crm/types";
 
 export const metadata = { title: "Finance · CRM" };
@@ -69,7 +70,7 @@ export default async function CrmFinancePage({
     : { data: [] };
   const clientNameById = new Map((topClients || []).map((c) => [c.id, c.name]));
 
-  const currency = invoiceRows[0]?.currency || "USD";
+  const currency = invoiceRows[0]?.currency || "NGN";
 
   return (
     <div className="flex flex-col gap-5">
@@ -93,19 +94,19 @@ export default async function CrmFinancePage({
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-header/20 border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{currency} {totalInvoiced.toFixed(2)}</p>
+          <p className="text-lg font-bold text-foreground">{formatMoney(totalInvoiced, currency)}</p>
           <p className="text-xs text-muted">Total invoiced</p>
         </div>
         <div className="bg-header/20 border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-accent-green">{currency} {totalCollected.toFixed(2)}</p>
+          <p className="text-lg font-bold text-accent-green">{formatMoney(totalCollected, currency)}</p>
           <p className="text-xs text-muted">Total collected</p>
         </div>
         <div className="bg-header/20 border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{currency} {outstanding.toFixed(2)}</p>
+          <p className="text-lg font-bold text-foreground">{formatMoney(outstanding, currency)}</p>
           <p className="text-xs text-muted">Outstanding balance</p>
         </div>
         <div className="bg-header/20 border border-border rounded-xl p-3 text-center">
-          <p className={`text-lg font-bold ${overdueInvoices.length > 0 ? "text-red-400" : "text-foreground"}`}>{currency} {overdueAmount.toFixed(2)}</p>
+          <p className={`text-lg font-bold ${overdueInvoices.length > 0 ? "text-red-400" : "text-foreground"}`}>{formatMoney(overdueAmount, currency)}</p>
           <p className="text-xs text-muted">Overdue ({overdueInvoices.length})</p>
         </div>
       </div>
@@ -118,7 +119,7 @@ export default async function CrmFinancePage({
             {Object.entries(byChannel).sort((a, b) => b[1] - a[1]).map(([channel, amount]) => (
               <div key={channel} className="flex justify-between text-sm">
                 <span className="text-muted">{CHANNEL_LABELS[channel] || channel}</span>
-                <span className="text-foreground">{currency} {amount.toFixed(2)}</span>
+                <span className="text-foreground">{formatMoney(amount, currency)}</span>
               </div>
             ))}
           </div>
@@ -131,7 +132,7 @@ export default async function CrmFinancePage({
             {topClientIds.map(([clientId, amount]) => (
               <Link key={clientId} href={`/crm/clients/${clientId}`} className="flex justify-between text-sm hover:text-accent-blue">
                 <span className="text-foreground">{clientNameById.get(clientId) || "—"}</span>
-                <span className="text-muted">{currency} {amount.toFixed(2)}</span>
+                <span className="text-muted">{formatMoney(amount, currency)}</span>
               </Link>
             ))}
           </div>

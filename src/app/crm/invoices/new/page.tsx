@@ -26,7 +26,7 @@ export default async function NewInvoicePage({
       <NewInvoiceForm
         clients={clients || []}
         defaultClientId={clientId}
-        defaultCurrency={settings?.default_currency || "USD"}
+        defaultCurrency={settings?.default_currency || "NGN"}
         defaultTaxRate={settings?.default_tax_rate || 0}
       />
     </div>

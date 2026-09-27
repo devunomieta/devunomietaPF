@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { sendEmail } from "@/lib/brevo";
 import { renderInvoicePdf } from "@/lib/crm/invoice-pdf";
+import { formatMoney } from "@/lib/crm/currency";
 import type { ActionResult, CrmInvoiceLineItem, CrmInvoice, CrmSettings } from "@/lib/crm/types";
 
 async function recomputeInvoiceStatus(supabase: Awaited<ReturnType<typeof requireAdmin>>, invoiceId: string) {
@@ -50,7 +51,7 @@ export async function createInvoice(formData: FormData): Promise<ActionResult & 
 
   if (lineItems.length === 0) return { error: "Add at least one line item." };
 
-  const currency = (formData.get("currency") as string) || "USD";
+  const currency = (formData.get("currency") as string) || "NGN";
   const taxRate = parseFloat(formData.get("taxRate") as string) || 0;
   const dueDate = (formData.get("dueDate") as string) || null;
   const notes = (formData.get("notes") as string)?.trim() || null;
@@ -107,7 +108,7 @@ export async function sendInvoice(invoiceId: string): Promise<ActionResult> {
   const base64 = pdfBuffer.toString("base64");
 
   const businessName = settings?.business_name || "us";
-  const html = `<p>Hi ${client.name},</p><p>Please find attached invoice <strong>${invoice.number}</strong> for ${invoice.currency} ${Number(invoice.total).toFixed(2)}${invoice.due_date ? `, due ${new Date(invoice.due_date).toLocaleDateString()}` : ""}.</p><p>Thank you,<br/>${businessName}</p>`;
+  const html = `<p>Hi ${client.name},</p><p>Please find attached invoice <strong>${invoice.number}</strong> for ${formatMoney(Number(invoice.total), invoice.currency)}${invoice.due_date ? `, due ${new Date(invoice.due_date).toLocaleDateString()}` : ""}.</p><p>Thank you,<br/>${businessName}</p>`;
 
   const result = await sendEmail({
     to: [{ email: client.email, name: client.name }],

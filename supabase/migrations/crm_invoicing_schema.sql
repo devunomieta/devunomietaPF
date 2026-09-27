@@ -23,7 +23,7 @@ create table if not exists public.crm_invoices (
   client_id uuid not null references public.crm_clients(id) on delete restrict,
   number text unique not null,
   status text not null default 'draft', -- draft,sent,viewed,partially_paid,paid,overdue,void
-  currency text not null default 'USD',
+  currency text not null default 'NGN',
   line_items jsonb not null default '[]'::jsonb, -- [{description, qty, unit_price}]
   subtotal numeric not null default 0,
   tax_rate numeric not null default 0,
