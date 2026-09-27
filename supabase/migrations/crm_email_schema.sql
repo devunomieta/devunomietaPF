@@ -52,6 +52,13 @@ alter table public.crm_email_campaigns enable row level security;
 alter table public.crm_email_events enable row level security;
 alter table public.crm_suppressions enable row level security;
 
+-- Explicit grants: this project's default privileges don't reliably extend to
+-- tables created outside the original provisioning session (see crm_fix_grants.sql).
+grant select, insert, update, delete on public.crm_email_templates to authenticated;
+grant select, insert, update, delete on public.crm_email_campaigns to authenticated;
+grant select, insert, update, delete on public.crm_email_events to authenticated;
+grant select, insert, update, delete on public.crm_suppressions to authenticated;
+
 drop policy if exists "Admins can manage crm_email_templates" on public.crm_email_templates;
 create policy "Admins can manage crm_email_templates" on public.crm_email_templates for all using (auth.role() = 'authenticated');
 drop policy if exists "Admins can manage crm_email_campaigns" on public.crm_email_campaigns;

@@ -53,6 +53,11 @@ create index if not exists idx_crm_invoice_payments_invoice on public.crm_invoic
 alter table public.crm_invoices enable row level security;
 alter table public.crm_invoice_payments enable row level security;
 
+-- Explicit grants: this project's default privileges don't reliably extend to
+-- tables created outside the original provisioning session (see crm_fix_grants.sql).
+grant select, insert, update, delete on public.crm_invoices to authenticated;
+grant select, insert, update, delete on public.crm_invoice_payments to authenticated;
+
 drop policy if exists "Admins can manage crm_invoices" on public.crm_invoices;
 create policy "Admins can manage crm_invoices" on public.crm_invoices for all using (auth.role() = 'authenticated');
 drop policy if exists "Admins can manage crm_invoice_payments" on public.crm_invoice_payments;

@@ -18,5 +18,9 @@ create index if not exists idx_crm_whatsapp_events_lead on public.crm_whatsapp_e
 
 alter table public.crm_whatsapp_events enable row level security;
 
+-- Explicit grants: this project's default privileges don't reliably extend to
+-- tables created outside the original provisioning session (see crm_fix_grants.sql).
+grant select, insert, update, delete on public.crm_whatsapp_events to authenticated;
+
 drop policy if exists "Admins can manage crm_whatsapp_events" on public.crm_whatsapp_events;
 create policy "Admins can manage crm_whatsapp_events" on public.crm_whatsapp_events for all using (auth.role() = 'authenticated');

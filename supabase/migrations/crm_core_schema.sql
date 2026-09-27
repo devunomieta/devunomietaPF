@@ -139,6 +139,16 @@ alter table public.crm_stage_events enable row level security;
 alter table public.crm_jobs enable row level security;
 alter table public.crm_settings enable row level security;
 
+-- Explicit grants: this project's default privileges don't reliably extend to
+-- tables created outside the original provisioning session (see crm_fix_grants.sql).
+grant select, insert, update, delete on public.crm_clients to authenticated;
+grant select, insert, update, delete on public.crm_leads to authenticated;
+grant select, insert, update, delete on public.crm_contacts to authenticated;
+grant select, insert, update, delete on public.crm_journeys to authenticated;
+grant select, insert, update, delete on public.crm_stage_events to authenticated;
+grant select, insert, update, delete on public.crm_jobs to authenticated;
+grant select, insert, update, delete on public.crm_settings to authenticated;
+
 drop policy if exists "Admins can manage crm_clients" on public.crm_clients;
 create policy "Admins can manage crm_clients" on public.crm_clients for all using (auth.role() = 'authenticated');
 drop policy if exists "Admins can manage crm_leads" on public.crm_leads;
