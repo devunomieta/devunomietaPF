@@ -26,7 +26,7 @@ export default async function CrmJourneysPage() {
   return (
     <div className="flex flex-col gap-4 h-[calc(100vh-5rem)]">
       <JourneyBoard
-        pipelineName={journey?.name || "Default pipeline"}
+        pipelineName={journey?.name || "Conversion Stages"}
         stages={stages}
         leads={(leads as CrmLead[]) || []}
       />

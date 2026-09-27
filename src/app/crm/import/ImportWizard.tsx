@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, UploadCloud, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Loader2, UploadCloud, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Layers, Check, ArrowRight } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
-import { parseImportFile, checkExistingEmails, commitImport } from "./actions";
+import { parseImportFile, checkExistingRecords, commitImport } from "./actions";
 
 type Step = "upload" | "map" | "preview" | "done";
 
@@ -38,6 +38,17 @@ export function ImportWizard() {
   const [dedupStrategy, setDedupStrategy] = useState<"skip" | "overwrite" | "merge">("skip");
   const [existingCount, setExistingCount] = useState<number | null>(null);
   const [result, setResult] = useState<{ jobId: string; done: boolean; progress: number; total: number; stats?: { imported: number; updated: number; skipped: number } } | null>(null);
+
+  const [duplicates, setDuplicates] = useState<
+    {
+      rowIndex: number;
+      matchReason: string;
+      incoming: Record<string, string>;
+      existing: { id: string; name?: string; email?: string | null; phone?: string | null; company?: string | null; current_stage_key?: string };
+    }[]
+  >([]);
+  const [rowOverrides, setRowOverrides] = useState<Record<number, "skip" | "overwrite" | "merge">>({});
+  const [showDuplicatesList, setShowDuplicatesList] = useState(false);
 
   const fields = targetType === "client" ? CLIENT_FIELDS : LEAD_FIELDS;
 
@@ -75,17 +86,18 @@ export function ImportWizard() {
       return;
     }
     setLoading(true);
-    const emailHeader = mapping.email;
-    const emails = emailHeader ? rows.map((r) => r[emailHeader]).filter(Boolean) : [];
-    const check = await checkExistingEmails(targetType, emails);
-    setExistingCount(check.existing.length);
+    const check = await checkExistingRecords(targetType, mapping, rows);
+    setExistingCount(check.existingCount);
+    setDuplicates(check.duplicates || []);
+    setRowOverrides({});
+    setShowDuplicatesList(false);
     setLoading(false);
     setStep("preview");
   }
 
   async function handleCommit() {
     setLoading(true);
-    const res = await commitImport({ targetType, mapping, dedupStrategy, rows });
+    const res = await commitImport({ targetType, mapping, dedupStrategy, rowOverrides, rows });
     setLoading(false);
     if ("error" in res) {
       toast(res.error);
@@ -243,13 +255,193 @@ export function ImportWizard() {
           )}
 
           {(existingCount ?? 0) > 0 && (
-            <div>
-              <label className={crmLabelClass}>On duplicate email</label>
-              <select value={dedupStrategy} onChange={(e) => setDedupStrategy(e.target.value as typeof dedupStrategy)} className={crmInputClass}>
-                <option value="skip">Skip — keep the existing record as is</option>
-                <option value="overwrite">Overwrite — replace with the imported data</option>
-                <option value="merge">Merge — only fill in currently empty fields</option>
-              </select>
+            <div className="flex flex-col gap-3 bg-header/30 border border-yellow-500/30 rounded-xl p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {duplicates.length} Duplicate Record{duplicates.length === 1 ? "" : "s"} Flagged
+                    </h3>
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">
+                    Choose a global default strategy below, or customize each flagged record individually.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowDuplicatesList(!showDuplicatesList)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background/80 hover:bg-background text-foreground flex items-center gap-1.5 self-start sm:self-auto transition-colors"
+                >
+                  <Layers size={13} />
+                  <span>{showDuplicatesList ? "Hide Flagged Records" : `Inspect & Review (${duplicates.length})`}</span>
+                  {showDuplicatesList ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              </div>
+
+              {/* Batch Action Strategy Selector */}
+              <div className="pt-2 border-t border-border/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-muted uppercase tracking-wider">
+                    Batch Strategy (Applies to all duplicates):
+                  </label>
+                  {/* Reset individual overrides button if any are set */}
+                  {Object.keys(rowOverrides).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRowOverrides({})}
+                      className="text-[11px] text-accent-blue hover:underline self-start sm:self-auto"
+                    >
+                      Reset {Object.keys(rowOverrides).length} individual override(s) to match batch
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDedupStrategy("skip");
+                      setRowOverrides({});
+                    }}
+                    className={`p-2 rounded-lg text-left border transition-all text-xs ${
+                      dedupStrategy === "skip" && Object.keys(rowOverrides).length === 0
+                        ? "border-accent-blue bg-accent-blue/15 text-foreground font-semibold"
+                        : "border-border bg-background/60 text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground">Skip All</span>
+                      {dedupStrategy === "skip" && Object.keys(rowOverrides).length === 0 && <Check size={12} className="text-accent-blue" />}
+                    </div>
+                    <p className="text-[11px] text-muted mt-0.5">Keep existing CRM records untouched</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDedupStrategy("merge");
+                      setRowOverrides({});
+                    }}
+                    className={`p-2 rounded-lg text-left border transition-all text-xs ${
+                      dedupStrategy === "merge" && Object.keys(rowOverrides).length === 0
+                        ? "border-accent-blue bg-accent-blue/15 text-foreground font-semibold"
+                        : "border-border bg-background/60 text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground">Merge All</span>
+                      {dedupStrategy === "merge" && Object.keys(rowOverrides).length === 0 && <Check size={12} className="text-accent-blue" />}
+                    </div>
+                    <p className="text-[11px] text-muted mt-0.5">Only fill fields currently blank in CRM</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDedupStrategy("overwrite");
+                      setRowOverrides({});
+                    }}
+                    className={`p-2 rounded-lg text-left border transition-all text-xs ${
+                      dedupStrategy === "overwrite" && Object.keys(rowOverrides).length === 0
+                        ? "border-accent-blue bg-accent-blue/15 text-foreground font-semibold"
+                        : "border-border bg-background/60 text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground">Overwrite All</span>
+                      {dedupStrategy === "overwrite" && Object.keys(rowOverrides).length === 0 && <Check size={12} className="text-accent-blue" />}
+                    </div>
+                    <p className="text-[11px] text-muted mt-0.5">Replace CRM data with spreadsheet values</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* INDIVIDUAL DUPLICATE PREVIEW & ACTION STRIP */}
+              {showDuplicatesList && (
+                <div className="flex flex-col gap-2.5 mt-2 pt-3 border-t border-border/60 max-h-96 overflow-y-auto pr-1 scrollbar-thin">
+                  <span className="text-xs font-semibold text-foreground">
+                    Flagged Records Comparison & Individual Decision:
+                  </span>
+                  {duplicates.map((dup, i) => {
+                    const rowNum = dup.rowIndex + 1;
+                    const action = rowOverrides[dup.rowIndex] || dedupStrategy;
+                    const incName = mapping.name ? dup.incoming[mapping.name] : "";
+                    const incEmail = mapping.email ? dup.incoming[mapping.email] : "";
+                    const incPhone = mapping.phone ? dup.incoming[mapping.phone] : "";
+                    const incCompany = mapping.company ? dup.incoming[mapping.company] : "";
+
+                    return (
+                      <div
+                        key={i}
+                        className="bg-background/90 border border-border rounded-xl p-3 flex flex-col gap-2 text-xs"
+                      >
+                        {/* Header: Row # + Match Reason + Action pill */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1.5 border-b border-border/40">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground">Row #{rowNum}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-yellow-400/10 text-yellow-400 border border-yellow-400/20">
+                              {dup.matchReason}
+                            </span>
+                            {dup.existing.current_stage_key && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-header text-muted border border-border">
+                                Stage: {dup.existing.current_stage_key}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Individual Strategy Picker */}
+                          <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                            <span className="text-[11px] text-muted">Action:</span>
+                            <select
+                              value={action}
+                              onChange={(e) =>
+                                setRowOverrides((prev) => ({
+                                  ...prev,
+                                  [dup.rowIndex]: e.target.value as "skip" | "overwrite" | "merge",
+                                }))
+                              }
+                              className="bg-header border border-border rounded-lg px-2 py-1 text-xs text-foreground focus:border-accent-blue outline-none cursor-pointer font-medium"
+                            >
+                              <option value="skip">Skip (Discard)</option>
+                              <option value="merge">Merge (Fill Blanks)</option>
+                              <option value="overwrite">Overwrite (Replace)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Side-by-Side Comparison: Existing Database vs Spreadsheet Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                          <div className="bg-header/40 p-2 rounded-lg border border-border/60">
+                            <span className="font-bold text-muted block uppercase text-[10px] mb-1">
+                              Existing In CRM:
+                            </span>
+                            <div className="space-y-0.5 text-muted">
+                              <p><span className="text-foreground font-medium">Name:</span> {dup.existing.name || "—"}</p>
+                              <p><span className="text-foreground font-medium">Email:</span> {dup.existing.email || "—"}</p>
+                              <p><span className="text-foreground font-medium">Phone:</span> {dup.existing.phone || "—"}</p>
+                              <p><span className="text-foreground font-medium">Company:</span> {dup.existing.company || "—"}</p>
+                            </div>
+                          </div>
+
+                          <div className="bg-accent-blue/5 p-2 rounded-lg border border-accent-blue/20">
+                            <span className="font-bold text-accent-blue block uppercase text-[10px] mb-1">
+                              New In Spreadsheet:
+                            </span>
+                            <div className="space-y-0.5 text-muted">
+                              <p><span className="text-foreground font-medium">Name:</span> {incName || "—"}</p>
+                              <p><span className="text-foreground font-medium">Email:</span> {incEmail || "—"}</p>
+                              <p><span className="text-foreground font-medium">Phone:</span> {incPhone || "—"}</p>
+                              <p><span className="text-foreground font-medium">Company:</span> {incCompany || "—"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

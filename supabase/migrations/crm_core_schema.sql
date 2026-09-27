@@ -107,7 +107,7 @@ insert into public.crm_settings (id) values ('default') on conflict (id) do noth
 
 -- Default journey seed (matches the 5-stage pipeline in the implementation plan)
 insert into public.crm_journeys (name, stages, is_default)
-select 'Default pipeline',
+select 'Conversion Stages',
   '[
     {"key":"lead","label":"Lead","position":0,"is_won":false,"is_lost":false},
     {"key":"contacted","label":"Contacted","position":1,"is_won":false,"is_lost":false},

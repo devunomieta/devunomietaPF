@@ -12,6 +12,7 @@ type ImportPayload = {
   targetType: "client" | "lead";
   mapping: Record<string, string>; // crmField -> spreadsheet header
   dedupStrategy: "skip" | "overwrite" | "merge";
+  rowOverrides?: Record<number, "skip" | "overwrite" | "merge">; // per-row strategy overrides
   rows: Record<string, string>[];
   stats?: { imported: number; updated: number; skipped: number };
 };
@@ -53,35 +54,79 @@ export async function processImportJobBatch(
   }
   const firstStage = defaultJourney?.stages?.sort((a, b) => a.position - b.position)[0];
 
+  function cleanPhone(raw: unknown): string {
+    if (!raw) return "";
+    return String(raw).replace(/[^\d+]/g, "").trim();
+  }
+
   const records = batch.map((row) => buildRecordFromRow(row, mapping));
   for (const record of records) {
     if (typeof record.email === "string" && !EMAIL_RE.test(record.email)) delete record.email;
   }
-  const emails = records.map((r) => (typeof r.email === "string" ? r.email.toLowerCase() : null)).filter(Boolean) as string[];
 
+  // Pre-fetch candidate records from database for this table
+  // to perform fast, robust multi-field matching
+  const { data: allExisting } = await supabase.from(table).select("*");
+  
   const existingByEmail = new Map<string, { id: string } & Record<string, unknown>>();
-  if (emails.length > 0) {
-    const { data: existing } = await supabase.from(table).select("*").in("email", emails);
-    for (const row of existing || []) {
-      if (row.email) existingByEmail.set(String(row.email).toLowerCase(), row);
+  const existingByPhone = new Map<string, { id: string } & Record<string, unknown>>();
+  const existingByNameCompany = new Map<string, { id: string } & Record<string, unknown>>();
+
+  for (const row of allExisting || []) {
+    if (row.email) {
+      existingByEmail.set(String(row.email).trim().toLowerCase(), row);
+    }
+    const ph = cleanPhone(row.phone);
+    if (ph && ph.length >= 7) {
+      existingByPhone.set(ph, row);
+      existingByPhone.set(ph.replace(/^\+/, ""), row);
+    }
+    const n = String(row.name || "").trim().toLowerCase();
+    const c = String(row.company || "").trim().toLowerCase();
+    if (n) {
+      existingByNameCompany.set(`${n}:::${c}`, row);
     }
   }
 
-  for (const record of records) {
+  const rowOverrides = job.payload.rowOverrides || {};
+
+  for (let bIdx = 0; bIdx < records.length; bIdx++) {
+    const record = records[bIdx];
+    const globalRowIndex = job.progress + bIdx;
+    const effectiveStrategy = rowOverrides[globalRowIndex] || dedupStrategy;
+
     const name = typeof record.name === "string" ? record.name.trim() : "";
     if (!name) {
       stats.skipped++;
       continue;
     }
-    const email = typeof record.email === "string" ? record.email.toLowerCase() : null;
-    const existing = email ? existingByEmail.get(email) : undefined;
+    const email = typeof record.email === "string" ? record.email.trim().toLowerCase() : null;
+    const phone = typeof record.phone === "string" ? cleanPhone(record.phone) : null;
+    const company = typeof record.company === "string" ? record.company.trim().toLowerCase() : "";
+    const nameLower = name.toLowerCase();
+
+    // Multi-field matching priority:
+    // 1. Email match
+    // 2. Phone match (normalized digits)
+    // 3. Name + Company match (or Name alone if both have no company)
+    let existing: ({ id: string } & Record<string, unknown>) | undefined;
+
+    if (email && existingByEmail.has(email)) {
+      existing = existingByEmail.get(email);
+    } else if (phone && (existingByPhone.has(phone) || existingByPhone.has(phone.replace(/^\+/, "")))) {
+      existing = existingByPhone.get(phone) || existingByPhone.get(phone.replace(/^\+/, ""));
+    } else if (nameLower && company && existingByNameCompany.has(`${nameLower}:::${company}`)) {
+      existing = existingByNameCompany.get(`${nameLower}:::${company}`);
+    } else if (nameLower && !company && existingByNameCompany.has(`${nameLower}:::`)) {
+      existing = existingByNameCompany.get(`${nameLower}:::`);
+    }
 
     if (existing) {
-      if (dedupStrategy === "skip") {
+      if (effectiveStrategy === "skip") {
         stats.skipped++;
         continue;
       }
-      if (dedupStrategy === "overwrite") {
+      if (effectiveStrategy === "overwrite") {
         await supabase.from(table).update(record).eq("id", existing.id);
         stats.updated++;
         continue;
