@@ -3,7 +3,7 @@ import { logout } from '@/app/login/actions';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send, Settings, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send, Settings, Lightbulb, ArrowUpRight } from 'lucide-react';
 
 export default async function ManageLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -76,6 +76,16 @@ export default async function ManageLayout({ children }: { children: React.React
                 )}
               </Link>
             ))}
+            <div className="my-2 border-t border-border"></div>
+            <Link
+              href="/crm"
+              className="flex items-center justify-between px-3 py-2 text-sm text-accent-blue hover:bg-accent-blue/10 rounded-md transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <ArrowUpRight size={16} />
+                CRM Portal
+              </div>
+            </Link>
             <div className="my-2 border-t border-border"></div>
             <form action={logout}>
               <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">

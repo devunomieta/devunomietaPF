@@ -1,4 +1,9 @@
-export async function sendEmail({ to, subject, htmlContent }: { to: { email: string, name?: string }[], subject: string, htmlContent: string }) {
+export async function sendEmail({ to, subject, htmlContent, attachments }: {
+  to: { email: string, name?: string }[],
+  subject: string,
+  htmlContent: string,
+  attachments?: { name: string, content: string }[], // content = base64
+}) {
   const apiKey = process.env.BREVO_API_KEY
   const senderEmail = process.env.BREVO_SENDER_EMAIL
   const senderName = process.env.BREVO_SENDER_NAME || 'Portfolio Admin'
@@ -21,6 +26,7 @@ export async function sendEmail({ to, subject, htmlContent }: { to: { email: str
         to: to,
         subject: subject,
         htmlContent: htmlContent,
+        ...(attachments && attachments.length > 0 ? { attachment: attachments } : {}),
       }),
     })
 
