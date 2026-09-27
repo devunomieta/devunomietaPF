@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Loader2,
   Search,
   Filter,
@@ -110,6 +111,25 @@ export function JourneyBoard({ pipelineName, stages, leads: initialLeads }: Jour
   // Quick Lead Drawer / Preview state
   const [selectedLead, setSelectedLead] = useState<CrmLead | null>(null);
 
+  // Tag filter dropdown menu state
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
+  const [tagFilterQuery, setTagFilterQuery] = useState("");
+  const tagDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target as Node)) {
+        setTagMenuOpen(false);
+      }
+    }
+    if (tagMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [tagMenuOpen]);
+
   // Categorize stages
   const openStages = useMemo(() => stages.filter((s) => !s.is_won && !s.is_lost), [stages]);
   const terminalStages = useMemo(() => stages.filter((s) => s.is_won || s.is_lost), [stages]);
@@ -125,6 +145,13 @@ export function JourneyBoard({ pipelineName, stages, leads: initialLeads }: Jour
     });
     return Array.from(set).sort();
   }, [leads]);
+
+  // Filtered tags for the dropdown search
+  const filteredDropdownTags = useMemo(() => {
+    if (!tagFilterQuery.trim()) return availableTags;
+    const q = tagFilterQuery.toLowerCase().trim();
+    return availableTags.filter((t) => t.toLowerCase().includes(q));
+  }, [availableTags, tagFilterQuery]);
 
   // Total metrics
   const totalLeadsCount = leads.length;
@@ -331,8 +358,8 @@ export function JourneyBoard({ pipelineName, stages, leads: initialLeads }: Jour
         </div>
 
         {/* Action Bar & High-level summary badges */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 bg-background/60 border border-border px-3 py-1.5 rounded-xl text-xs text-muted">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="hidden sm:flex items-center gap-2 bg-background/60 border border-border px-3 h-9 rounded-xl text-xs text-muted whitespace-nowrap">
             <span className="flex items-center gap-1.5 font-medium text-foreground">
               <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
               {activeCount} Active
@@ -350,29 +377,29 @@ export function JourneyBoard({ pipelineName, stages, leads: initialLeads }: Jour
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-header/60 border border-border rounded-xl p-1">
+          <div className="flex items-center bg-header/60 border border-border rounded-xl p-0.5 h-9 shrink-0">
             <button
               onClick={() => setViewMode("kanban")}
               title="Kanban Board View"
-              className={`p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 h-full rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                 viewMode === "kanban"
                   ? "bg-accent-blue text-white shadow-sm"
                   : "text-muted hover:text-foreground"
               }`}
             >
-              <LayoutGrid size={15} />
+              <LayoutGrid size={14} />
               <span className="hidden md:inline">Board</span>
             </button>
             <button
               onClick={() => setViewMode("list")}
               title="Compact Grouped List View"
-              className={`p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 h-full rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                 viewMode === "list"
                   ? "bg-accent-blue text-white shadow-sm"
                   : "text-muted hover:text-foreground"
               }`}
             >
-              <List size={15} />
+              <List size={14} />
               <span className="hidden md:inline">List</span>
             </button>
           </div>
@@ -383,111 +410,203 @@ export function JourneyBoard({ pipelineName, stages, leads: initialLeads }: Jour
               setQuickAddDefaultStage(openStages[0]?.key);
               setQuickAddOpen(true);
             }}
-            className="px-3.5 py-1.5 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-xl transition-all text-xs sm:text-sm font-medium flex items-center gap-1.5 shadow-sm active:scale-95"
+            className="px-3.5 h-9 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-xl transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 whitespace-nowrap"
           >
-            <Plus size={16} />
+            <Plus size={15} />
             <span>Add Lead</span>
           </button>
         </div>
       </div>
 
       {/* Filter, Search & Sorting Control Strip */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-header/15 border border-border/60 p-3 rounded-xl">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+      <div className="flex flex-col gap-3 bg-header/20 border border-border/70 p-3 rounded-2xl shadow-xs">
+        {/* Top Row: Search Input + Tag Filter + Sort Dropdown */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           {/* Search bar */}
-          <div className="relative flex-1 min-w-[200px] max-w-md">
+          <div className="relative flex-1 max-w-md">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search leads by name, company, email, tag..."
-              className="w-full bg-background/80 border border-border rounded-xl pl-9 pr-8 py-1.5 text-xs sm:text-sm text-foreground placeholder:text-muted/70 focus:border-accent-blue outline-none transition-all"
+              className="w-full bg-background/80 border border-border rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted/70 focus:border-accent-blue outline-none transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground p-0.5 rounded-full hover:bg-header"
               >
                 <X size={14} />
               </button>
             )}
           </div>
 
-          {/* Stage Filter Dropdown/Pills for Mobile & Quick Filtering */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-full scrollbar-none">
-            <button
-              onClick={() => setActiveStageFilter("all")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-all border ${
-                activeStageFilter === "all"
-                  ? "bg-foreground text-background border-foreground font-semibold"
-                  : "bg-background/40 border-border text-muted hover:text-foreground"
-              }`}
-            >
-              All Stages
-            </button>
-            {allColumns.map((st) => {
-              const count = leads.filter((l) => l.current_stage_key === st.key).length;
-              const isActive = activeStageFilter === st.key;
-              return (
+          {/* Right side: Tag Filter & Sort Controls aligned together */}
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            {/* Custom Searchable & Scrollable Tag Selector */}
+            {availableTags.length > 0 && (
+              <div className="relative" ref={tagDropdownRef}>
                 <button
-                  key={st.key}
-                  onClick={() => setActiveStageFilter(isActive ? "all" : st.key)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-all border flex items-center gap-1.5 ${
-                    isActive
-                      ? "bg-accent-blue/15 text-accent-blue border-accent-blue/40 font-semibold"
-                      : "bg-background/40 border-border text-muted hover:text-foreground"
-                  }`}
+                  type="button"
+                  onClick={() => {
+                    setTagMenuOpen(!tagMenuOpen);
+                    setTagFilterQuery("");
+                  }}
+                  className={`flex items-center gap-1.5 bg-background/80 border ${
+                    tagMenuOpen ? "border-accent-blue ring-1 ring-accent-blue/30" : "border-border"
+                  } rounded-xl px-2.5 py-1.5 h-9 text-xs text-foreground hover:bg-header/50 transition-all cursor-pointer`}
                 >
-                  <span>{st.label}</span>
-                  <span className="text-[10px] opacity-75 font-mono">{count}</span>
+                  <Tag size={13} className="text-muted shrink-0" />
+                  <span className="font-medium max-w-[130px] truncate">
+                    {selectedTag === "all" ? "All Tags" : `#${selectedTag}`}
+                  </span>
+                  <ChevronDown
+                    size={13}
+                    className={`text-muted shrink-0 transition-transform ${tagMenuOpen ? "rotate-180" : ""}`}
+                  />
                 </button>
-              );
-            })}
+
+                {/* Dropdown Menu Popover */}
+                {tagMenuOpen && (
+                  <div className="absolute right-0 sm:left-0 sm:right-auto mt-1.5 w-64 bg-header border border-border rounded-xl shadow-xl z-50 p-2 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100">
+                    {/* Search box inside tag dropdown */}
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                      <input
+                        value={tagFilterQuery}
+                        onChange={(e) => setTagFilterQuery(e.target.value)}
+                        placeholder="Search tags..."
+                        autoFocus
+                        className="w-full bg-background/80 border border-border rounded-lg pl-7 pr-6 py-1 text-xs text-foreground placeholder:text-muted focus:border-accent-blue outline-none"
+                      />
+                      {tagFilterQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setTagFilterQuery("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Scrollable list of tags */}
+                    <div className="max-h-56 overflow-y-auto flex flex-col gap-0.5 scrollbar-thin pt-1">
+                      {/* All Tags Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTag("all");
+                          setTagMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
+                          selectedTag === "all"
+                            ? "bg-accent-blue text-white"
+                            : "text-foreground hover:bg-background/80"
+                        }`}
+                      >
+                        <span>All Tags</span>
+                        <span className="text-[10px] opacity-75">{leads.length}</span>
+                      </button>
+
+                      {filteredDropdownTags.map((tag) => {
+                        const count = leads.filter((l) => l.tags?.includes(tag)).length;
+                        const isSelected = selectedTag === tag;
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTag(tag);
+                              setTagMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between group ${
+                              isSelected
+                                ? "bg-accent-blue text-white"
+                                : "text-foreground hover:bg-background/80"
+                            }`}
+                          >
+                            <span className="truncate pr-2">#{tag}</span>
+                            <span
+                              className={`text-[10px] opacity-75 px-1 rounded ${
+                                isSelected ? "bg-white/20 text-white" : "text-muted group-hover:text-foreground"
+                              }`}
+                            >
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                      {filteredDropdownTags.length === 0 && (
+                        <p className="text-[11px] text-muted text-center py-3">No matching tags found</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Sort Selector */}
+            <div className="flex items-center gap-1.5 bg-background/80 border border-border rounded-xl px-2.5 py-1.5 h-9">
+              <ArrowUpDown size={13} className="text-muted shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="bg-transparent border-0 text-xs text-foreground focus:outline-none cursor-pointer font-medium pr-1"
+              >
+                <option value="newest" className="bg-header text-foreground">Newest First</option>
+                <option value="oldest" className="bg-header text-foreground">Oldest First</option>
+                <option value="score-desc" className="bg-header text-foreground">Highest Score</option>
+                <option value="name-asc" className="bg-header text-foreground">Alphabetical</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Right side: Tag Filter & Sort */}
-        <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
-          {/* Tag Selector */}
-          {availableTags.length > 0 && (
-            <div className="relative">
-              <select
-                value={selectedTag}
-                onChange={(e) => setSelectedTag(e.target.value)}
-                className="bg-background/80 border border-border rounded-xl px-2.5 py-1.5 text-xs text-foreground focus:border-accent-blue outline-none cursor-pointer"
+        {/* Bottom Row: Stage Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 pt-1 border-t border-border/40 scrollbar-none">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted mr-1 shrink-0">
+            Filter:
+          </span>
+          <button
+            onClick={() => setActiveStageFilter("all")}
+            className={`px-3 py-1 rounded-xl text-xs font-medium shrink-0 transition-all border ${
+              activeStageFilter === "all"
+                ? "bg-foreground text-background border-foreground font-semibold shadow-xs"
+                : "bg-background/50 border-border text-muted hover:text-foreground hover:bg-background"
+            }`}
+          >
+            All Stages
+          </button>
+          {allColumns.map((st) => {
+            const count = leads.filter((l) => l.current_stage_key === st.key).length;
+            const isActive = activeStageFilter === st.key;
+            return (
+              <button
+                key={st.key}
+                onClick={() => setActiveStageFilter(isActive ? "all" : st.key)}
+                className={`px-3 py-1 rounded-xl text-xs font-medium shrink-0 transition-all border flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-accent-blue/15 text-accent-blue border-accent-blue/40 font-semibold shadow-xs"
+                    : "bg-background/50 border-border text-muted hover:text-foreground hover:bg-background"
+                }`}
               >
-                <option value="all">All Tags</option>
-                {availableTags.map((tag) => (
-                  <option key={tag} value={tag}>
-                    #{tag}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Sort Selector */}
-          <div className="flex items-center gap-1.5 bg-background/80 border border-border rounded-xl px-2.5 py-1.5">
-            <ArrowUpDown size={13} className="text-muted" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="bg-transparent border-0 text-xs text-foreground focus:outline-none cursor-pointer font-medium"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="score-desc">Highest Score</option>
-              <option value="name-asc">Alphabetical</option>
-            </select>
-          </div>
+                <span>{st.label}</span>
+                <span className="text-[10px] opacity-75 font-mono px-1 py-0.2 rounded-full bg-header/60">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Main Content Area */}
       {viewMode === "kanban" ? (
         /* KANBAN BOARD VIEW */
-        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-3">
-          <div className="flex gap-3.5 h-full items-start min-w-max px-0.5">
+        <div className="flex-1 min-h-[500px] overflow-x-auto overflow-y-hidden pb-3">
+          <div className="flex gap-3 h-full items-stretch min-w-max px-0.5">
             {allColumns.map((stage) => {
               const stageLeads = leadsByStage.get(stage.key) || [];
               const isCollapsed = collapsedStages[stage.key];
@@ -508,24 +627,38 @@ export function JourneyBoard({ pipelineName, stages, leads: initialLeads }: Jour
                     onDragOver={(e) => handleDragOver(e, stage.key)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, stage.key)}
-                    className={`w-12 h-full bg-header/25 hover:bg-header/40 border ${
-                      isDragOver ? "border-accent-blue bg-accent-blue/10 ring-2 ring-accent-blue/30" : "border-border/70"
-                    } rounded-2xl p-2 flex flex-col items-center justify-between cursor-pointer transition-all duration-200 select-none`}
-                    title={`Expand ${stage.label} (${stageLeads.length} leads)`}
+                    className={`w-14 shrink-0 h-full min-h-[460px] bg-header/30 hover:bg-header/50 border ${
+                      isDragOver
+                        ? "border-accent-blue bg-accent-blue/10 ring-2 ring-accent-blue/30"
+                        : "border-border/80"
+                    } rounded-2xl py-3 px-1 flex flex-col items-center justify-between cursor-pointer transition-all duration-200 select-none group shadow-xs hover:border-accent-blue/40`}
+                    title={`Click to expand ${stage.label} (${stageLeads.length} leads)`}
                   >
-                    <div className="flex flex-col items-center gap-2 mt-2">
+                    {/* Top: Dot indicator + Lead count badge */}
+                    <div className="flex flex-col items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-full ${theme.dot}`} />
-                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-background/80 border border-border text-foreground">
+                      <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full border ${theme.badge}`}>
                         {stageLeads.length}
                       </span>
                     </div>
-                    <div
-                      className="text-xs font-semibold text-muted tracking-wider uppercase transform -rotate-90 whitespace-nowrap origin-center my-auto"
-                      style={{ writingMode: "vertical-rl" }}
-                    >
-                      {stage.label}
+
+                    {/* Middle: Vertical text without messy 3D transforms */}
+                    <div className="flex-1 flex items-center justify-center my-4 overflow-hidden">
+                      <span
+                        className="text-xs font-bold text-muted group-hover:text-foreground tracking-wider uppercase whitespace-nowrap transition-colors"
+                        style={{
+                          writingMode: "vertical-rl",
+                          transform: "rotate(180deg)",
+                        }}
+                      >
+                        {stage.label}
+                      </span>
                     </div>
-                    <ChevronRight size={14} className="text-muted mb-2" />
+
+                    {/* Bottom: Expand icon & hover cue */}
+                    <div className="flex flex-col items-center gap-1 text-muted group-hover:text-accent-blue transition-colors">
+                      <ChevronRight size={16} />
+                    </div>
                   </div>
                 );
               }
