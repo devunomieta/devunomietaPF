@@ -4,13 +4,14 @@ import InquiryList from './InquiryList'
 export default async function ManageInquiries({
   searchParams
 }: {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined }
 }) {
   const supabase = await createClient()
+  const resolvedSearchParams = await Promise.resolve(searchParams)
   
-  const query = typeof searchParams.query === 'string' ? searchParams.query : ''
-  const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1
-  const limit = 5
+  const query = typeof resolvedSearchParams.query === 'string' ? resolvedSearchParams.query : ''
+  const page = typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page) : 1
+  const limit = 10
   const start = (page - 1) * limit
 
   // Prepare the joined query
@@ -24,7 +25,8 @@ export default async function ManageInquiries({
   }
 
   // Fetch inquiries
-  let { data: allInquiries, error } = await dbQuery
+  const { data: rawInquiries, error } = await dbQuery
+  let allInquiries = rawInquiries
 
   // Fallback: If the joined query fails (e.g. inquiry_replies table missing), try fetching just inquiries
   if (error || !allInquiries) {
@@ -42,9 +44,34 @@ export default async function ManageInquiries({
   }
 
   // Group by email
-  const conversationsMap: Record<string, any> = {}
+  interface InquiryItem {
+    id: string
+    name: string
+    email: string
+    message: string
+    purpose?: string
+    metadata?: Record<string, string>
+    is_read: boolean
+    replied_at?: string
+    created_at: string
+    inquiry_replies?: Array<{
+      id: string
+      message: string
+      created_at: string
+    }>
+  }
+
+  interface ConversationGroup {
+    email: string
+    name: string
+    latest_at: string
+    is_read: boolean
+    inquiries: InquiryItem[]
+  }
+
+  const conversationsMap: Record<string, ConversationGroup> = {}
   
-  allInquiries?.forEach(inquiry => {
+  allInquiries?.forEach((inquiry: InquiryItem) => {
     if (!conversationsMap[inquiry.email]) {
       conversationsMap[inquiry.email] = {
         email: inquiry.email,

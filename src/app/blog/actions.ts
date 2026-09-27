@@ -3,22 +3,20 @@
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-
-
+import { sanitizeText, isValidEmail } from '@/lib/sanitize'
 
 export async function subscribeAction(formData: FormData) {
-  const name = formData.get('name') as string
-  const display_name = formData.get('display_name') as string
-  const email = formData.get('email') as string
+  const name = sanitizeText(formData.get('name') as string)
+  const display_name = sanitizeText(formData.get('display_name') as string)
+  const email = sanitizeText(formData.get('email') as string).toLowerCase()
 
   if (!name || !display_name || !email) return { error: 'All fields are required.' }
 
-  if (name.length > 100 || display_name.length > 100 || email.length > 254) {
-    return { error: 'Maximum parameter size exceeded.' }
+  if (name.length < 2 || name.length > 100 || display_name.length < 2 || display_name.length > 100) {
+    return { error: 'Name and display name must be between 2 and 100 characters.' }
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) {
+  if (!isValidEmail(email)) {
     return { error: 'Invalid email format.' }
   }
 
@@ -56,12 +54,14 @@ export async function subscribeAction(formData: FormData) {
   return { success: true }
 }
 
-export async function postCommentAction(postId: string, content: string, parentId?: string) {
+export async function postCommentAction(postId: string, rawContent: string, parentId?: string) {
   const cookieStore = await cookies()
   const subscriberId = cookieStore.get('subscriber_id')?.value
 
   if (!subscriberId) return { error: 'You must join the newsletter to comment.' }
-  if (!content.trim() || content.length < 3) return { error: 'Comment must be at least 3 characters.' }
+  
+  const content = sanitizeText(rawContent)
+  if (!content || content.length < 3) return { error: 'Comment must be at least 3 characters.' }
   if (content.length > 1000) return { error: 'Comment is too long (maximum 1000 characters).' }
 
   const supabase = await createClient()
@@ -70,7 +70,7 @@ export async function postCommentAction(postId: string, content: string, parentI
     post_id: postId,
     subscriber_id: subscriberId,
     parent_id: parentId || null,
-    content: content.trim()
+    content: content
   })
 
   if (error) return { error: 'Failed to post comment.' }

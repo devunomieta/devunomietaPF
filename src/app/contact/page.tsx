@@ -3,6 +3,7 @@ import ContactForm from './ContactForm'
 import { Mail, MessageSquare, CheckCircle2 } from 'lucide-react'
 import { NewsletterSection } from '@/components/ui/NewsletterSection'
 import { Metadata } from 'next'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Contact | Joseph Unomieta',
@@ -54,9 +55,9 @@ export default async function ContactPage({
                 </a>
               </div>
             </div>
-            <a href="/" className="mt-8 bg-header border border-border px-4 py-2 rounded-md text-sm font-semibold hover:border-accent-blue transition-colors">
+            <Link href="/" className="mt-8 bg-header border border-border px-4 py-2 rounded-md text-sm font-semibold hover:border-accent-blue transition-colors">
               Return Home
-            </a>
+            </Link>
           </div>
         ) : (
           <Suspense fallback={<div className="h-[400px] flex items-center justify-center text-muted text-sm italic">Loading form...</div>}>

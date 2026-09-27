@@ -1,22 +1,23 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
 import { sendEmail } from '@/lib/brevo'
 import { welcomeEmailTemplate } from '@/lib/email-templates'
+import { sanitizeText, isValidEmail } from '@/lib/sanitize'
 
-export async function subscribeAction(email: string, name?: string) {
-  const supabase = await createClient()
+export async function subscribeAction(rawEmail: string, rawName?: string) {
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!email || email.length > 254 || !emailRegex.test(email)) {
-    return { error: 'Invalid email format.' }
+  const email = sanitizeText(rawEmail).toLowerCase()
+  const name = rawName ? sanitizeText(rawName) : undefined
+
+  if (!email || !isValidEmail(email)) {
+    return { error: 'Please enter a valid email address.' }
   }
 
-  if (name && name.length > 100) {
-    return { error: 'Name is too long.' }
+  if (name && (name.length < 2 || name.length > 100)) {
+    return { error: 'Name must be between 2 and 100 characters.' }
   }
 
-  const cleanEmail = email.toLowerCase()
+  const cleanEmail = email
   const displayName = name || cleanEmail.split('@')[0]
   const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(displayName)}`
 

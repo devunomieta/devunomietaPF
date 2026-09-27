@@ -21,6 +21,26 @@ export async function deleteInquiry(id: string) {
   return { success: true }
 }
 
+export async function batchDeleteInquiries(ids: string[]) {
+  if (!ids || ids.length === 0) return { success: true }
+  const supabase = await requireAdmin()
+  const { error } = await supabase.from('inquiries').delete().in('id', ids)
+  if (error) return { error: error.message }
+  revalidatePath('/manage/inquiries')
+  revalidatePath('/manage')
+  return { success: true }
+}
+
+export async function batchMarkAsRead(ids: string[], isRead: boolean) {
+  if (!ids || ids.length === 0) return { success: true }
+  const supabase = await requireAdmin()
+  const { error } = await supabase.from('inquiries').update({ is_read: isRead }).in('id', ids)
+  if (error) return { error: error.message }
+  revalidatePath('/manage/inquiries')
+  revalidatePath('/manage')
+  return { success: true }
+}
+
 export async function replyToInquiry(id: string, email: string, name: string, message: string) {
   const supabase = await requireAdmin()
   

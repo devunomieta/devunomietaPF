@@ -9,13 +9,25 @@ import { requireAdmin } from '@/lib/requireAdmin'
 // ── Public ──────────────────────────────────────────────────────────────────
 export async function subscribe(formData: FormData) {
   const adminDb = createAdminClient()
-  const email = formData.get('email') as string
-  const name = formData.get('name') as string
+  const rawEmail = formData.get('email') as string
+  const rawName = formData.get('name') as string
+
+  const { sanitizeText, isValidEmail } = await import('@/lib/sanitize')
+  const email = sanitizeText(rawEmail).toLowerCase()
+  const name = sanitizeText(rawName)
+
+  if (!email || !isValidEmail(email)) {
+    return { error: 'Please enter a valid email address.' }
+  }
+
+  if (name && (name.length < 2 || name.length > 100)) {
+    return { error: 'Name must be between 2 and 100 characters.' }
+  }
 
   // Use upsert to handle re-subscriptions
   const { error } = await adminDb
     .from('subscribers')
-    .upsert([{ email, name, status: 'active' }], { onConflict: 'email' })
+    .upsert([{ email, name: name || email.split('@')[0], status: 'active' }], { onConflict: 'email' })
 
   if (error) {
     return { error: error.message }

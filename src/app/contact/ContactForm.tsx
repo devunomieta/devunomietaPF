@@ -18,6 +18,18 @@ export default function ContactForm({ error }: { error?: string }) {
 
   return (
     <form className="flex flex-col gap-5 relative z-10" action={submitInquiry}>
+      {/* Anti-spam Honeypot Field (invisible to normal users, traps automated bots) */}
+      <div className="hidden" aria-hidden="true" style={{ display: 'none' }}>
+        <label htmlFor="website_url_hp">Leave this empty</label>
+        <input
+          id="website_url_hp"
+          name="website_url_hp"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="name" className="text-xs font-semibold text-foreground uppercase tracking-wider">Your Name</label>
