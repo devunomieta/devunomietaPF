@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Send, Download, Ban, Plus, FileText } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmInvoice, CrmInvoicePayment } from "@/lib/crm/types";
 import { sendInvoice, recordPayment, voidInvoice, getReceiptSignedUrl } from "../actions";
 
@@ -25,6 +26,7 @@ const CHANNEL_LABELS: Record<string, string> = {
 };
 
 function PaymentForm({ invoiceId, onDone, onCancel }: { invoiceId: string; onDone: () => void; onCancel: () => void }) {
+  const { toast } = useCrmFeedback();
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -35,7 +37,7 @@ function PaymentForm({ invoiceId, onDone, onCancel }: { invoiceId: string; onDon
     const result = await recordPayment(formData);
     setLoading(false);
     if ("success" in result) onDone();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (
@@ -89,6 +91,7 @@ export function InvoiceDetailClient({
   client: { id: string; name: string; email: string | null; company: string | null } | null;
   payments: CrmInvoicePayment[];
 }) {
+  const { toast, confirm } = useCrmFeedback();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -100,20 +103,20 @@ export function InvoiceDetailClient({
     const result = await sendInvoice(invoice.id);
     setSending(false);
     if ("success" in result) window.location.reload();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   async function handleVoid() {
-    if (!confirm("Void this invoice? It will no longer be considered outstanding.")) return;
+    if (!(await confirm("Void this invoice? It will no longer be considered outstanding.", { danger: true, confirmLabel: "Void" }))) return;
     const result = await voidInvoice(invoice.id);
     if ("success" in result) window.location.reload();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   async function handleViewReceipt(path: string) {
     const result = await getReceiptSignedUrl(path);
     if ("url" in result) window.open(result.url, "_blank");
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (

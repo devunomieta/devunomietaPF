@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Loader2, UploadCloud, CheckCircle2, AlertTriangle } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import { parseImportFile, checkExistingEmails, commitImport } from "./actions";
 
 type Step = "upload" | "map" | "preview" | "done";
@@ -27,6 +28,7 @@ const LEAD_FIELDS = [
 ];
 
 export function ImportWizard() {
+  const { toast } = useCrmFeedback();
   const [step, setStep] = useState<Step>("upload");
   const [loading, setLoading] = useState(false);
   const [targetType, setTargetType] = useState<"client" | "lead">("lead");
@@ -51,7 +53,7 @@ export function ImportWizard() {
     const result = await parseImportFile(formData);
     setLoading(false);
     if ("error" in result) {
-      alert(result.error);
+      toast(result.error);
       return;
     }
     setHeaders(result.headers);
@@ -69,7 +71,7 @@ export function ImportWizard() {
 
   async function handleContinueToPreview() {
     if (!mapping.name) {
-      alert("Map a column to Name — it's required.");
+      toast("Map a column to Name — it's required.");
       return;
     }
     setLoading(true);
@@ -86,7 +88,7 @@ export function ImportWizard() {
     const res = await commitImport({ targetType, mapping, dedupStrategy, rows });
     setLoading(false);
     if ("error" in res) {
-      alert(res.error);
+      toast(res.error);
       return;
     }
     setResult(res);

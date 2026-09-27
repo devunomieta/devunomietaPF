@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmLead, ActionResult } from "@/lib/crm/types";
 import { saveLead } from "./actions";
 
@@ -15,6 +16,7 @@ export function LeadForm({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const { toast } = useCrmFeedback();
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -24,7 +26,7 @@ export function LeadForm({
     const result: ActionResult = await saveLead(formData, lead?.id);
     setLoading(false);
     if ("success" in result) onDone();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (

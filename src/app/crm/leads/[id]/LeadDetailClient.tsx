@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, Trash2, Loader2, ArrowRightCircle } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmLead, CrmContact, CrmStageEvent, CrmJourneyStage } from "@/lib/crm/types";
 import { LeadForm } from "../LeadForm";
 import { moveLeadStage, convertLeadToClient } from "../actions";
@@ -19,6 +20,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function ContactModal({ leadId, onDone, onCancel }: { leadId: string; onDone: () => void; onCancel: () => void }) {
+  const { toast } = useCrmFeedback();
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -28,7 +30,7 @@ function ContactModal({ leadId, onDone, onCancel }: { leadId: string; onDone: ()
     const result = await addContact(formData, { leadId });
     setLoading(false);
     if ("success" in result) onDone();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (
@@ -74,6 +76,7 @@ export function LeadDetailClient({
   stages: CrmJourneyStage[];
 }) {
   const router = useRouter();
+  const { toast, confirm } = useCrmFeedback();
   const [editOpen, setEditOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [movingStage, setMovingStage] = useState(false);
@@ -92,27 +95,27 @@ export function LeadDetailClient({
         window.location.reload();
       }
     } else {
-      alert(result.error);
+      toast(result.error);
     }
   }
 
   async function handleConvert() {
-    if (!confirm("Convert this lead into a client now?")) return;
+    if (!(await confirm("Convert this lead into a client now?", { confirmLabel: "Convert" }))) return;
     setConverting(true);
     const result = await convertLeadToClient(lead.id);
     setConverting(false);
     if ("success" in result && result.clientId) {
       router.push(`/crm/clients/${result.clientId}`);
     } else if ("error" in result) {
-      alert(result.error);
+      toast(result.error);
     }
   }
 
   async function handleDeleteContact(id: string) {
-    if (!confirm("Remove this contact?")) return;
+    if (!(await confirm("Remove this contact?", { danger: true, confirmLabel: "Remove" }))) return;
     const result = await deleteContact(id, { leadId: lead.id });
     if ("success" in result) window.location.reload();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (

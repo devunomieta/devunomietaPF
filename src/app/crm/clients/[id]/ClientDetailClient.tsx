@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmClient, CrmContact, CrmStageEvent, CrmInvoice } from "@/lib/crm/types";
 import { ClientForm } from "../ClientForm";
 import { addContact, deleteContact } from "../actions";
@@ -18,6 +19,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function ContactModal({ clientId, onDone, onCancel }: { clientId: string; onDone: () => void; onCancel: () => void }) {
+  const { toast } = useCrmFeedback();
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -27,7 +29,7 @@ function ContactModal({ clientId, onDone, onCancel }: { clientId: string; onDone
     const result = await addContact(formData, { clientId });
     setLoading(false);
     if ("success" in result) onDone();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (
@@ -72,14 +74,15 @@ export function ClientDetailClient({
   stageEvents: CrmStageEvent[];
   invoices: CrmInvoice[];
 }) {
+  const { toast, confirm } = useCrmFeedback();
   const [editOpen, setEditOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
 
   async function handleDeleteContact(id: string) {
-    if (!confirm("Remove this contact?")) return;
+    if (!(await confirm("Remove this contact?", { danger: true, confirmLabel: "Remove" }))) return;
     const result = await deleteContact(id, { clientId: client.id });
     if ("success" in result) window.location.reload();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (

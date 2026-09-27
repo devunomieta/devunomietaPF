@@ -18,7 +18,9 @@ import {
   LogOut,
   Menu,
   X,
+  ArrowLeftCircle,
 } from "lucide-react";
+import { CrmFeedbackProvider } from "./CrmFeedbackProvider";
 
 type NavLink = {
   name: string;
@@ -97,6 +99,7 @@ export function CrmShell({
   const links: NavLink[] = navLinks.map((l) => ({ ...l, icon: ICONS[l.icon] }));
 
   return (
+    <CrmFeedbackProvider>
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Mobile top bar */}
       <div className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-header/50 sticky top-0 z-40">
@@ -122,7 +125,14 @@ export function CrmShell({
             <NavList links={links} pathname={pathname} />
           </div>
           <div className="mt-auto p-4 border-t border-border">
-            <p className="px-3 text-xs text-muted truncate mb-2">{adminEmail}</p>
+            <Link
+              href="/manage"
+              className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors mb-1"
+            >
+              <ArrowLeftCircle size={16} />
+              Back to /manage
+            </Link>
+            <p className="px-3 text-xs text-muted truncate mb-2 mt-2">{adminEmail}</p>
             <form action={logoutAction}>
               <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">
                 <LogOut size={16} />
@@ -152,7 +162,15 @@ export function CrmShell({
               </div>
               <NavList links={links} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
               <div className="mt-auto pt-4 border-t border-border">
-                <p className="px-3 text-xs text-muted truncate mb-2">{adminEmail}</p>
+                <Link
+                  href="/manage"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors mb-1"
+                >
+                  <ArrowLeftCircle size={16} />
+                  Back to /manage
+                </Link>
+                <p className="px-3 text-xs text-muted truncate mb-2 mt-2">{adminEmail}</p>
                 <form action={logoutAction}>
                   <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">
                     <LogOut size={16} />
@@ -168,5 +186,6 @@ export function CrmShell({
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
+    </CrmFeedbackProvider>
   );
 }

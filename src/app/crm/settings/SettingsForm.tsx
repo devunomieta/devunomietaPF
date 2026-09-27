@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmSettings } from "@/lib/crm/types";
 import { saveSettings, checkWhatsAppConnection } from "./actions";
 
 export function SettingsForm({ settings, whatsappConfigured }: { settings: CrmSettings; whatsappConfigured: boolean }) {
+  const { toast } = useCrmFeedback();
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [connectionState, setConnectionState] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export function SettingsForm({ settings, whatsappConfigured }: { settings: CrmSe
     const result = await saveSettings(formData);
     setLoading(false);
     if ("success" in result) window.location.reload();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   async function handleCheckConnection() {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Send, Users } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { sendSingleWhatsApp, createBulkWhatsApp, previewWhatsAppAudienceCount } from "./actions";
 
@@ -19,6 +20,7 @@ export function WhatsAppForm({
   prefillRecipient: PrefillRecipient | null;
 }) {
   const router = useRouter();
+  const { toast } = useCrmFeedback();
   const [mode, setMode] = useState<"single" | "bulk">(prefillRecipient ? "single" : "bulk");
   const [segment, setSegment] = useState<"clients" | "leads">("leads");
   const [tags, setTags] = useState("");
@@ -46,7 +48,7 @@ export function WhatsAppForm({
     const result = mode === "single" ? await sendSingleWhatsApp(formData) : await createBulkWhatsApp(formData);
     setLoading(false);
     if ("success" in result) router.refresh();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   return (

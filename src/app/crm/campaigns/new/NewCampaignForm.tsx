@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Send, Users } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { sendSingleEmail, createBulkCampaign, previewAudienceCount } from "../actions";
 
@@ -17,6 +18,7 @@ export function NewCampaignForm({
   prefillRecipient: PrefillRecipient | null;
 }) {
   const router = useRouter();
+  const { toast } = useCrmFeedback();
   const [mode, setMode] = useState<"single" | "bulk">(prefillRecipient ? "single" : "bulk");
   const [segment, setSegment] = useState<"clients" | "leads">("leads");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
@@ -46,7 +48,7 @@ export function NewCampaignForm({
     if ("success" in result) {
       router.push("/crm/campaigns");
     } else {
-      alert(result.error);
+      toast(result.error);
     }
   }
 

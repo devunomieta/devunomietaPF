@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import { createInvoice } from "../actions";
 
 type LineItem = { description: string; qty: string; unit_price: string };
@@ -20,6 +21,7 @@ export function NewInvoiceForm({
   defaultTaxRate: number;
 }) {
   const router = useRouter();
+  const { toast } = useCrmFeedback();
   const [items, setItems] = useState<LineItem[]>([{ description: "", qty: "1", unit_price: "" }]);
   const [taxRate, setTaxRate] = useState(String(defaultTaxRate));
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,7 @@ export function NewInvoiceForm({
     if ("success" in result && result.invoiceId) {
       router.push(`/crm/invoices/${result.invoiceId}`);
     } else if ("error" in result) {
-      alert(result.error);
+      toast(result.error);
     }
   }
 

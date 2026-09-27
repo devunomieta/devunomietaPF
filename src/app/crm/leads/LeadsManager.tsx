@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Search, UploadCloud, Trash2 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { CrmModal, crmInputClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmLead } from "@/lib/crm/types";
 import { deleteLead } from "./actions";
 import { LeadForm } from "./LeadForm";
@@ -16,6 +17,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
+  const { toast, confirm } = useCrmFeedback();
   const [leads] = useState(initialLeads);
   const [query, setQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,10 +31,10 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
   }, [leads, query]);
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this lead? This cannot be undone.")) return;
+    if (!(await confirm("Delete this lead? This cannot be undone.", { danger: true, confirmLabel: "Delete" }))) return;
     const result = await deleteLead(id);
     if ("success" in result) window.location.reload();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   const columns: CrmColumn<CrmLead>[] = [

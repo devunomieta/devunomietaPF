@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
 import type { CrmLead, CrmJourneyStage } from "@/lib/crm/types";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import { moveLeadStage } from "../leads/actions";
 
 export function JourneyBoard({ stages, leads }: { stages: CrmJourneyStage[]; leads: CrmLead[] }) {
   const router = useRouter();
+  const { toast } = useCrmFeedback();
   const [movingId, setMovingId] = useState<string | null>(null);
 
   const openStages = stages.filter((s) => !s.is_won && !s.is_lost);
@@ -28,7 +30,7 @@ export function JourneyBoard({ stages, leads }: { stages: CrmJourneyStage[]; lea
       if (result.clientId) router.push(`/crm/clients/${result.clientId}`);
       else router.refresh();
     } else {
-      alert(result.error);
+      toast(result.error);
     }
   }
 

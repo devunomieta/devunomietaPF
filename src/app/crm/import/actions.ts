@@ -5,7 +5,11 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { parseSpreadsheet } from "@/lib/crm/spreadsheet";
 import { processImportJobBatch } from "@/lib/crm/jobs";
 
-export async function parseImportFile(formData: FormData) {
+type ParseResult =
+  | { error: string }
+  | { success: true; headers: string[]; rows: Record<string, string>[] };
+
+export async function parseImportFile(formData: FormData): Promise<ParseResult> {
   await requireAdmin();
 
   const file = formData.get("file") as File | null;
@@ -35,6 +39,17 @@ export async function checkExistingEmails(targetType: "client" | "lead", emails:
   return { existing: (data || []).map((r) => String(r.email).toLowerCase()) };
 }
 
+type CommitResult =
+  | { error: string }
+  | {
+      success: true;
+      jobId: string;
+      done: boolean;
+      progress: number;
+      total: number;
+      stats?: { imported: number; updated: number; skipped: number };
+    };
+
 export async function commitImport({
   targetType,
   mapping,
@@ -45,7 +60,7 @@ export async function commitImport({
   mapping: Record<string, string>;
   dedupStrategy: "skip" | "overwrite" | "merge";
   rows: Record<string, string>[];
-}) {
+}): Promise<CommitResult> {
   const supabase = await requireAdmin();
 
   if (!mapping.name) return { error: "Map a column to Name — it's required." };
@@ -89,6 +104,6 @@ export async function commitImport({
     done: finalJob?.status === "done",
     progress: finalJob?.progress ?? 0,
     total: finalJob?.total ?? rows.length,
-    stats: finalJob?.payload?.stats,
+    stats: (finalJob?.payload as { stats?: { imported: number; updated: number; skipped: number } } | null)?.stats,
   };
 }

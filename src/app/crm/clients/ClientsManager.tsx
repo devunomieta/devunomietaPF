@@ -5,11 +5,13 @@ import Link from "next/link";
 import { Plus, Search, UploadCloud, Trash2 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { CrmModal, crmInputClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmClient } from "@/lib/crm/types";
 import { deleteClient } from "./actions";
 import { ClientForm } from "./ClientForm";
 
 export function ClientsManager({ initialClients }: { initialClients: CrmClient[] }) {
+  const { toast, confirm } = useCrmFeedback();
   const [clients] = useState(initialClients);
   const [query, setQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,10 +31,10 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this client? This cannot be undone.")) return;
+    if (!(await confirm("Delete this client? This cannot be undone.", { danger: true, confirmLabel: "Delete" }))) return;
     const result = await deleteClient(id);
     if ("success" in result) window.location.reload();
-    else alert(result.error);
+    else toast(result.error);
   }
 
   const columns: CrmColumn<CrmClient>[] = [
