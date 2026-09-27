@@ -40,7 +40,7 @@ export function ResponsiveTable<T extends { id: string }>({
             {rows.map((row) => (
               <tr
                 key={row.id}
-                onClick={() => onRowClick?.(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={`border-b border-border/50 ${onRowClick ? "cursor-pointer hover:bg-accent-blue/5" : ""}`}
               >
                 {columns.map((c) => (
@@ -58,7 +58,7 @@ export function ResponsiveTable<T extends { id: string }>({
         {rows.map((row) => (
           <div
             key={row.id}
-            onClick={() => onRowClick?.(row)}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
             className={`p-3 rounded-lg border border-border bg-header/20 ${onRowClick ? "cursor-pointer active:bg-accent-blue/5" : ""}`}
           >
             {columns.map((c) => (
