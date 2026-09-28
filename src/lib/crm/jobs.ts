@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/brevo";
 import { sendWhatsAppMessage } from "@/lib/crm/green-api";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { personalizeText } from "@/lib/crm/personalization";
+import { spinText } from "@/lib/crm/spintax";
 
 const IMPORT_BATCH_SIZE = 200;
 const BULK_SEND_BATCH_SIZE = 20;
@@ -262,8 +263,20 @@ export async function processBulkWhatsAppJobBatch(
     return { processed: 0, done: true };
   }
 
-  for (const recipient of batch) {
-    const personalized = personalizeText(message, recipient);
+  // Intermittent pause configuration: pause every 5 to 10 messages
+  // We randomly pick a threshold between 5 and 10 messages for a block
+  let messagesUntilPause = Math.floor(Math.random() * (10 - 5 + 1)) + 5; // 5 - 10
+  let sentInSession = 0;
+
+  for (let i = 0; i < batch.length; i++) {
+    const recipient = batch[i];
+    
+    // 1. Spintax: Each recipient gets a uniquely spun copy of the message template
+    const spunMessage = spinText(message);
+    
+    // 2. Personalize with {{first_name}}, {{company}}, etc.
+    const personalized = personalizeText(spunMessage, recipient);
+
     const result = await sendWhatsAppMessage({ phone: recipient.phone, message: personalized });
     const { error: logError } = await supabase.from("crm_whatsapp_events").insert([
       {
@@ -277,8 +290,29 @@ export async function processBulkWhatsAppJobBatch(
       },
     ]);
     if (logError) console.error(`crm_whatsapp_events insert failed for ${recipient.phone}:`, logError.message);
-    // Space sends out — GREEN-API/WhatsApp penalizes rapid-fire bulk messages.
-    await new Promise((r) => setTimeout(r, 1200));
+
+    sentInSession++;
+
+    // Only apply delay if there are more messages to send in this batch
+    if (i < batch.length - 1) {
+      // Check if we hit the intermittent pause threshold (every 5-10 messages)
+      if (sentInSession >= messagesUntilPause) {
+        // Intermittent pause: 5 to 10 minutes (in ms)
+        const pauseMinutes = Math.floor(Math.random() * (10 - 5 + 1)) + 5; // 5 to 10 mins
+        const pauseMs = pauseMinutes * 60 * 1000;
+        console.log(`[WhatsApp Batch] Intermittent protective pause for ${pauseMinutes} minutes (${pauseMs}ms) after ${sentInSession} messages.`);
+        await new Promise((r) => setTimeout(r, pauseMs));
+        
+        // Reset counter and pick next random threshold (5-10)
+        sentInSession = 0;
+        messagesUntilPause = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
+      } else {
+        // Standard Randomized Delay: 40s to 70s jitter
+        const jitterMs = Math.floor(Math.random() * (70000 - 40000 + 1)) + 40000;
+        console.log(`[WhatsApp Batch] Jitter delay: ${(jitterMs / 1000).toFixed(1)}s before next message.`);
+        await new Promise((r) => setTimeout(r, jitterMs));
+      }
+    }
   }
 
   const newProgress = job.progress + batch.length;
