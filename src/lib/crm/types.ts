@@ -121,6 +121,7 @@ export type CrmInvoiceStatus =
   | "viewed"
   | "partially_paid"
   | "paid"
+  | "overpaid"
   | "overdue"
   | "void";
 

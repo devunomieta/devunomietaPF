@@ -14,6 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
   viewed: "bg-accent-blue/15 text-accent-blue",
   partially_paid: "bg-yellow-400/15 text-yellow-400",
   paid: "bg-accent-green/15 text-accent-green",
+  overpaid: "bg-purple-500/15 text-purple-400 border border-purple-500/30",
   overdue: "bg-red-400/15 text-red-400",
   void: "bg-muted/20 text-muted line-through",
 };
@@ -26,9 +27,28 @@ const CHANNEL_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function PaymentForm({ invoiceId, onDone, onCancel }: { invoiceId: string; onDone: () => void; onCancel: () => void }) {
+function PaymentForm({
+  invoiceId,
+  invoiceTotal,
+  currentPaid,
+  currency,
+  onDone,
+  onCancel,
+}: {
+  invoiceId: string;
+  invoiceTotal: number;
+  currentPaid: number;
+  currency: string;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
   const { toast } = useCrmFeedback();
   const [loading, setLoading] = useState(false);
+  const [amountVal, setAmountVal] = useState<string>("");
+
+  const numAmount = parseFloat(amountVal) || 0;
+  const isOverpaying = invoiceTotal > 0 && currentPaid + numAmount > invoiceTotal;
+  const overpayAmount = Math.max(0, currentPaid + numAmount - invoiceTotal);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,7 +66,17 @@ function PaymentForm({ invoiceId, onDone, onCancel }: { invoiceId: string; onDon
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className={crmLabelClass} htmlFor="amount">Amount *</label>
-          <input id="amount" name="amount" type="number" min="0" step="0.01" required className={crmInputClass} />
+          <input
+            id="amount"
+            name="amount"
+            type="number"
+            min="0"
+            step="0.01"
+            required
+            value={amountVal}
+            onChange={(e) => setAmountVal(e.target.value)}
+            className={crmInputClass}
+          />
         </div>
         <div>
           <label className={crmLabelClass} htmlFor="channel">Channel *</label>
@@ -58,6 +88,28 @@ function PaymentForm({ invoiceId, onDone, onCancel }: { invoiceId: string; onDon
           </select>
         </div>
       </div>
+
+      {isOverpaying && (
+        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 text-xs flex flex-col gap-2">
+          <div className="flex items-center justify-between text-purple-300 font-medium">
+            <span>Overpayment Detected</span>
+            <span>+{formatMoney(overpayAmount, currency)} excess</span>
+          </div>
+          <div>
+            <label className={`${crmLabelClass} text-purple-300`} htmlFor="overpaymentReason">
+              Reason / Comment for Overpayment *
+            </label>
+            <input
+              id="overpaymentReason"
+              name="overpaymentReason"
+              required
+              placeholder="e.g., Retainer advance, tip, round-up, or client overpaid"
+              className={`${crmInputClass} border-purple-500/40 focus:border-purple-400`}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className={crmLabelClass} htmlFor="paidAt">Date paid</label>
@@ -170,7 +222,17 @@ export function InvoiceDetailClient({
             {invoice.tax_rate > 0 && <div className="flex justify-between text-muted"><span>Tax ({invoice.tax_rate}%)</span><span>{formatMoney(invoice.tax_amount, invoice.currency)}</span></div>}
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1"><span>Total</span><span>{formatMoney(invoice.total, invoice.currency)}</span></div>
             <div className="flex justify-between text-accent-green"><span>Paid</span><span>{formatMoney(totalPaid, invoice.currency)}</span></div>
-            <div className="flex justify-between font-semibold"><span>Balance</span><span>{formatMoney(balance, invoice.currency)}</span></div>
+            {balance < 0 ? (
+              <div className="flex justify-between font-semibold text-purple-400">
+                <span>Overpay</span>
+                <span>+{formatMoney(Math.abs(balance), invoice.currency)}</span>
+              </div>
+            ) : (
+              <div className="flex justify-between font-semibold">
+                <span>Balance</span>
+                <span>{formatMoney(balance, invoice.currency)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -200,14 +262,21 @@ export function InvoiceDetailClient({
         </div>
       </div>
 
-      {invoice.status !== "void" && invoice.status !== "paid" && (
+      {invoice.status !== "void" && invoice.status !== "paid" && invoice.status !== "overpaid" && (
         <button onClick={handleVoid} className="text-sm text-red-400 hover:underline self-start inline-flex items-center gap-1">
           <Ban size={14} /> Void this invoice
         </button>
       )}
 
       <CrmModal open={paymentOpen} onClose={() => setPaymentOpen(false)} title="Record a payment">
-        <PaymentForm invoiceId={invoice.id} onCancel={() => setPaymentOpen(false)} onDone={() => window.location.reload()} />
+        <PaymentForm
+          invoiceId={invoice.id}
+          invoiceTotal={invoice.total}
+          currentPaid={totalPaid}
+          currency={invoice.currency}
+          onCancel={() => setPaymentOpen(false)}
+          onDone={() => window.location.reload()}
+        />
       </CrmModal>
     </>
   );

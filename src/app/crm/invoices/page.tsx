@@ -24,6 +24,7 @@ const STATUS_STYLES: Record<string, string> = {
   viewed: "bg-accent-blue/15 text-accent-blue",
   partially_paid: "bg-yellow-400/15 text-yellow-400",
   paid: "bg-accent-green/15 text-accent-green",
+  overpaid: "bg-purple-500/15 text-purple-400 border border-purple-500/30",
   overdue: "bg-red-400/15 text-red-400",
   void: "bg-muted/20 text-muted line-through",
 };

@@ -16,13 +16,15 @@ async function recomputeInvoiceStatus(supabase: Awaited<ReturnType<typeof requir
   const paid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
 
   let status = invoice.status;
-  if (paid >= invoice.total && invoice.total > 0) {
+  if (invoice.total > 0 && paid > invoice.total) {
+    status = "overpaid";
+  } else if (invoice.total > 0 && paid >= invoice.total) {
     status = "paid";
   } else if (paid > 0) {
     status = "partially_paid";
   } else if (invoice.status !== "draft" && invoice.due_date && new Date(invoice.due_date) < new Date()) {
     status = "overdue";
-  } else if (invoice.status === "overdue" || invoice.status === "partially_paid") {
+  } else if (invoice.status === "overdue" || invoice.status === "partially_paid" || invoice.status === "overpaid") {
     status = "sent";
   }
 
@@ -141,6 +143,23 @@ export async function recordPayment(formData: FormData): Promise<ActionResult> {
   if (!invoiceId || !amount || amount <= 0) return { error: "Enter a valid amount." };
   if (!channel) return { error: "Choose a payment channel." };
 
+  const { data: currentInvoice } = await supabase.from("crm_invoices").select("total").eq("id", invoiceId).maybeSingle();
+  const { data: existingPayments } = await supabase.from("crm_invoice_payments").select("amount").eq("invoice_id", invoiceId);
+  const currentPaid = (existingPayments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const newTotalPaid = currentPaid + amount;
+  const invoiceTotal = Number(currentInvoice?.total || 0);
+
+  const overpaymentReason = (formData.get("overpaymentReason") as string)?.trim();
+  if (invoiceTotal > 0 && newTotalPaid > invoiceTotal) {
+    if (!overpaymentReason && !reference) {
+      return { error: "An overpayment reason or reference note is required when recording an overpayment." };
+    }
+  }
+
+  const finalReference = overpaymentReason
+    ? (reference ? `${reference} (Overpay note: ${overpaymentReason})` : `Overpay note: ${overpaymentReason}`)
+    : reference;
+
   let receiptUrl: string | null = null;
   if (receiptFile && receiptFile.size > 0) {
     const adminDb = createAdminClient();
@@ -153,7 +172,7 @@ export async function recordPayment(formData: FormData): Promise<ActionResult> {
   }
 
   const { error } = await supabase.from("crm_invoice_payments").insert([
-    { invoice_id: invoiceId, amount, channel, paid_at: paidAt, reference, receipt_url: receiptUrl },
+    { invoice_id: invoiceId, amount, channel, paid_at: paidAt, reference: finalReference, receipt_url: receiptUrl },
   ]);
   if (error) return { error: error.message };
 
