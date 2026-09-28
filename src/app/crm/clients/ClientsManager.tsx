@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Search, UploadCloud, Trash2 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
@@ -14,8 +14,10 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
   const { toast, confirm } = useCrmFeedback();
   const [clients] = useState(initialClients);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<CrmClient | null>(null);
+  const pageSize = 20;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -24,6 +26,10 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
       [c.name, c.email, c.company].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
     );
   }, [clients, query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
 
   function openCreate() {
     setEditing(null);
@@ -112,6 +118,9 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
         <ResponsiveTable
           columns={columns}
           rows={filtered}
+          pageSize={pageSize}
+          currentPage={page}
+          onPageChange={setPage}
           onRowClick={(c) => (window.location.href = `/crm/clients/${c.id}`)}
           emptyLabel="No clients yet — add one manually or import a spreadsheet."
         />

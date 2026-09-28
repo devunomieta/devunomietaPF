@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { AlertTriangle } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
+import { CrmUrlPagination } from "@/components/crm/CrmUrlPagination";
 import { MonitoringActions } from "./MonitoringActions";
 
 export const metadata = { title: "Monitoring · CRM" };
@@ -14,14 +15,22 @@ function pct(n: number, total: number) {
   return Math.round((n / total) * 1000) / 10;
 }
 
-export default async function CrmMonitoringPage() {
+export default async function CrmMonitoringPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page = "1" } = await searchParams;
+  const currentPage = Math.max(1, parseInt(page, 10) || 1);
+  const pageSize = 20;
+
   const supabase = await createClient();
   const since = new Date();
   since.setDate(since.getDate() - 30);
 
   const [{ data: events }, { data: jobs }, { data: settings }] = await Promise.all([
     supabase.from("crm_email_events").select("type").gte("occurred_at", since.toISOString()),
-    supabase.from("crm_jobs").select("id, type, status, progress, total, error, created_at").order("created_at", { ascending: false }).limit(30),
+    supabase.from("crm_jobs").select("id, type, status, progress, total, error, created_at").order("created_at", { ascending: false }).limit(200),
     supabase.from("crm_settings").select("*").eq("id", "default").maybeSingle(),
   ]);
 
@@ -48,6 +57,9 @@ export default async function CrmMonitoringPage() {
   const jobRows = (jobs as JobRow[]) || [];
   const pendingJobs = jobRows.filter((j) => j.status === "queued" || j.status === "processing").length;
   const failedJobs = jobRows.filter((j) => j.status === "failed").length;
+
+  const start = (currentPage - 1) * pageSize;
+  const pagedJobs = jobRows.slice(start, start + pageSize);
 
   const jobColumns: CrmColumn<JobRow>[] = [
     { header: "Type", cell: (j) => <span className="capitalize">{j.type.replace("_", " ")}</span> },
@@ -119,7 +131,8 @@ export default async function CrmMonitoringPage() {
 
       <div className="bg-header/20 border border-border rounded-xl p-2 sm:p-4">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider px-2 pt-2 mb-2">Recent jobs</h2>
-        <ResponsiveTable columns={jobColumns} rows={jobRows} emptyLabel="No background jobs yet." />
+        <ResponsiveTable columns={jobColumns} rows={pagedJobs} emptyLabel="No background jobs yet." />
+        <CrmUrlPagination totalItems={jobRows.length} pageSize={pageSize} />
       </div>
     </div>
   );

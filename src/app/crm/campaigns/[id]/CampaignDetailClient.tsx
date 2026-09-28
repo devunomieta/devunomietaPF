@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -69,6 +69,12 @@ export function CampaignDetailClient({
   const [activeTab, setActiveTab] = useState<"activity" | "preview">("activity");
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchFilter, typeFilter]);
 
   // Metrics computation (Mailchimp style)
   const sentCount = campaign.sent_count || campaign.total_recipients || 0;
@@ -426,6 +432,9 @@ export function CampaignDetailClient({
             <ResponsiveTable
               columns={columns}
               rows={filteredEvents}
+              pageSize={pageSize}
+              currentPage={page}
+              onPageChange={setPage}
               emptyLabel={events.length === 0 ? "No webhook events recorded yet for this campaign." : "No events match your filter."}
             />
           </div>

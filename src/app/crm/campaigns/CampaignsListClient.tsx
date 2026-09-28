@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Mail, Eye, MousePointerClick, Send, CheckCircle2, AlertCircle, FileEdit, ArrowRight, Copy } from "lucide-react";
@@ -30,6 +31,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetrics[] }) {
   const router = useRouter();
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   // Aggregate stats across all campaigns
   const totalCampaigns = campaigns.length;
@@ -223,6 +226,9 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
         <ResponsiveTable
           columns={columns}
           rows={campaigns}
+          pageSize={pageSize}
+          currentPage={page}
+          onPageChange={setPage}
           emptyLabel="No campaigns sent yet."
           onRowClick={(campaign) => {
             if (campaign.status === "draft") {

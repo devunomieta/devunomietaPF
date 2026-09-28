@@ -13,7 +13,7 @@ export default async function CrmCampaignsPage() {
       .from("crm_email_campaigns")
       .select("id, subject, kind, status, sent_count, total_recipients, created_at")
       .order("created_at", { ascending: false })
-      .limit(100),
+      .limit(500),
     supabase
       .from("crm_email_events")
       .select("campaign_id, type"),

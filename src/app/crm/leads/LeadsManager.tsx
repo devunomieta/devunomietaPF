@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Search, UploadCloud, Trash2 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
@@ -20,7 +20,9 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
   const { toast, confirm } = useCrmFeedback();
   const [leads] = useState(initialLeads);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const pageSize = 20;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -29,6 +31,10 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
       [l.name, l.email, l.company].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
     );
   }, [leads, query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
 
   async function handleDelete(id: string) {
     if (!(await confirm("Delete this lead? This cannot be undone.", { danger: true, confirmLabel: "Delete" }))) return;
@@ -106,6 +112,9 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
         <ResponsiveTable
           columns={columns}
           rows={filtered}
+          pageSize={pageSize}
+          currentPage={page}
+          onPageChange={setPage}
           onRowClick={(l) => (window.location.href = `/crm/leads/${l.id}`)}
           emptyLabel="No leads yet — add one manually or import a spreadsheet."
         />

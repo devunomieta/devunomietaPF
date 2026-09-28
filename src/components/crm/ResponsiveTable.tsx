@@ -1,3 +1,5 @@
+import { TablePagination } from "./TablePagination";
+
 export type CrmColumn<T> = {
   header: string;
   cell: (row: T) => React.ReactNode;
@@ -7,24 +9,42 @@ export type CrmColumn<T> = {
 /**
  * Renders as a table on md+ screens and as stacked cards on mobile —
  * the shared list pattern for every CRM entity screen.
+ * 
+ * Works seamlessly in both Server Components and Client Components
+ * without RSC serialization errors.
  */
 export function ResponsiveTable<T extends { id: string }>({
   columns,
   rows,
   onRowClick,
   emptyLabel,
+  pageSize,
+  currentPage = 1,
+  onPageChange,
 }: {
   columns: CrmColumn<T>[];
   rows: T[];
   onRowClick?: (row: T) => void;
   emptyLabel?: string;
+  pageSize?: number;
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
 }) {
   if (rows.length === 0) {
     return <p className="text-sm text-muted py-10 text-center">{emptyLabel || "Nothing here yet."}</p>;
   }
 
+  // If pagination parameters are provided, slice the rows
+  const effectivePageSize = pageSize || rows.length;
+  const totalPages = Math.max(1, Math.ceil(rows.length / effectivePageSize));
+  const validPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const displayRows = pageSize
+    ? rows.slice((validPage - 1) * effectivePageSize, validPage * effectivePageSize)
+    : rows;
+
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -37,7 +57,7 @@ export function ResponsiveTable<T extends { id: string }>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {displayRows.map((row) => (
               <tr
                 key={row.id}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -55,7 +75,7 @@ export function ResponsiveTable<T extends { id: string }>({
       </div>
 
       <div className="md:hidden flex flex-col gap-2">
-        {rows.map((row) => (
+        {displayRows.map((row) => (
           <div
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -70,6 +90,16 @@ export function ResponsiveTable<T extends { id: string }>({
           </div>
         ))}
       </div>
-    </>
+
+      {pageSize && onPageChange && (
+        <TablePagination
+          currentPage={validPage}
+          totalPages={totalPages}
+          totalItems={rows.length}
+          pageSize={effectivePageSize}
+          onPageChange={onPageChange}
+        />
+      )}
+    </div>
   );
 }

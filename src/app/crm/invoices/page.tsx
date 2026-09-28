@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { Plus } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
+import { CrmUrlPagination } from "@/components/crm/CrmUrlPagination";
 import { crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { formatMoney } from "@/lib/crm/currency";
 
@@ -29,7 +30,15 @@ const STATUS_STYLES: Record<string, string> = {
   void: "bg-muted/20 text-muted line-through",
 };
 
-export default async function CrmInvoicesPage() {
+export default async function CrmInvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page = "1" } = await searchParams;
+  const currentPage = Math.max(1, parseInt(page, 10) || 1);
+  const pageSize = 20;
+
   const supabase = await createClient();
   const { data: invoices } = await supabase
     .from("crm_invoices")
@@ -37,6 +46,8 @@ export default async function CrmInvoicesPage() {
     .order("created_at", { ascending: false });
 
   const rows = (invoices as unknown as InvoiceRow[]) || [];
+  const start = (currentPage - 1) * pageSize;
+  const pagedRows = rows.slice(start, start + pageSize);
 
   const columns: CrmColumn<InvoiceRow>[] = [
     {
@@ -70,7 +81,8 @@ export default async function CrmInvoicesPage() {
       </div>
 
       <div className="bg-header/20 border border-border rounded-xl p-2 sm:p-4">
-        <ResponsiveTable columns={columns} rows={rows} emptyLabel="No invoices yet." />
+        <ResponsiveTable columns={columns} rows={pagedRows} emptyLabel="No invoices yet." />
+        <CrmUrlPagination totalItems={rows.length} pageSize={pageSize} />
       </div>
     </div>
   );

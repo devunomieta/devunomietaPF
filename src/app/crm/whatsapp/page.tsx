@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AlertTriangle, Copy, RotateCcw } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
+import { CrmUrlPagination } from "@/components/crm/CrmUrlPagination";
 import { isGreenApiConfigured } from "@/lib/crm/green-api";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { WhatsAppForm } from "./WhatsAppForm";
@@ -30,14 +31,16 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function CrmWhatsAppPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; leadId?: string; resendEventId?: string; duplicateMessage?: string }>;
+  searchParams: Promise<{ clientId?: string; leadId?: string; resendEventId?: string; duplicateMessage?: string; page?: string }>;
 }) {
-  const { clientId, leadId, resendEventId, duplicateMessage } = await searchParams;
+  const { clientId, leadId, resendEventId, duplicateMessage, page = "1" } = await searchParams;
+  const currentPage = Math.max(1, parseInt(page, 10) || 1);
+  const pageSize = 20;
   const supabase = await createClient();
 
   const [{ data: journey }, { data: events }, recipientResult, { data: leadRows }, { data: clientRows }, { data: sourceEvent }] = await Promise.all([
     supabase.from("crm_journeys").select("stages").eq("is_default", true).maybeSingle(),
-    supabase.from("crm_whatsapp_events").select("id, phone, message, status, direction, occurred_at, client_id, lead_id").order("occurred_at", { ascending: false }).limit(50),
+    supabase.from("crm_whatsapp_events").select("id, phone, message, status, direction, occurred_at, client_id, lead_id").order("occurred_at", { ascending: false }).limit(500),
     clientId
       ? supabase.from("crm_clients").select("id, name, phone").eq("id", clientId).maybeSingle()
       : leadId
@@ -52,6 +55,10 @@ export default async function CrmWhatsAppPage({
 
   const stages = ((journey?.stages as CrmJourneyStage[] | undefined) || []).sort((a, b) => a.position - b.position);
   const configured = isGreenApiConfigured();
+
+  const allEvents = (events as EventRow[]) || [];
+  const start = (currentPage - 1) * pageSize;
+  const pagedEvents = allEvents.slice(start, start + pageSize);
 
   // Preserve recency of tag usage across records
   const recentTagsList: string[] = [];
@@ -89,9 +96,9 @@ export default async function CrmWhatsAppPage({
   const prefillMessage = sourceEvent?.message || duplicateMessage || null;
 
   const columns: CrmColumn<EventRow>[] = [
-    { header: "Phone", cell: (e) => e.phone },
+    { header: "Phone", cell: (e) => <span className="font-mono text-xs">{e.phone}</span> },
     { header: "Direction", cell: (e) => <span className="text-muted capitalize">{e.direction}</span> },
-    { header: "Message", cell: (e) => <span className="truncate block max-w-xs">{e.message || "—"}</span> },
+    { header: "Message", cell: (e) => <span className="truncate block max-w-md lg:max-w-xl text-foreground/90">{e.message || "—"}</span> },
     { header: "Status", cell: (e) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[e.status] || ""}`}>{e.status}</span> },
     { header: "When", cell: (e) => new Date(e.occurred_at).toLocaleString() },
     {
@@ -124,7 +131,7 @@ export default async function CrmWhatsAppPage({
   ];
 
   return (
-    <div className="flex flex-col gap-5 max-w-2xl">
+    <div className="flex flex-col gap-5 w-full">
       <div>
         <h1 className="text-xl font-bold text-foreground">WhatsApp</h1>
         <p className="text-sm text-muted">Single sends and small batches via GREEN-API.</p>
@@ -151,7 +158,8 @@ export default async function CrmWhatsAppPage({
 
       <div className="bg-header/20 border border-border rounded-xl p-2 sm:p-4">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider px-2 pt-2 mb-2">Recent activity</h2>
-        <ResponsiveTable columns={columns} rows={(events as EventRow[]) || []} emptyLabel="No WhatsApp activity yet." />
+        <ResponsiveTable columns={columns} rows={pagedEvents} emptyLabel="No WhatsApp activity yet." />
+        <CrmUrlPagination totalItems={allEvents.length} pageSize={pageSize} />
       </div>
     </div>
   );
