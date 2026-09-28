@@ -25,7 +25,7 @@ export default async function CrmWhatsAppPage({
   const { clientId, leadId } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: journey }, { data: events }, recipientResult] = await Promise.all([
+  const [{ data: journey }, { data: events }, recipientResult, { data: leadRows }, { data: clientRows }] = await Promise.all([
     supabase.from("crm_journeys").select("stages").eq("is_default", true).maybeSingle(),
     supabase.from("crm_whatsapp_events").select("id, phone, message, status, direction, occurred_at").order("occurred_at", { ascending: false }).limit(50),
     clientId
@@ -33,10 +33,32 @@ export default async function CrmWhatsAppPage({
       : leadId
         ? supabase.from("crm_leads").select("id, name, phone").eq("id", leadId).maybeSingle()
         : Promise.resolve({ data: null }),
+    supabase.from("crm_leads").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
+    supabase.from("crm_clients").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
   ]);
 
   const stages = ((journey?.stages as CrmJourneyStage[] | undefined) || []).sort((a, b) => a.position - b.position);
   const configured = isGreenApiConfigured();
+
+  // Preserve recency of tag usage across records
+  const recentTagsList: string[] = [];
+  const seenTags = new Set<string>();
+
+  const combinedRows = [...(leadRows || []), ...(clientRows || [])].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  for (const row of combinedRows) {
+    for (const tag of row.tags || []) {
+      const clean = tag?.trim();
+      if (clean && !seenTags.has(clean)) {
+        seenTags.add(clean);
+        recentTagsList.push(clean);
+      }
+    }
+  }
+
+  const availableTags = recentTagsList;
 
   const columns: CrmColumn<EventRow>[] = [
     { header: "Phone", cell: (e) => e.phone },
@@ -65,6 +87,7 @@ export default async function CrmWhatsAppPage({
 
       <WhatsAppForm
         stages={stages}
+        availableTags={availableTags}
         disabled={!configured}
         prefillRecipient={recipientResult.data ? { ...recipientResult.data, clientId: clientId || null, leadId: leadId || null } : null}
       />

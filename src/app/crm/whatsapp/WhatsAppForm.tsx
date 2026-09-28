@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Send, Users, Shuffle, Sparkles, HelpCircle, ShieldCheck } from "lucide-react";
+import { Loader2, Send, Users, Shuffle, Sparkles, ShieldCheck, Tag, X, Search, Check } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
@@ -13,21 +13,28 @@ type PrefillRecipient = { id: string; name: string; phone: string | null; client
 
 export function WhatsAppForm({
   stages,
+  availableTags = [],
   disabled,
   prefillRecipient,
 }: {
   stages: CrmJourneyStage[];
+  availableTags?: string[];
   disabled: boolean;
   prefillRecipient: PrefillRecipient | null;
 }) {
   const router = useRouter();
   const { toast } = useCrmFeedback();
   const [mode, setMode] = useState<"single" | "bulk">(prefillRecipient ? "single" : "bulk");
-  const [segment, setSegment] = useState<"clients" | "leads">("leads");
-  const [tags, setTags] = useState("");
+  const [segment, setSegment] = useState<"clients" | "leads" | "all">("leads");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [stageKey, setStageKey] = useState("");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Searchable tag selector state
+  const [tagSearchInput, setTagSearchInput] = useState("");
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const tagDropdownRef = useRef<HTMLDivElement>(null);
 
   // Message state for interactive preview
   const [message, setMessage] = useState(
@@ -36,18 +43,60 @@ export function WhatsAppForm({
   const [previewVariations, setPreviewVariations] = useState<string[]>([]);
   const [showSpintaxGuide, setShowSpintaxGuide] = useState(false);
 
+  // Close tag dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target as Node)) {
+        setIsTagDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function toggleTag(tag: string) {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  }
+
+  function handleSelectTag(tag: string) {
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags((prev) => [...prev, tag]);
+    }
+    setTagSearchInput("");
+  }
+
+  function handleAddCustomTag() {
+    const trimmed = tagSearchInput.trim();
+    if (!trimmed) return;
+    if (!selectedTags.includes(trimmed)) {
+      setSelectedTags((prev) => [...prev, trimmed]);
+    }
+    setTagSearchInput("");
+  }
+
+  // Filter recommendations:
+  // When input has >= 3 chars, show matches from availableTags
+  // When input has < 3 chars, show up to 6 recommendations (most recently used)
+  const matchingTags = tagSearchInput.trim().length >= 3
+    ? availableTags.filter((t) =>
+        t.toLowerCase().includes(tagSearchInput.trim().toLowerCase())
+      )
+    : availableTags.slice(0, 6);
+
   useEffect(() => {
     if (mode !== "bulk") return;
     const timeout = setTimeout(async () => {
       const result = await previewWhatsAppAudienceCount({
         segment,
-        tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+        tags: selectedTags,
         stageKey,
       });
       setAudienceCount(result.count);
-    }, 300);
+    }, 250);
     return () => clearTimeout(timeout);
-  }, [mode, segment, tags, stageKey]);
+  }, [mode, segment, selectedTags, stageKey]);
 
   function handleShufflePreview() {
     if (!message.trim()) {
@@ -69,6 +118,11 @@ export function WhatsAppForm({
     e.preventDefault();
     setLoading(true);
     const formData = new FormData(e.currentTarget);
+    formData.set("segment", segment);
+    formData.set("tags", selectedTags.join(","));
+    formData.set("stageKey", stageKey);
+    formData.set("message", message);
+
     const result = mode === "single" ? await sendSingleWhatsApp(formData) : await createBulkWhatsApp(formData);
     setLoading(false);
     if ("success" in result) {
@@ -89,7 +143,7 @@ export function WhatsAppForm({
           type="button"
           onClick={() => setMode("single")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-            mode === "single" ? "bg-accent-blue text-white border-accent-blue" : "border-border text-muted hover:text-foreground"
+            mode === "single" ? "bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/30" : "border-border text-muted hover:text-foreground"
           }`}
         >
           Single
@@ -98,7 +152,7 @@ export function WhatsAppForm({
           type="button"
           onClick={() => setMode("bulk")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-            mode === "bulk" ? "bg-accent-blue text-white border-accent-blue" : "border-border text-muted hover:text-foreground"
+            mode === "bulk" ? "bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/30" : "border-border text-muted hover:text-foreground"
           }`}
         >
           Small batch
@@ -122,48 +176,173 @@ export function WhatsAppForm({
           </div>
         </>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className={crmLabelClass} htmlFor="segment">Audience</label>
-            <select
-              id="segment"
-              name="segment"
-              value={segment}
-              onChange={(e) => setSegment(e.target.value as "clients" | "leads")}
-              className={crmInputClass}
-            >
-              <option value="leads">Leads</option>
-              <option value="clients">Clients</option>
-            </select>
-          </div>
-          <div>
-            <label className={crmLabelClass} htmlFor="tags">Tags (optional)</label>
-            <input
-              id="tags"
-              name="tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g. vip, design"
-              className={crmInputClass}
-            />
-          </div>
-          {segment === "leads" && (
+        <div className="flex flex-col gap-4 bg-background/50 border border-border/80 rounded-xl p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className={crmLabelClass} htmlFor="stageKey">Stage (optional)</label>
+              <label className={crmLabelClass} htmlFor="segment">Audience</label>
               <select
-                id="stageKey"
-                name="stageKey"
-                value={stageKey}
-                onChange={(e) => setStageKey(e.target.value)}
+                id="segment"
+                name="segment"
+                value={segment}
+                onChange={(e) => setSegment(e.target.value as "clients" | "leads" | "all")}
                 className={crmInputClass}
               >
-                <option value="">Any stage</option>
-                {stages.map((s) => (
-                  <option key={s.key} value={s.key}>{s.label}</option>
-                ))}
+                <option value="leads">Leads</option>
+                <option value="clients">Clients</option>
+                <option value="all">ALL (Leads &amp; Clients combined)</option>
               </select>
             </div>
-          )}
+            {segment === "leads" && (
+              <div>
+                <label className={crmLabelClass} htmlFor="stageKey">Stage (optional)</label>
+                <select
+                  id="stageKey"
+                  name="stageKey"
+                  value={stageKey}
+                  onChange={(e) => setStageKey(e.target.value)}
+                  className={crmInputClass}
+                >
+                  <option value="">Any stage</option>
+                  {stages.map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Searchable Multi-Select Tag Input with Dropdown */}
+          <div className="relative" ref={tagDropdownRef}>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={crmLabelClass} style={{ marginBottom: 0 }}>
+                Filter by Tags (Optional)
+              </label>
+              {selectedTags.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedTags([])}
+                  className="text-[10px] text-muted hover:text-red-400 underline"
+                >
+                  Clear all ({selectedTags.length})
+                </button>
+              )}
+            </div>
+
+            {/* Selected Tag Chips */}
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 mb-2 p-2 bg-header/20 border border-border/80 rounded-lg">
+                {selectedTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent-blue/15 border border-accent-blue/30 text-accent-blue text-xs font-semibold rounded-md animate-in fade-in"
+                  >
+                    <Tag size={10} />
+                    <span>{tag}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className="hover:text-red-400 transition-colors cursor-pointer"
+                      title="Remove tag"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Search Input Bar with Icon */}
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+              />
+              <input
+                type="text"
+                placeholder={
+                  selectedTags.length > 0
+                    ? "Add another tag or type to search..."
+                    : "Search tags (e.g. VIP, Medical, Lead) or type 3+ chars..."
+                }
+                value={tagSearchInput}
+                onFocus={() => setIsTagDropdownOpen(true)}
+                onChange={(e) => {
+                  setTagSearchInput(e.target.value);
+                  setIsTagDropdownOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (matchingTags.length > 0 && tagSearchInput.trim().length >= 3) {
+                      handleSelectTag(matchingTags[0]);
+                    } else {
+                      handleAddCustomTag();
+                    }
+                  }
+                }}
+                className={`${crmInputClass} pl-9 text-xs py-2`}
+              />
+
+              {tagSearchInput.trim() && (
+                <button
+                  type="button"
+                  onClick={handleAddCustomTag}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-accent-blue/20 text-accent-blue hover:bg-accent-blue hover:text-white rounded text-[11px] font-bold transition-colors"
+                >
+                  Add
+                </button>
+              )}
+            </div>
+
+            {/* Smart Tag Recommendations Dropdown */}
+            {isTagDropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#0f141c] border border-border shadow-2xl rounded-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted border-b border-border/40 mb-1">
+                  <span>
+                    {tagSearchInput.trim().length >= 3
+                      ? `Matching Tags (${matchingTags.length})`
+                      : "Recommended Tags (Recently Used)"}
+                  </span>
+                  {tagSearchInput.trim().length < 3 && (
+                    <span className="text-muted/70 font-normal lowercase">Type 3+ chars to search</span>
+                  )}
+                </div>
+
+                {matchingTags.length === 0 ? (
+                  <div className="p-3 text-center text-xs text-muted">
+                    No matching tags found. Press <kbd className="bg-header px-1.5 py-0.5 rounded text-[10px]">Enter</kbd> to add &ldquo;{tagSearchInput}&rdquo; as a custom tag.
+                  </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {matchingTags.map((tag) => {
+                      const isSelected = selectedTags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            toggleTag(tag);
+                            setTagSearchInput("");
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left ${
+                            isSelected
+                              ? "bg-accent-blue/15 text-accent-blue font-semibold"
+                              : "text-foreground hover:bg-header/50"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <Tag size={12} className={isSelected ? "text-accent-blue" : "text-muted"} />
+                            {tag}
+                          </span>
+                          {isSelected && <Check size={13} className="text-accent-blue" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
