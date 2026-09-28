@@ -190,15 +190,35 @@ export function renderBulletproofEmail({
         <td align="center" valign="top" width="600">
         <![endif]-->
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; text-align: left; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-          <!-- Header / Brand Banner -->
+          <!-- Header / Brand Banner (Centralized with DEVUNOMIETA.XYZ and Social Links) -->
           <tr>
-            <td style="padding: 24px 32px 18px 32px; border-bottom: 1px solid rgba(156, 163, 175, 0.2);">
+            <td style="padding: 26px 32px 20px 32px; border-bottom: 1px solid rgba(156, 163, 175, 0.2); text-align: center;">
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                  <td align="left">
-                    <span class="email-heading" style="font-size: 17px; font-weight: 700; letter-spacing: -0.01em; color: #111827; text-decoration: none;">
+                  <td align="center" style="text-align: center;">
+                    <div class="email-heading" style="font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: #111827; text-transform: uppercase;">
                       ${escapeHtml(brandName)}
-                    </span>
+                    </div>
+                    <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: #2563eb; margin-top: 3px; text-transform: uppercase;">
+                      DEVUNOMIETA.XYZ
+                    </div>
+                    <div style="margin-top: 12px;">
+                      <!-- Website Link -->
+                      <a href="https://devunomieta.xyz" target="_blank" style="display: inline-block; margin: 0 7px; color: #6b7280; text-decoration: none; font-size: 12px; font-weight: 500;" title="Website">
+                        <img src="https://cdn.simpleicons.org/internetarchive/6b7280" width="15" height="15" alt="Web" style="vertical-align: middle; margin-right: 3px;" />
+                        <span style="vertical-align: middle;">Website</span>
+                      </a>
+                      <!-- GitHub Link -->
+                      <a href="https://github.com/devunomieta" target="_blank" style="display: inline-block; margin: 0 7px; color: #6b7280; text-decoration: none; font-size: 12px; font-weight: 500;" title="GitHub">
+                        <img src="https://cdn.simpleicons.org/github/6b7280" width="15" height="15" alt="GitHub" style="vertical-align: middle; margin-right: 3px;" />
+                        <span style="vertical-align: middle;">GitHub</span>
+                      </a>
+                      <!-- X / Twitter Link -->
+                      <a href="https://x.com/DevUnomieta" target="_blank" style="display: inline-block; margin: 0 7px; color: #6b7280; text-decoration: none; font-size: 12px; font-weight: 500;" title="X">
+                        <img src="https://cdn.simpleicons.org/x/6b7280" width="14" height="14" alt="X" style="vertical-align: middle; margin-right: 3px;" />
+                        <span style="vertical-align: middle;">X</span>
+                      </a>
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -226,7 +246,6 @@ export function renderBulletproofEmail({
                         Problem First Software Engineer &amp; Product Manager
                       </a>
                     </p>
-                    ${senderAddress ? `<p style="margin: 0 0 6px 0;">${escapeHtml(senderAddress)}</p>` : ""}
                     <p style="margin: 6px 0 0 0;">
                       <a href="${escapeHtml(unsubscribeUrl)}" style="color: #6b7280; text-decoration: underline;" target="_blank">
                         Unsubscribe or manage preferences

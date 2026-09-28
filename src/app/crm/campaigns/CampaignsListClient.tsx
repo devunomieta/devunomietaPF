@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Mail, Eye, MousePointerClick, Send, CheckCircle2, AlertCircle, FileEdit, ArrowRight } from "lucide-react";
+import { Plus, Mail, Eye, MousePointerClick, Send, CheckCircle2, AlertCircle, FileEdit, ArrowRight, Copy } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 
@@ -120,15 +120,29 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
     {
       header: "",
       cell: (c) => (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <Link
+            href={`/crm/campaigns/new?duplicateId=${c.id}`}
+            title="Duplicate & Edit"
+            className="p-1 rounded-md text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
+          >
+            <Copy size={14} />
+          </Link>
+
           {c.status === "draft" ? (
-            <span className="inline-flex items-center gap-1 text-xs text-accent-blue font-medium hover:underline">
+            <Link
+              href={`/crm/campaigns/new?draftId=${c.id}`}
+              className="inline-flex items-center gap-1 text-xs text-accent-blue font-medium hover:underline"
+            >
               Resume <ArrowRight size={13} />
-            </span>
+            </Link>
           ) : (
-            <span className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground">
+            <Link
+              href={`/crm/campaigns/${c.id}`}
+              className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
+            >
               Analytics <ArrowRight size={13} />
-            </span>
+            </Link>
           )}
         </div>
       ),

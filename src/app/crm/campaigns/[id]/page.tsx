@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { CampaignDetailClient, type CampaignRecord, type EventRecord } from "./CampaignDetailClient";
 
 export const metadata = { title: "Campaign Analytics · CRM" };
+export const dynamic = "force-dynamic";
 
 export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

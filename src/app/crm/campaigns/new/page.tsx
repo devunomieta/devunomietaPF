@@ -7,12 +7,14 @@ export const metadata = { title: "New campaign · CRM" };
 export default async function NewCampaignPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; leadId?: string; draftId?: string }>;
+  searchParams: Promise<{ clientId?: string; leadId?: string; draftId?: string; duplicateId?: string }>;
 }) {
-  const { clientId, leadId, draftId } = await searchParams;
+  const { clientId, leadId, draftId, duplicateId } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: journey }, recipientResult, { data: leadRows }, { data: clientRows }, { data: draftCampaign }] = await Promise.all([
+  const sourceCampaignId = draftId || duplicateId;
+
+  const [{ data: journey }, recipientResult, { data: leadRows }, { data: clientRows }, { data: sourceCampaign }] = await Promise.all([
     supabase.from("crm_journeys").select("stages").eq("is_default", true).maybeSingle(),
     clientId
       ? supabase.from("crm_clients").select("id, name, email").eq("id", clientId).maybeSingle()
@@ -21,8 +23,8 @@ export default async function NewCampaignPage({
         : Promise.resolve({ data: null }),
     supabase.from("crm_leads").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
     supabase.from("crm_clients").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
-    draftId
-      ? supabase.from("crm_email_campaigns").select("*").eq("id", draftId).maybeSingle()
+    sourceCampaignId
+      ? supabase.from("crm_email_campaigns").select("*").eq("id", sourceCampaignId).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -58,11 +60,11 @@ export default async function NewCampaignPage({
         stages={stages}
         availableTags={availableTags}
         prefillRecipient={recipientResult.data ? { ...recipientResult.data, clientId: clientId || null, leadId: leadId || null } : null}
-        initialDraft={draftCampaign ? {
-          id: draftCampaign.id,
-          subject: draftCampaign.subject,
-          html: draftCampaign.html,
-          audience: draftCampaign.audience,
+        initialDraft={sourceCampaign ? {
+          id: draftId ? sourceCampaign.id : null,
+          subject: duplicateId ? `Copy of ${sourceCampaign.subject}` : sourceCampaign.subject,
+          html: sourceCampaign.html,
+          audience: sourceCampaign.audience,
         } : null}
       />
     </div>

@@ -16,15 +16,21 @@ export function WhatsAppForm({
   availableTags = [],
   disabled,
   prefillRecipient,
+  prefillMessage,
+  initialMode,
 }: {
   stages: CrmJourneyStage[];
   availableTags?: string[];
   disabled: boolean;
   prefillRecipient: PrefillRecipient | null;
+  prefillMessage?: string | null;
+  initialMode?: "single" | "bulk" | null;
 }) {
   const router = useRouter();
   const { toast } = useCrmFeedback();
-  const [mode, setMode] = useState<"single" | "bulk">(prefillRecipient ? "single" : "bulk");
+  const [mode, setMode] = useState<"single" | "bulk">(
+    initialMode || (prefillRecipient ? "single" : "bulk")
+  );
   const [segment, setSegment] = useState<"clients" | "leads" | "all">("leads");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [stageKey, setStageKey] = useState("");
@@ -38,7 +44,10 @@ export function WhatsAppForm({
 
   // Message state for interactive preview
   const [message, setMessage] = useState(
-    prefillRecipient ? `Hi ${prefillRecipient.name.split(" ")[0]}, ` : "{Hi|Hello|Hey} {{first_name}}, "
+    prefillMessage ||
+      (prefillRecipient
+        ? `Hi ${prefillRecipient.name.split(" ")[0]}, `
+        : "{Hi|Hello|Hey} {{first_name}}, ")
   );
   const [previewVariations, setPreviewVariations] = useState<string[]>([]);
   const [showSpintaxGuide, setShowSpintaxGuide] = useState(false);

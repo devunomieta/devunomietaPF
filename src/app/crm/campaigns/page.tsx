@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { CampaignsListClient, type CampaignWithMetrics } from "./CampaignsListClient";
 
 export const metadata = { title: "Campaigns · CRM" };
+export const dynamic = "force-dynamic";
 
 export default async function CrmCampaignsPage() {
   const supabase = await createClient();

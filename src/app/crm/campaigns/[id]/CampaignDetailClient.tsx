@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
   Send, 
@@ -15,7 +16,10 @@ import {
   Search,
   ExternalLink,
   Calendar,
-  Layers
+  Layers,
+  Copy,
+  RotateCcw,
+  RefreshCw
 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 
@@ -60,6 +64,8 @@ export function CampaignDetailClient({
   campaign: CampaignRecord;
   events: EventRecord[];
 }) {
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"activity" | "preview">("activity");
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -235,6 +241,36 @@ export function CampaignDetailClient({
                 <Calendar size={13} /> Sent on {new Date(campaign.created_at).toLocaleDateString()}
               </span>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setRefreshing(true);
+                router.refresh();
+                setTimeout(() => setRefreshing(false), 800);
+              }}
+              title="Refresh tracking data"
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-header/20 hover:bg-header/50 text-muted hover:text-foreground text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+            >
+              <RefreshCw size={13} className={refreshing ? "animate-spin text-accent-blue" : "text-muted"} />
+              Refresh
+            </button>
+            <Link
+              href={`/crm/campaigns/new?duplicateId=${campaign.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-header/20 hover:bg-header/50 text-foreground text-xs font-semibold transition-colors shadow-2xs"
+            >
+              <Copy size={13} className="text-accent-blue" />
+              Duplicate &amp; Edit
+            </Link>
+            <Link
+              href={`/crm/campaigns/new?duplicateId=${campaign.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent-blue text-white hover:bg-accent-blue/90 text-xs font-semibold transition-colors shadow-2xs"
+            >
+              <RotateCcw size={13} />
+              Resend to Audience
+            </Link>
           </div>
         </div>
       </div>

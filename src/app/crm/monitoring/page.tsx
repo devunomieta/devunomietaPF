@@ -4,6 +4,7 @@ import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTabl
 import { MonitoringActions } from "./MonitoringActions";
 
 export const metadata = { title: "Monitoring · CRM" };
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type JobRow = { id: string; type: string; status: string; progress: number; total: number; error: string | null; created_at: string };
