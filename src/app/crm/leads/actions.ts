@@ -133,6 +133,25 @@ export async function moveLeadStage(leadId: string, stageKey: string, note?: str
   revalidatePath(`/crm/leads/${leadId}`);
   revalidatePath("/crm/journeys");
 
+  // If moving to a non-won stage, demote: remove the auto-converted client record if it has no associated invoices
+  if (!stage?.is_won && lead.converted_to_client_id) {
+    const clientIdToRemove = lead.converted_to_client_id;
+    
+    // Check if client has any active billing invoices before deleting
+    const { count: invoiceCount } = await supabase
+      .from("crm_invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientIdToRemove);
+
+    if (!invoiceCount || invoiceCount === 0) {
+      // First disconnect foreign key reference on lead to prevent 409 FK violation
+      await supabase.from("crm_leads").update({ converted_to_client_id: null }).eq("id", leadId);
+      await supabase.from("crm_clients").delete().eq("id", clientIdToRemove);
+      revalidatePath("/crm/clients");
+    }
+  }
+
+  // If moving into a won stage and not yet converted, promote to client
   if (stage?.is_won && !lead.converted_to_client_id) {
     const result = await promoteLeadToClient(supabase, lead);
     if ("error" in result) return result;
