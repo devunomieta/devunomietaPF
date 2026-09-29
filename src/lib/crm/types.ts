@@ -4,6 +4,10 @@ export type CrmClient = {
   email: string | null;
   phone: string | null;
   company: string | null;
+  location: string | null;
+  website: string | null;
+  pain_points: string | null;
+  proposed_solution: string | null;
   status: string;
   tags: string[];
   source: string | null;
@@ -17,6 +21,10 @@ export type CrmLead = {
   email: string | null;
   phone: string | null;
   company: string | null;
+  location: string | null;
+  website: string | null;
+  pain_points: string | null;
+  proposed_solution: string | null;
   source: string | null;
   score: number;
   status: "open" | "won" | "lost";

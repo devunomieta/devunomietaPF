@@ -55,6 +55,24 @@ export function LeadForm({
           <input id="score" name="score" type="number" min={0} max={100} defaultValue={lead?.score ?? 0} className={crmInputClass} />
         </div>
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className={crmLabelClass} htmlFor="location">Location</label>
+          <input id="location" name="location" defaultValue={lead?.location || ""} className={crmInputClass} placeholder="e.g. Lagos, Nigeria" />
+        </div>
+        <div>
+          <label className={crmLabelClass} htmlFor="website">Website</label>
+          <input id="website" name="website" type="text" defaultValue={lead?.website || ""} className={crmInputClass} placeholder="https://example.com" />
+        </div>
+      </div>
+      <div>
+        <label className={crmLabelClass} htmlFor="pain_points">Pain Points (Identified Problems)</label>
+        <textarea id="pain_points" name="pain_points" rows={2} defaultValue={lead?.pain_points || ""} className={crmInputClass} placeholder="Current challenges, bottlenecks or issues identified..." />
+      </div>
+      <div>
+        <label className={crmLabelClass} htmlFor="proposed_solution">Proposed Solution</label>
+        <textarea id="proposed_solution" name="proposed_solution" rows={2} defaultValue={lead?.proposed_solution || ""} className={crmInputClass} placeholder="Value proposition or recommended offer..." />
+      </div>
       <div>
         <label className={crmLabelClass} htmlFor="tags">Tags (comma separated)</label>
         <input id="tags" name="tags" defaultValue={lead?.tags?.join(", ") || ""} className={crmInputClass} placeholder="referral, hot" />

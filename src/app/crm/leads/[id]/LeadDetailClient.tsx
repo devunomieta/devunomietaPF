@@ -164,10 +164,43 @@ export function LeadDetailClient({
             <InfoRow label="Email" value={lead.email} />
             <InfoRow label="Phone" value={lead.phone} />
             <InfoRow label="Company" value={lead.company} />
+            <InfoRow label="Location" value={lead.location} />
+            <InfoRow
+              label="Website"
+              value={
+                lead.website ? (
+                  <a
+                    href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-accent-blue hover:underline"
+                  >
+                    {lead.website}
+                  </a>
+                ) : null
+              }
+            />
             <InfoRow label="Score" value={lead.score} />
             <InfoRow label="Source" value={lead.source} />
             <InfoRow label="Tags" value={lead.tags?.length ? lead.tags.join(", ") : null} />
-            {lead.notes && <p className="text-sm text-muted mt-3 whitespace-pre-wrap">{lead.notes}</p>}
+            {lead.pain_points && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <span className="text-xs font-semibold text-muted uppercase tracking-wider">Pain Points</span>
+                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{lead.pain_points}</p>
+              </div>
+            )}
+            {lead.proposed_solution && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <span className="text-xs font-semibold text-muted uppercase tracking-wider">Proposed Solution</span>
+                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{lead.proposed_solution}</p>
+              </div>
+            )}
+            {lead.notes && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <span className="text-xs font-semibold text-muted uppercase tracking-wider">Notes</span>
+                <p className="text-sm text-muted mt-1 whitespace-pre-wrap">{lead.notes}</p>
+              </div>
+            )}
           </div>
 
           <div className="bg-header/20 border border-border rounded-xl p-4">

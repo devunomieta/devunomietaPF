@@ -28,7 +28,7 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
     const q = query.trim().toLowerCase();
     if (!q) return leads;
     return leads.filter((l) =>
-      [l.name, l.email, l.company].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
+      [l.name, l.email, l.company, l.location, l.website].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
     );
   }, [leads, query]);
 
@@ -53,6 +53,24 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
       ),
     },
     { header: "Company", cell: (l) => l.company || <span className="text-muted">—</span> },
+    { header: "Location", cell: (l) => l.location || <span className="text-muted">—</span> },
+    {
+      header: "Website",
+      cell: (l) =>
+        l.website ? (
+          <a
+            href={l.website.startsWith("http") ? l.website : `https://${l.website}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-accent-blue hover:underline max-w-[140px] truncate block text-xs"
+          >
+            {l.website.replace(/^https?:\/\/(www\.)?/, "")}
+          </a>
+        ) : (
+          <span className="text-muted">—</span>
+        ),
+    },
     { header: "Stage", cell: (l) => <span className="text-muted">{l.current_stage_key}</span> },
     { header: "Score", cell: (l) => l.score },
     {

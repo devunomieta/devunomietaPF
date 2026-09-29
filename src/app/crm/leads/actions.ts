@@ -28,6 +28,10 @@ export async function saveLead(formData: FormData, id?: string): Promise<ActionR
     email: (formData.get("email") as string)?.trim() || null,
     phone: (formData.get("phone") as string)?.trim() || null,
     company: (formData.get("company") as string)?.trim() || null,
+    location: (formData.get("location") as string)?.trim() || null,
+    website: (formData.get("website") as string)?.trim() || null,
+    pain_points: (formData.get("pain_points") as string)?.trim() || null,
+    proposed_solution: (formData.get("proposed_solution") as string)?.trim() || null,
     score: parseInt(formData.get("score") as string) || 0,
     tags: parseTags(formData.get("tags")),
     notes: (formData.get("notes") as string)?.trim() || null,
@@ -65,7 +69,7 @@ export async function deleteLead(id: string): Promise<ActionResult> {
 
 async function promoteLeadToClient(
   supabase: Awaited<ReturnType<typeof requireAdmin>>,
-  lead: { id: string; name: string; email: string | null; phone: string | null; company: string | null; tags: string[]; notes: string | null }
+  lead: { id: string; name: string; email: string | null; phone: string | null; company: string | null; location?: string | null; website?: string | null; pain_points?: string | null; proposed_solution?: string | null; tags: string[]; notes: string | null }
 ) {
   const { data: client, error: clientError } = await supabase
     .from("crm_clients")
@@ -75,6 +79,10 @@ async function promoteLeadToClient(
         email: lead.email,
         phone: lead.phone,
         company: lead.company,
+        location: lead.location || null,
+        website: lead.website || null,
+        pain_points: lead.pain_points || null,
+        proposed_solution: lead.proposed_solution || null,
         tags: lead.tags,
         notes: lead.notes,
         source: "lead_conversion",

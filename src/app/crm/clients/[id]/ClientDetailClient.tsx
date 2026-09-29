@@ -99,6 +99,22 @@ export function ClientDetailClient({
           <InfoRow label="Email" value={client.email} />
           <InfoRow label="Phone" value={client.phone} />
           <InfoRow label="Company" value={client.company} />
+          <InfoRow label="Location" value={client.location} />
+          <InfoRow
+            label="Website"
+            value={
+              client.website ? (
+                <a
+                  href={client.website.startsWith("http") ? client.website : `https://${client.website}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-blue hover:underline"
+                >
+                  {client.website}
+                </a>
+              ) : null
+            }
+          />
           <InfoRow
             label="Status"
             value={
@@ -109,7 +125,24 @@ export function ClientDetailClient({
           />
           <InfoRow label="Source" value={client.source} />
           <InfoRow label="Tags" value={client.tags?.length ? client.tags.join(", ") : null} />
-          {client.notes && <p className="text-sm text-muted mt-3 whitespace-pre-wrap">{client.notes}</p>}
+          {client.pain_points && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider">Pain Points</span>
+              <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{client.pain_points}</p>
+            </div>
+          )}
+          {client.proposed_solution && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider">Proposed Solution</span>
+              <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{client.proposed_solution}</p>
+            </div>
+          )}
+          {client.notes && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider">Notes</span>
+              <p className="text-sm text-muted mt-1 whitespace-pre-wrap">{client.notes}</p>
+            </div>
+          )}
         </div>
 
         <div className="bg-header/20 border border-border rounded-xl p-4">

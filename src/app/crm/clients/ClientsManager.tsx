@@ -23,7 +23,7 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
     const q = query.trim().toLowerCase();
     if (!q) return clients;
     return clients.filter((c) =>
-      [c.name, c.email, c.company].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
+      [c.name, c.email, c.company, c.location, c.website].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
     );
   }, [clients, query]);
 
@@ -53,6 +53,24 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
       ),
     },
     { header: "Company", cell: (c) => c.company || <span className="text-muted">—</span> },
+    { header: "Location", cell: (c) => c.location || <span className="text-muted">—</span> },
+    {
+      header: "Website",
+      cell: (c) =>
+        c.website ? (
+          <a
+            href={c.website.startsWith("http") ? c.website : `https://${c.website}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-accent-blue hover:underline max-w-[130px] truncate block text-xs"
+          >
+            {c.website.replace(/^https?:\/\/(www\.)?/, "")}
+          </a>
+        ) : (
+          <span className="text-muted">—</span>
+        ),
+    },
     { header: "Email", cell: (c) => c.email || <span className="text-muted">—</span> },
     { header: "Phone", cell: (c) => c.phone || <span className="text-muted">—</span> },
     {

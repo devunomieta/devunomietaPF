@@ -13,6 +13,10 @@ const CLIENT_FIELDS = [
   { key: "email", label: "Email" },
   { key: "phone", label: "Phone" },
   { key: "company", label: "Company" },
+  { key: "location", label: "Location" },
+  { key: "website", label: "Website" },
+  { key: "pain_points", label: "Pain Points (Identified Problems)" },
+  { key: "proposed_solution", label: "Proposed Solution" },
   { key: "tags", label: "Tags" },
   { key: "notes", label: "Notes" },
 ];
@@ -22,6 +26,10 @@ const LEAD_FIELDS = [
   { key: "email", label: "Email" },
   { key: "phone", label: "Phone" },
   { key: "company", label: "Company" },
+  { key: "location", label: "Location" },
+  { key: "website", label: "Website" },
+  { key: "pain_points", label: "Pain Points (Identified Problems)" },
+  { key: "proposed_solution", label: "Proposed Solution" },
   { key: "score", label: "Score" },
   { key: "tags", label: "Tags" },
   { key: "notes", label: "Notes" },
@@ -70,10 +78,30 @@ export function ImportWizard() {
     setHeaders(result.headers);
     setRows(result.rows);
 
-    // Best-effort auto-map by matching header names to field keys.
+    // Best-effort auto-map by matching header names or known aliases to field keys.
+    const aliases: Record<string, string[]> = {
+      name: ["name", "fullname", "contactname", "clientname", "leadname"],
+      email: ["email", "emailaddress", "mail"],
+      phone: ["phone", "phonenumber", "tel", "telephone", "mobile", "whatsapp"],
+      company: ["company", "companyname", "organization", "business", "businessname"],
+      location: ["location", "city", "country", "state", "region", "address"],
+      website: ["website", "site", "url", "web", "domain", "companywebsite"],
+      pain_points: ["painpoints", "painpoint", "problem", "problems", "identifiedproblems", "challenges", "issues"],
+      proposed_solution: ["proposedsolution", "solution", "solutions", "valueprop", "valueproposition", "pitch", "offer"],
+      score: ["score", "leadscore", "priority", "rating"],
+      tags: ["tags", "tag", "labels", "category", "categories"],
+      notes: ["notes", "note", "description", "details", "comment", "comments"],
+    };
+
     const autoMap: Record<string, string> = {};
     for (const field of fields) {
-      const match = result.headers.find((h) => h.toLowerCase().replace(/[^a-z]/g, "") === field.key);
+      const match = result.headers.find((h) => {
+        const cleanH = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const targetClean = field.key.replace(/[^a-z0-9]/g, "");
+        if (cleanH === targetClean) return true;
+        const fieldAliases = aliases[field.key] || [];
+        return fieldAliases.includes(cleanH);
+      });
       if (match) autoMap[field.key] = match;
     }
     setMapping(autoMap);

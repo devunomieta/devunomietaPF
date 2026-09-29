@@ -58,6 +58,24 @@ export function ClientForm({
           </select>
         </div>
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className={crmLabelClass} htmlFor="location">Location</label>
+          <input id="location" name="location" defaultValue={client?.location || ""} className={crmInputClass} placeholder="e.g. London, UK" />
+        </div>
+        <div>
+          <label className={crmLabelClass} htmlFor="website">Website</label>
+          <input id="website" name="website" type="text" defaultValue={client?.website || ""} className={crmInputClass} placeholder="https://example.com" />
+        </div>
+      </div>
+      <div>
+        <label className={crmLabelClass} htmlFor="pain_points">Pain Points (Identified Problems)</label>
+        <textarea id="pain_points" name="pain_points" rows={2} defaultValue={client?.pain_points || ""} className={crmInputClass} placeholder="Key challenges or problems identified..." />
+      </div>
+      <div>
+        <label className={crmLabelClass} htmlFor="proposed_solution">Proposed Solution</label>
+        <textarea id="proposed_solution" name="proposed_solution" rows={2} defaultValue={client?.proposed_solution || ""} className={crmInputClass} placeholder="Solutions delivered or proposed..." />
+      </div>
       <div>
         <label className={crmLabelClass} htmlFor="tags">Tags (comma separated)</label>
         <input id="tags" name="tags" defaultValue={client?.tags?.join(", ") || ""} className={crmInputClass} placeholder="vip, retainer" />
