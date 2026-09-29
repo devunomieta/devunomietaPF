@@ -50,7 +50,19 @@ export async function saveClient(formData: FormData, id?: string): Promise<Actio
 export async function deleteClient(id: string): Promise<ActionResult> {
   const supabase = await requireAdmin();
   const { error } = await supabase.from("crm_clients").delete().eq("id", id);
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "23503" || error.message?.includes("crm_invoices_client_id_fkey")) {
+      return {
+        error: "Cannot delete this client because they have existing invoices or financial records attached. Please delete or reassign their invoices first, or enable cascade deletion in database settings.",
+      };
+    }
+    if (error.code === "23503") {
+      return {
+        error: "Cannot delete this client because other records (such as emails or inquiries) are linked to them.",
+      };
+    }
+    return { error: error.message };
+  }
   revalidatePath("/crm/clients");
   return { success: true };
 }

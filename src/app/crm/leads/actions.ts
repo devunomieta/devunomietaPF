@@ -62,7 +62,14 @@ export async function saveLead(formData: FormData, id?: string): Promise<ActionR
 export async function deleteLead(id: string): Promise<ActionResult> {
   const supabase = await requireAdmin();
   const { error } = await supabase.from("crm_leads").delete().eq("id", id);
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "23503") {
+      return {
+        error: "Cannot delete this lead because other records (such as converted clients or emails) are linked to it.",
+      };
+    }
+    return { error: error.message };
+  }
   revalidatePath("/crm/leads");
   return { success: true };
 }
