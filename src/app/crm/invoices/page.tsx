@@ -5,6 +5,8 @@ import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTabl
 import { CrmUrlPagination } from "@/components/crm/CrmUrlPagination";
 import { crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { formatMoney } from "@/lib/crm/currency";
+import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
+import { CrmTooltip } from "@/components/crm/CrmTooltip";
 
 export const metadata = { title: "Invoices · CRM" };
 
@@ -74,11 +76,25 @@ export default async function CrmInvoicesPage({
           <h1 className="text-xl font-bold text-foreground">Invoices</h1>
           <p className="text-sm text-muted">{rows.length} total</p>
         </div>
-        <Link href="/crm/invoices/new" className={crmPrimaryBtnClass}>
-          <Plus size={15} />
-          New invoice
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <Link href="/crm/invoices/new" className={crmPrimaryBtnClass}>
+            <Plus size={15} />
+            New invoice
+          </Link>
+          <CrmTooltip text="Create a professional billing invoice with line items, tax, and PDF generation." />
+        </div>
       </div>
+
+      <CrmPageGuide
+        pageKey="invoices"
+        title="Billing & Invoicing"
+        description="Generate branded invoices, send them directly to clients via email with attachments, record partial or full payments, and track overdue accounts."
+        tips={[
+          "Click 'New invoice' to bill an active client. Multiple currencies (NGN, USD, EUR, GBP) are supported.",
+          "Once sent, you can record payments against the invoice via the client detail or invoice view.",
+          "Invoices automatically update to 'paid', 'partially paid', or 'overdue' based on payments and due dates.",
+        ]}
+      />
 
       <div className="bg-header/20 border border-border rounded-xl p-2 sm:p-4">
         <ResponsiveTable columns={columns} rows={pagedRows} emptyLabel="No invoices yet." />

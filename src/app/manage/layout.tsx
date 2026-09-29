@@ -30,6 +30,18 @@ export default async function ManageLayout({ children }: { children: React.React
   }
 
   if (!adminUser) {
+    // Check if the user is a CRM assistant trying to enter the main CMS
+    const { data: crmUser } = await adminDb
+      .from('crm_users')
+      .select('id, is_active')
+      .eq('email', userEmail)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (crmUser) {
+      redirect('/crm');
+    }
+
     await supabase.auth.signOut();
     redirect(`/login?error=Access+denied.+${encodeURIComponent(userEmail)}+is+not+an+authorized+admin.`);
   }

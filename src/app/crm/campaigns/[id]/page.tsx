@@ -17,17 +17,25 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       .maybeSingle(),
     supabase
       .from("crm_email_events")
-      .select("id, recipient_email, type, occurred_at, link_url")
+      .select("id, recipient_email, type, occurred_at, meta")
       .eq("campaign_id", id)
       .order("occurred_at", { ascending: false }),
   ]);
 
   if (!campaign) notFound();
 
+  const formattedEvents = (events || []).map((e: { id: string; recipient_email: string; type: string; occurred_at: string; meta?: { link_url?: string } | null }) => ({
+    id: e.id,
+    recipient_email: e.recipient_email,
+    type: e.type,
+    occurred_at: e.occurred_at,
+    link_url: e.meta?.link_url || null,
+  }));
+
   return (
     <CampaignDetailClient
       campaign={campaign as CampaignRecord}
-      events={(events as EventRecord[]) || []}
+      events={formattedEvents as EventRecord[]}
     />
   );
 }

@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { JourneyBoard } from "./JourneyBoard";
 import type { CrmLead, CrmJourneyStage } from "@/lib/crm/types";
+import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
 
 export const metadata = { title: "Journeys · CRM" };
 
@@ -24,12 +25,24 @@ export default async function CrmJourneysPage() {
   const stages = ((journey?.stages as CrmJourneyStage[] | undefined) || []).sort((a, b) => a.position - b.position);
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh-5rem)]">
-      <JourneyBoard
-        pipelineName={journey?.name || "Conversion Stages"}
-        stages={stages}
-        leads={(leads as CrmLead[]) || []}
+    <div className="flex flex-col gap-4">
+      <CrmPageGuide
+        pageKey="journeys"
+        title="Interactive Deal Journey Board (Kanban)"
+        description="Visualize and drag leads between journey stages. This visual pipeline helps your team track where prospective deals stand from initial outreach to deal closing."
+        tips={[
+          "Drag and drop cards across columns to advance leads to subsequent stages.",
+          "Stages marked 'Won' will prompt conversion of the lead into a billing client.",
+          "Filter by tags or search directly within the board to isolate priority prospects.",
+        ]}
       />
+      <div className="h-[calc(100vh-10rem)]">
+        <JourneyBoard
+          pipelineName={journey?.name || "Conversion Stages"}
+          stages={stages}
+          leads={(leads as CrmLead[]) || []}
+        />
+      </div>
     </div>
   );
 }

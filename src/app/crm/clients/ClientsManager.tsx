@@ -6,6 +6,8 @@ import { Plus, Search, UploadCloud, Trash2 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { CrmModal, crmInputClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
+import { CrmTooltip } from "@/components/crm/CrmTooltip";
 import type { CrmClient } from "@/lib/crm/types";
 import { deleteClient } from "./actions";
 import { ClientForm } from "./ClientForm";
@@ -115,12 +117,26 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
             <UploadCloud size={15} className="inline mr-1.5 -mt-0.5" />
             Import
           </Link>
-          <button onClick={openCreate} className={crmPrimaryBtnClass}>
-            <Plus size={15} />
-            Add client
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button onClick={openCreate} className={crmPrimaryBtnClass}>
+              <Plus size={15} />
+              Add client
+            </button>
+            <CrmTooltip text="Add an active client profile for billing, contacts, and contract management." />
+          </div>
         </div>
       </div>
+
+      <CrmPageGuide
+        pageKey="clients"
+        title="Active Clients & Customer Relationships"
+        description="Clients are accounts with whom you have active or previous business engagements. From here, you can view company profiles, create invoices, send direct outreach, and record contact stakeholders."
+        tips={[
+          "Click on any client row to open invoices, pain point notes, and contacts.",
+          "Use the direct Email or WhatsApp buttons inside the client profile for instant communication.",
+          "Invoices created for a client are tracked in the billing section automatically.",
+        ]}
+      />
 
       <div className="relative max-w-sm">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />

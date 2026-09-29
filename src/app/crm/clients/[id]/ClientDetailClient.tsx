@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/crm/currency";
 import type { CrmClient, CrmContact, CrmStageEvent, CrmInvoice } from "@/lib/crm/types";
 import { ClientForm } from "../ClientForm";
 import { addContact, deleteContact } from "../actions";
+import { CrmPhoneBadge } from "@/components/crm/CrmPhoneBadge";
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -131,7 +132,7 @@ export function ClientDetailClient({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
             <InfoRow label="Email" value={client.email ? <a href={`mailto:${client.email}`} className="text-accent-blue hover:underline">{client.email}</a> : null} />
-            <InfoRow label="Phone" value={client.phone ? <a href={`tel:${client.phone}`} className="text-foreground hover:text-accent-blue">{client.phone}</a> : null} />
+            <InfoRow label="Phone" value={<CrmPhoneBadge phone={client.phone} onEditClick={() => setEditOpen(true)} />} />
             <InfoRow label="Company" value={client.company} />
             <InfoRow label="Location" value={client.location} />
             <InfoRow

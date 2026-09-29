@@ -21,6 +21,8 @@ import {
 import { getTodaysSentEmailCount } from "@/lib/crm/jobs";
 import { formatMoney } from "@/lib/crm/currency";
 import type { CrmJourneyStage } from "@/lib/crm/types";
+import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
+import { CrmTooltip } from "@/components/crm/CrmTooltip";
 
 export const metadata = { title: "Dashboard · CRM" };
 export const dynamic = "force-dynamic";
@@ -172,20 +174,37 @@ export default async function CrmDashboardPage() {
           <p className="text-sm text-muted">Comprehensive snapshot of customer acquisition, communications, and financial performance.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/crm/campaigns/new"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-accent-blue text-white hover:bg-accent-blue/90 shadow-sm transition-colors"
-          >
-            <Send size={13} /> New Campaign
-          </Link>
-          <Link
-            href="/crm/invoices/new"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-header border border-border text-foreground hover:bg-header/80 transition-colors"
-          >
-            <CreditCard size={13} /> Create Invoice
-          </Link>
+          <div className="flex items-center gap-1.5">
+            <Link
+              href="/crm/campaigns/new"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-accent-blue text-white hover:bg-accent-blue/90 shadow-sm transition-colors"
+            >
+              <Send size={13} /> New Campaign
+            </Link>
+            <CrmTooltip text="Compose and schedule a new marketing or outreach email campaign." />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Link
+              href="/crm/invoices/new"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-header border border-border text-foreground hover:bg-header/80 transition-colors"
+            >
+              <CreditCard size={13} /> Create Invoice
+            </Link>
+            <CrmTooltip text="Generate a new billing invoice for an active client." />
+          </div>
         </div>
       </div>
+
+      <CrmPageGuide
+        pageKey="dashboard"
+        title="CRM Analytics & System Hub"
+        description="This dashboard provides an executive overview of your customer pipelines, daily email deliverability, WhatsApp outreach volume, and cash collection performance."
+        tips={[
+          "Review collection efficiency to keep tabs on unpaid and overdue client accounts.",
+          "Check the Daily Email Cap monitor before initiating massive email broadcasts.",
+          "Use the quick action buttons above to quickly launch campaigns or generate invoices.",
+        ]}
+      />
 
       {/* Primary KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

@@ -19,8 +19,11 @@ import {
   Menu,
   X,
   ArrowLeftCircle,
+  UserCheck,
+  Shield,
 } from "lucide-react";
 import { CrmFeedbackProvider } from "./CrmFeedbackProvider";
+import { CrmProfileModal } from "./CrmProfileModal";
 
 type NavLink = {
   name: string;
@@ -41,6 +44,8 @@ const ICONS = {
   Receipt,
   Wallet,
   Settings,
+  Shield,
+  UserCheck,
 } as const;
 
 export type CrmNavLinkInput = {
@@ -85,16 +90,23 @@ function NavList({ links, pathname, onNavigate }: { links: NavLink[]; pathname: 
 export function CrmShell({
   navLinks,
   adminEmail,
+  isSuperAdmin = true,
+  displayName = "Team Member",
+  roleTitle = "Assistant",
   logoutAction,
   children,
 }: {
   navLinks: CrmNavLinkInput[];
   adminEmail: string;
+  isSuperAdmin?: boolean;
+  displayName?: string;
+  roleTitle?: string;
   logoutAction: () => Promise<void>;
   children: React.ReactNode;
 }) {
   const pathname = usePathname() || "/crm";
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const links: NavLink[] = navLinks.map((l) => ({ ...l, icon: ICONS[l.icon] }));
 
@@ -106,13 +118,21 @@ export function CrmShell({
         <Link href="/crm" className="font-semibold text-sm tracking-wide">
           CRM
         </Link>
-        <button
-          aria-label="Open menu"
-          onClick={() => setMobileOpen(true)}
-          className="p-2 -mr-2 text-muted hover:text-foreground"
-        >
-          <Menu size={22} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="p-1.5 text-xs text-muted hover:text-foreground flex items-center gap-1"
+          >
+            <UserCheck size={16} />
+          </button>
+          <button
+            aria-label="Open menu"
+            onClick={() => setMobileOpen(true)}
+            className="p-2 -mr-2 text-muted hover:text-foreground"
+          >
+            <Menu size={22} />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 w-full">
@@ -125,14 +145,29 @@ export function CrmShell({
             <NavList links={links} pathname={pathname} />
           </div>
           <div className="mt-auto p-4 border-t border-border">
-            <Link
-              href="/manage"
-              className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors mb-1"
+            {isSuperAdmin && (
+              <Link
+                href="/manage"
+                className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors mb-1"
+              >
+                <ArrowLeftCircle size={16} />
+                Back to /manage
+              </Link>
+            )}
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-header/50 transition-colors mb-2 mt-1 group"
             >
-              <ArrowLeftCircle size={16} />
-              Back to /manage
-            </Link>
-            <p className="px-3 text-xs text-muted truncate mb-2 mt-2">{adminEmail}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground group-hover:text-accent-blue transition-colors truncate">
+                  {displayName}
+                </span>
+                <span className="text-[10px] text-accent-blue bg-accent-blue/15 px-1.5 py-0.5 rounded capitalize">
+                  {roleTitle}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted truncate">{adminEmail}</p>
+            </button>
             <form action={logoutAction}>
               <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">
                 <LogOut size={16} />
@@ -141,6 +176,15 @@ export function CrmShell({
             </form>
           </div>
         </aside>
+
+        {/* Profile Modal */}
+        <CrmProfileModal
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          userEmail={adminEmail}
+          displayName={displayName}
+          roleTitle={roleTitle}
+        />
 
         {/* Mobile drawer */}
         {mobileOpen && (

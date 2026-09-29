@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Plus, Mail, Eye, MousePointerClick, Send, CheckCircle2, AlertCircle, FileEdit, ArrowRight, Copy } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { crmPrimaryBtnClass } from "@/components/crm/CrmModal";
+import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
+import { CrmTooltip } from "@/components/crm/CrmTooltip";
 
 export type CampaignWithMetrics = {
   id: string;
@@ -162,11 +164,25 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
             Single sends and bulk campaigns with real-time delivery and engagement analytics.
           </p>
         </div>
-        <Link href="/crm/campaigns/new" className={crmPrimaryBtnClass}>
-          <Plus size={15} />
-          <span>New Campaign</span>
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <Link href="/crm/campaigns/new" className={crmPrimaryBtnClass}>
+            <Plus size={15} />
+            <span>New Campaign</span>
+          </Link>
+          <CrmTooltip text="Draft or schedule an email broadcast to a targeted audience of clients or leads." />
+        </div>
       </div>
+
+      <CrmPageGuide
+        pageKey="campaigns"
+        title="Email Campaigns & Broadcasts"
+        description="Compose personalized outreach emails or broadcasts, filter recipients by pipeline stage or tags, and track live engagement metrics."
+        tips={[
+          "Click 'New Campaign' to start an email draft using bulletproof responsive templates.",
+          "Use tags or journey stage filters to target only specific subsets of your contacts.",
+          "Click on any sent campaign to view detailed delivery, open, and click activity in real-time.",
+        ]}
+      />
 
       {/* High-level Engagement Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

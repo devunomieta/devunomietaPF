@@ -6,6 +6,7 @@ import { CrmUrlPagination } from "@/components/crm/CrmUrlPagination";
 import { isGreenApiConfigured } from "@/lib/crm/green-api";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { WhatsAppForm } from "./WhatsAppForm";
+import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
 
 export const metadata = { title: "WhatsApp · CRM" };
 
@@ -136,6 +137,17 @@ export default async function CrmWhatsAppPage({
         <h1 className="text-xl font-bold text-foreground">WhatsApp</h1>
         <p className="text-sm text-muted">Single sends and small batches via GREEN-API.</p>
       </div>
+
+      <CrmPageGuide
+        pageKey="whatsapp"
+        title="WhatsApp Messaging & Broadcasts"
+        description="Communicate with leads and clients directly on WhatsApp. You can send individual personalized messages or dispatch smart randomized batches with spintax support to prevent spam filtering."
+        tips={[
+          "Ensure recipient phone numbers include their international country code (e.g. +234 for Nigeria).",
+          "Use Spintax like {Hi|Hello|Good day} to generate varied phrasing for bulk messages.",
+          "Check the Recent Activity log below to monitor outbound message delivery states.",
+        ]}
+      />
 
       {!configured && (
         <div className="flex items-start gap-2 text-sm text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded-lg p-3">

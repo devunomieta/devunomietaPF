@@ -5,7 +5,9 @@ import Link from "next/link";
 import { Plus, Search, UploadCloud, Trash2 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { CrmModal, crmInputClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
-import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+import { CrmFeedbackProvider, useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
+import { CrmTooltip } from "@/components/crm/CrmTooltip";
 import type { CrmLead } from "@/lib/crm/types";
 import { deleteLead } from "./actions";
 import { LeadForm } from "./LeadForm";
@@ -109,12 +111,26 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
             <UploadCloud size={15} className="inline mr-1.5 -mt-0.5" />
             Import
           </Link>
-          <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/80 transition-all text-sm flex items-center gap-2">
-            <Plus size={15} />
-            Add lead
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/80 transition-all text-sm flex items-center gap-2">
+              <Plus size={15} />
+              Add lead
+            </button>
+            <CrmTooltip text="Add a new prospective client to track in your sales journey." />
+          </div>
         </div>
       </div>
+
+      <CrmPageGuide
+        pageKey="leads"
+        title="Managing Prospective Leads"
+        description="Leads represent prospective clients navigating through your deal journey stages. You can track contact information, lead scores, communication logs, and move them through pipeline stages until they are won."
+        tips={[
+          "Click on any lead row to open their complete history and profile details.",
+          "Use the direct Email and WhatsApp buttons on the lead page for instant outreach.",
+          "When a deal is agreed upon, click 'Convert to client' to create an active billing client record.",
+        ]}
+      />
 
       <div className="relative max-w-sm">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />

@@ -9,6 +9,8 @@ import type { CrmLead, CrmContact, CrmStageEvent, CrmJourneyStage } from "@/lib/
 import { LeadForm } from "../LeadForm";
 import { moveLeadStage, convertLeadToClient } from "../actions";
 import { addContact, deleteContact } from "../../clients/actions";
+import { CrmPhoneBadge } from "@/components/crm/CrmPhoneBadge";
+import { CrmTooltip } from "@/components/crm/CrmTooltip";
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -120,18 +122,15 @@ export function LeadDetailClient({
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{lead.name}</h1>
-          <p className="text-sm text-muted">{lead.company || "No company"}</p>
-        </div>
-        {lead.status === "open" && !lead.converted_to_client_id && (
+      {lead.status === "open" && !lead.converted_to_client_id && (
+        <div className="flex justify-end items-center gap-2 -mt-2">
           <button onClick={handleConvert} disabled={converting} className={crmPrimaryBtnClass}>
             {converting ? <Loader2 size={15} className="animate-spin" /> : <ArrowRightCircle size={15} />}
             Convert to client
           </button>
-        )}
-      </div>
+          <CrmTooltip text="Promotes this lead into an active Client record. Preserves all history, notes, and contacts." />
+        </div>
+      )}
 
       {sortedStages.length > 0 && lead.status === "open" && (
         <div className="mt-4 flex flex-wrap gap-2">
@@ -197,7 +196,7 @@ export function LeadDetailClient({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
               <InfoRow label="Email" value={lead.email ? <a href={`mailto:${lead.email}`} className="text-accent-blue hover:underline">{lead.email}</a> : null} />
-              <InfoRow label="Phone" value={lead.phone ? <a href={`tel:${lead.phone}`} className="text-foreground hover:text-accent-blue">{lead.phone}</a> : null} />
+              <InfoRow label="Phone" value={<CrmPhoneBadge phone={lead.phone} onEditClick={() => setEditOpen(true)} />} />
               <InfoRow label="Company" value={lead.company} />
               <InfoRow label="Location" value={lead.location} />
               <InfoRow

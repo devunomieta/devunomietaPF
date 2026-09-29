@@ -19,21 +19,12 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
 
   const userEmail = user.email?.toLowerCase() ?? "";
 
-  const adminDb = createAdminClient();
-  const { data: adminUser, error: adminQueryError } = await adminDb
-    .from("admins")
-    .select("email")
-    .eq("email", userEmail)
-    .maybeSingle();
+  const { getCrmAuthUser } = await import("@/lib/crm/auth");
+  const authUser = await getCrmAuthUser();
 
-  if (adminQueryError) {
+  if (!authUser) {
     await supabase.auth.signOut();
-    redirect(`/login?error=Admin+check+failed:+${encodeURIComponent(adminQueryError.message)}`);
-  }
-
-  if (!adminUser) {
-    await supabase.auth.signOut();
-    redirect(`/login?error=Access+denied.+${encodeURIComponent(userEmail)}+is+not+an+authorized+admin.`);
+    redirect(`/login?error=Access+denied.+${encodeURIComponent(userEmail)}+is+not+an+authorized+CRM+user.`);
   }
 
   const [
@@ -46,22 +37,32 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     supabase.from("crm_jobs").select("*", { count: "exact", head: true }).in("status", ["queued", "processing"]),
   ]);
 
-  const navLinks: CrmNavLinkInput[] = [
-    { name: "Dashboard", href: "/crm", icon: "LayoutDashboard" },
-    { name: "Clients", href: "/crm/clients", icon: "Users" },
-    { name: "Leads", href: "/crm/leads", icon: "UserPlus", count: openLeads },
-    { name: "Journeys", href: "/crm/journeys", icon: "GitBranch" },
-    { name: "Import", href: "/crm/import", icon: "UploadCloud" },
-    { name: "Campaigns", href: "/crm/campaigns", icon: "Mail" },
-    { name: "WhatsApp", href: "/crm/whatsapp", icon: "MessageCircle" },
-    { name: "Monitoring", href: "/crm/monitoring", icon: "Activity", count: pendingJobs },
-    { name: "Invoices", href: "/crm/invoices", icon: "Receipt", count: overdueInvoices },
-    { name: "Finance", href: "/crm/finance", icon: "Wallet" },
-    { name: "Settings", href: "/crm/settings", icon: "Settings" },
+  const allNavLinks: (CrmNavLinkInput & { permissionKey: keyof typeof authUser.permissions.pages })[] = [
+    { name: "Dashboard", href: "/crm", icon: "LayoutDashboard", permissionKey: "dashboard" },
+    { name: "Clients", href: "/crm/clients", icon: "Users", permissionKey: "clients" },
+    { name: "Leads", href: "/crm/leads", icon: "UserPlus", count: openLeads, permissionKey: "leads" },
+    { name: "Journeys", href: "/crm/journeys", icon: "GitBranch", permissionKey: "journeys" },
+    { name: "Import", href: "/crm/import", icon: "UploadCloud", permissionKey: "import" },
+    { name: "Campaigns", href: "/crm/campaigns", icon: "Mail", permissionKey: "campaigns" },
+    { name: "WhatsApp", href: "/crm/whatsapp", icon: "MessageCircle", permissionKey: "whatsapp" },
+    { name: "Monitoring", href: "/crm/monitoring", icon: "Activity", count: pendingJobs, permissionKey: "monitoring" },
+    { name: "Invoices", href: "/crm/invoices", icon: "Receipt", count: overdueInvoices, permissionKey: "invoices" },
+    { name: "Finance", href: "/crm/finance", icon: "Wallet", permissionKey: "finance" },
+    { name: "Settings", href: "/crm/settings", icon: "Settings", permissionKey: "settings" },
+    { name: "Team Users", href: "/crm/users", icon: "Shield", permissionKey: "users" },
   ];
 
+  const filteredNavLinks = allNavLinks.filter((l) => authUser.permissions.pages[l.permissionKey]);
+
   return (
-    <CrmShell navLinks={navLinks} adminEmail={userEmail} logoutAction={logout}>
+    <CrmShell
+      navLinks={filteredNavLinks}
+      adminEmail={userEmail}
+      isSuperAdmin={authUser.isSuperAdmin}
+      displayName={authUser.displayName}
+      roleTitle={authUser.roleTitle}
+      logoutAction={logout}
+    >
       {children}
     </CrmShell>
   );
