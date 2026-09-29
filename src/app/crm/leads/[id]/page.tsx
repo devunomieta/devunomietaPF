@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
-import { ArrowLeft, Mail, MessageCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { CrmLead, CrmContact, CrmStageEvent, CrmJourneyStage } from "@/lib/crm/types";
 import { LeadDetailClient } from "./LeadDetailClient";
 
@@ -33,22 +33,6 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         <div>
           <h1 className="text-xl font-bold text-foreground">{lead.name}</h1>
           <p className="text-sm text-muted">{lead.company || "No company"}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href={`/crm/campaigns/new?leadId=${lead.id}`}
-            className="px-3 py-2 border border-border rounded-lg hover:bg-header/50 transition-all text-sm inline-flex items-center gap-1.5"
-            id="btn-lead-direct-email"
-          >
-            <Mail size={14} /> Email
-          </Link>
-          <Link
-            href={`/crm/whatsapp?leadId=${lead.id}`}
-            className="px-3 py-2 border border-border rounded-lg hover:bg-header/50 transition-all text-sm inline-flex items-center gap-1.5"
-            id="btn-lead-direct-whatsapp"
-          >
-            <MessageCircle size={14} /> WhatsApp
-          </Link>
         </div>
       </div>
 

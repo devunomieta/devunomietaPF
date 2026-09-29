@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Trash2, Loader2, ArrowRightCircle } from "lucide-react";
+import Link from "next/link";
+import { Pencil, Plus, Trash2, Loader2, ArrowRightCircle, Mail, MessageCircle } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmLead, CrmContact, CrmStageEvent, CrmJourneyStage } from "@/lib/crm/types";
@@ -122,15 +123,33 @@ export function LeadDetailClient({
 
   return (
     <>
-      {lead.status === "open" && !lead.converted_to_client_id && (
-        <div className="flex justify-end items-center gap-2 -mt-2">
-          <button onClick={handleConvert} disabled={converting} className={crmPrimaryBtnClass}>
-            {converting ? <Loader2 size={15} className="animate-spin" /> : <ArrowRightCircle size={15} />}
-            Convert to client
-          </button>
-          <CrmTooltip text="Promotes this lead into an active Client record. Preserves all history, notes, and contacts." />
-        </div>
-      )}
+      {/* Action Bar */}
+      <div className="flex flex-wrap items-center justify-start gap-2.5 -mt-2">
+        <Link
+          href={`/crm/campaigns/new?leadId=${lead.id}`}
+          className="px-3.5 py-2 border border-border rounded-lg hover:bg-header/50 transition-all text-sm inline-flex items-center gap-1.5 text-foreground"
+          id="btn-lead-direct-email"
+        >
+          <Mail size={14} /> Email
+        </Link>
+        <Link
+          href={`/crm/whatsapp?leadId=${lead.id}`}
+          className="px-3.5 py-2 border border-border rounded-lg hover:bg-header/50 transition-all text-sm inline-flex items-center gap-1.5 text-foreground"
+          id="btn-lead-direct-whatsapp"
+        >
+          <MessageCircle size={14} /> WhatsApp
+        </Link>
+
+        {lead.status === "open" && !lead.converted_to_client_id && (
+          <div className="inline-flex items-center gap-1.5">
+            <button onClick={handleConvert} disabled={converting} className={crmPrimaryBtnClass}>
+              {converting ? <Loader2 size={15} className="animate-spin" /> : <ArrowRightCircle size={15} />}
+              Convert to client
+            </button>
+            <CrmTooltip text="Promotes this lead into an active Client record. Preserves all history, notes, and contacts." />
+          </div>
+        )}
+      </div>
 
       {sortedStages.length > 0 && lead.status === "open" && (
         <div className="mt-4 flex flex-wrap gap-2">
