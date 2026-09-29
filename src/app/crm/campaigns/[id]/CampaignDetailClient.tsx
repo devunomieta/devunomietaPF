@@ -19,7 +19,11 @@ import {
   Layers,
   Copy,
   RotateCcw,
-  RefreshCw
+  RefreshCw,
+  Users,
+  Check,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 
@@ -66,14 +70,16 @@ export function CampaignDetailClient({
 }) {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"activity" | "preview">("activity");
+  const [activeTab, setActiveTab] = useState<"recipients" | "activity" | "preview">("recipients");
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
+  const [recipientPage, setRecipientPage] = useState(1);
   const pageSize = 20;
 
   useEffect(() => {
     setPage(1);
+    setRecipientPage(1);
   }, [searchFilter, typeFilter]);
 
   // Metrics computation (Mailchimp style)
@@ -143,10 +149,14 @@ export function CampaignDetailClient({
   }, [recipientActivityMap]);
 
   const deliveredCount = useMemo(() => {
-    // If we have explicit delivered events count, else sent minus bounce
-    const count = events.filter((e) => e.type === "delivered").length;
-    return count > 0 ? count : Math.max(0, sentCount - bounceCount);
-  }, [events, sentCount, bounceCount]);
+    let count = 0;
+    recipientActivityMap.forEach((r) => {
+      if (r.allEvents.includes("delivered") || (!r.hasBounced && r.allEvents.includes("sent"))) {
+        count++;
+      }
+    });
+    return Math.min(sentCount, Math.max(0, count));
+  }, [recipientActivityMap, sentCount]);
 
   const openRate = sentCount > 0 ? Math.round((uniqueOpened / sentCount) * 100) : 0;
   const clickRate = sentCount > 0 ? Math.round((uniqueClicked / sentCount) * 100) : 0;
@@ -210,6 +220,96 @@ export function CampaignDetailClient({
         <span className="text-xs text-muted">
           {new Date(e.occurred_at).toLocaleString(undefined, {
             dateStyle: "medium",
+            timeStyle: "short",
+          })}
+        </span>
+      ),
+    },
+  ];
+
+  // List of unique recipients with aggregated statuses
+  const recipientsList = useMemo(() => {
+    return Array.from(recipientActivityMap.values()).map((r) => {
+      const isDelivered = r.allEvents.includes("delivered") || (!r.hasBounced && r.allEvents.includes("sent"));
+      const isSent = r.allEvents.includes("sent");
+      return {
+        id: r.email,
+        email: r.email,
+        sent: isSent,
+        delivered: isDelivered,
+        opened: r.hasOpened,
+        clicked: r.hasClicked,
+        bounced: r.hasBounced,
+        latestTime: r.latestTime,
+      };
+    });
+  }, [recipientActivityMap]);
+
+  const recipientColumns: CrmColumn<typeof recipientsList[0]>[] = [
+    {
+      header: "Recipient Email",
+      cell: (r) => <span className="font-semibold text-foreground">{r.email}</span>,
+    },
+    {
+      header: "Delivery",
+      cell: (r) => {
+        if (r.bounced) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+              <XCircle size={12} /> Bounced
+            </span>
+          );
+        }
+        if (r.delivered) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-500/15 text-teal-400 border border-teal-500/30">
+              <Check size={12} /> Delivered
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-accent-blue/15 text-accent-blue border border-accent-blue/30">
+            <Clock size={12} /> Sent
+          </span>
+        );
+      },
+    },
+    {
+      header: "Opened",
+      cell: (r) => (
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+            r.opened
+              ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+              : "bg-muted/10 text-muted border-border/50"
+          }`}
+        >
+          {r.opened ? <Eye size={12} /> : null}
+          {r.opened ? "Yes" : "Not yet"}
+        </span>
+      ),
+    },
+    {
+      header: "Clicked Link",
+      cell: (r) => (
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+            r.clicked
+              ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
+              : "bg-muted/10 text-muted border-border/50"
+          }`}
+        >
+          {r.clicked ? <MousePointerClick size={12} /> : null}
+          {r.clicked ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    {
+      header: "Last Activity",
+      cell: (r) => (
+        <span className="text-xs text-muted">
+          {new Date(r.latestTime).toLocaleString(undefined, {
+            dateStyle: "short",
             timeStyle: "short",
           })}
         </span>
@@ -371,6 +471,17 @@ export function CampaignDetailClient({
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-border pb-1">
         <button
+          onClick={() => setActiveTab("recipients")}
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors ${
+            activeTab === "recipients"
+              ? "bg-accent-blue/15 text-accent-blue"
+              : "text-muted hover:text-foreground"
+          }`}
+        >
+          <Users size={14} />
+          Recipients ({recipientsList.length})
+        </button>
+        <button
           onClick={() => setActiveTab("activity")}
           className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors ${
             activeTab === "activity"
@@ -379,7 +490,7 @@ export function CampaignDetailClient({
           }`}
         >
           <Activity size={14} />
-          Recipient Activity ({events.length})
+          Event Stream ({events.length})
         </button>
         <button
           onClick={() => setActiveTab("preview")}
@@ -394,7 +505,39 @@ export function CampaignDetailClient({
         </button>
       </div>
 
-      {/* Tab 1: Recipient Activity Table */}
+      {/* Tab 1: Recipients List Table */}
+      {activeTab === "recipients" && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                type="text"
+                placeholder="Search recipient email..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 bg-header/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted focus:outline-none focus:border-accent-blue"
+              />
+            </div>
+            <div className="text-xs text-muted">
+              Showing {recipientsList.filter(r => !searchFilter || r.email.toLowerCase().includes(searchFilter.toLowerCase())).length} of {recipientsList.length} recipient(s)
+            </div>
+          </div>
+
+          <div className="bg-header/20 border border-border rounded-2xl p-2 sm:p-4 shadow-xs">
+            <ResponsiveTable
+              columns={recipientColumns}
+              rows={recipientsList.filter(r => !searchFilter || r.email.toLowerCase().includes(searchFilter.toLowerCase()))}
+              pageSize={pageSize}
+              currentPage={recipientPage}
+              onPageChange={setRecipientPage}
+              emptyLabel={recipientsList.length === 0 ? "No recipients recorded for this campaign." : "No recipients match your search."}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Recipient Activity Table */}
       {activeTab === "activity" && (
         <div className="flex flex-col gap-4">
           {/* Controls: Search and Filter Pills */}

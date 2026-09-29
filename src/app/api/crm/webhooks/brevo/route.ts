@@ -93,13 +93,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fallback: match by recent sent event to this recipient email if message-id wasn't found
+    // Fallback: match by recent sent event to this recipient email ONLY if sent within 15 minutes of the webhook event
     if (!campaignId) {
+      const eventTime = event.date ? new Date(event.date).getTime() : Date.now();
+      const fifteenMinutesBefore = new Date(eventTime - 15 * 60 * 1000).toISOString();
+
       const { data: fallbackEvent } = await supabase
         .from("crm_email_events")
         .select("campaign_id, client_id, lead_id")
         .eq("recipient_email", event.email)
         .eq("type", "sent")
+        .gte("occurred_at", fifteenMinutesBefore)
         .order("occurred_at", { ascending: false })
         .limit(1)
         .maybeSingle();
