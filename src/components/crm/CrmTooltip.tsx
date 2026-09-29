@@ -14,13 +14,16 @@ export function CrmTooltip({
 }) {
   const [visible, setVisible] = useState(false);
   const [actualPosition, setActualPosition] = useState<"top" | "bottom" | "left" | "right">(position);
+  const [alignRight, setAlignRight] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-detect if tooltip will be cut off by top or edges of viewport
+  // Auto-detect if tooltip will be cut off by top, bottom, or right edge of viewport
   useEffect(() => {
     if (visible && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      // If trigger is within 80px of top viewport edge, flip to bottom
+      const viewportWidth = window.innerWidth;
+      
+      // If trigger is within 85px of top viewport edge, flip to bottom
       if (position === "top" && rect.top < 85) {
         setActualPosition("bottom");
       } else if (position === "bottom" && window.innerHeight - rect.bottom < 85) {
@@ -28,12 +31,23 @@ export function CrmTooltip({
       } else {
         setActualPosition(position);
       }
+
+      // If trigger is within 250px of the right window edge, anchor right edge to prevent cut-off
+      if (viewportWidth - rect.right < 240) {
+        setAlignRight(true);
+      } else {
+        setAlignRight(false);
+      }
     }
   }, [visible, position]);
 
+  const horizontalAlignClass = alignRight 
+    ? "right-0" 
+    : "left-1/2 -translate-x-1/2";
+
   const positionClasses = {
-    top: "bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-2",
-    bottom: "top-full right-0 sm:left-1/2 sm:-translate-x-1/2 mt-2",
+    top: `bottom-full ${horizontalAlignClass} mb-2`,
+    bottom: `top-full ${horizontalAlignClass} mt-2`,
     left: "right-full top-1/2 -translate-y-1/2 mr-2",
     right: "left-full top-1/2 -translate-y-1/2 ml-2",
   }[actualPosition];
