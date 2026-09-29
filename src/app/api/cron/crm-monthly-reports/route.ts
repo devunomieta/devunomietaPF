@@ -1,53 +1,50 @@
-"use server";
-
-import { requireAdmin } from "@/lib/requireAdmin";
+import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { getDateRange, fetchExecutiveReportData, type ReportCadence } from "@/lib/crm/reports/data";
+import { getDateRange, fetchExecutiveReportData } from "@/lib/crm/reports/data";
 import { renderExecutivePdf } from "@/lib/crm/reports/pdf";
 import { sendEmail } from "@/lib/brevo";
 import { formatMoneyPlain } from "@/lib/crm/currency";
-import type { ActionResult } from "@/lib/crm/types";
 
-import { revalidatePath } from "next/cache";
-import { drainCrmJobs } from "@/lib/crm/jobs";
+export const maxDuration = 120;
 
-export async function processJobsNow(): Promise<{ jobsTouched: number }> {
-  const supabase = await requireAdmin();
-  const result = await drainCrmJobs(supabase);
-  revalidatePath("/crm/monitoring");
-  revalidatePath("/crm/clients");
-  revalidatePath("/crm/leads");
-  revalidatePath("/crm/campaigns");
-  return result;
-}
-
-export async function sendTestReportAction(params: {
-  cadence: ReportCadence;
-  year: number;
-  month?: number;
-}): Promise<ActionResult & { recipientCount?: number }> {
-  try {
-    await requireAdmin();
-  } catch {
-    return { error: "Unauthorized access" };
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createAdminClient();
+
+  // 1. Check CRM Settings
   const { data: settings } = await supabase.from("crm_settings").select("*").eq("id", "default").maybeSingle();
+
+  if (!settings?.report_auto_send) {
+    return NextResponse.json({ message: "Automated monthly reports are disabled in CRM settings." });
+  }
 
   const recipients: string[] = settings?.report_notification_emails || [];
   if (recipients.length === 0) {
-    return {
-      error: "No recipient emails configured. Please add recipient emails in CRM Settings first.",
-    };
+    return NextResponse.json({ message: "No recipient emails configured in CRM settings." });
   }
 
-  const range = getDateRange(params.cadence, params.year, params.month);
+  // 2. Determine previous completed month
+  const now = new Date();
+  let prevMonth = now.getUTCMonth(); // 0-indexed: current month minus 1 is previous month (0 = Jan)
+  let prevYear = now.getUTCFullYear();
+  if (prevMonth === 0) {
+    prevMonth = 12;
+    prevYear -= 1;
+  }
+
+  const range = getDateRange("monthly", prevYear, prevMonth);
+
+  // 3. Compile Executive report data & render PDF
   const data = await fetchExecutiveReportData(supabase, range);
   const pdfBuffer = await renderExecutivePdf(data);
   const base64Pdf = pdfBuffer.toString("base64");
   const filename = `Executive_Report_${range.label.replace(/\s+/g, "_")}.pdf`;
 
+  // 4. Compose notification HTML email with summary KPI highlights
   const grossInvoiced = formatMoneyPlain(data.invoicesSummary.grossInvoiced, data.invoicesSummary.currency);
   const netCollected = formatMoneyPlain(data.invoicesSummary.netCollected, data.invoicesSummary.currency);
   const totalReceivables = formatMoneyPlain(data.invoicesSummary.totalOutstanding, data.invoicesSummary.currency);
@@ -55,13 +52,12 @@ export async function sendTestReportAction(params: {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827; line-height: 1.5;">
       <div style="background-color: #0f172a; color: #ffffff; padding: 24px; border-radius: 8px 8px 0 0;">
-        <span style="background: #3b82f6; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Manual Trigger Test</span>
-        <h1 style="margin: 8px 0 0; font-size: 20px;">CRM Performance Report: ${range.label}</h1>
-        <p style="margin: 4px 0 0; color: #94a3b8; font-size: 14px;">Dispatched from CRM Monitoring Center</p>
+        <h1 style="margin: 0; font-size: 20px;">Monthly Executive Performance Report</h1>
+        <p style="margin: 4px 0 0; color: #94a3b8; font-size: 14px;">${range.label} · Generated for ${settings.business_name || "CRM Administration"}</p>
       </div>
 
       <div style="border: 1px solid #e2e8f0; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
-        <p style="font-size: 14px; margin-top: 0;">Attached is the executive dossier for <strong>${range.label}</strong>:</p>
+        <p style="font-size: 14px; margin-top: 0;">Attached is your executive performance dossier for <strong>${range.label}</strong>. Below is an overview of key performance indicators at a glance:</p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0;">
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px;">
@@ -83,17 +79,23 @@ export async function sendTestReportAction(params: {
         </div>
 
         <p style="font-size: 13px; color: #475569;">
-          Open the attached PDF (<code>${filename}</code>) for full breakdown tables.
+          Review the attached PDF (<code>${filename}</code>) for full breakdown tables covering client profiles, aging schedules, and pipeline conversion details.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin-bottom: 0;">
+          Sent automatically by your portfolio CRM system. Manage notification preferences in CRM Settings.
         </p>
       </div>
     </div>
   `;
 
+  // 5. Dispatch via Brevo
   const results = await Promise.allSettled(
     recipients.map((email) =>
       sendEmail({
         to: [{ email }],
-        subject: `[Test Dispatch] CRM Performance Report: ${range.label}`,
+        subject: `Monthly Executive Report: ${range.label}`,
         htmlContent: html,
         attachments: [
           {
@@ -106,9 +108,11 @@ export async function sendTestReportAction(params: {
   );
 
   const sentCount = results.filter((r) => r.status === "fulfilled").length;
-  if (sentCount === 0) {
-    return { error: "Failed to dispatch email. Please check Brevo API key and logs." };
-  }
 
-  return { success: true, recipientCount: sentCount };
+  return NextResponse.json({
+    success: true,
+    sentCount,
+    totalRecipients: recipients.length,
+    period: range.label,
+  });
 }

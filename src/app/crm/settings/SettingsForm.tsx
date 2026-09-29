@@ -119,6 +119,63 @@ export function SettingsForm({ settings, whatsappConfigured }: { settings: CrmSe
           </div>
         </div>
 
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mt-2">Automated Monthly Reports</h2>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className={crmLabelClass} htmlFor="report_notification_emails">
+              Report recipient emails (comma separated)
+            </label>
+            <input
+              id="report_notification_emails"
+              name="report_notification_emails"
+              type="text"
+              defaultValue={(settings?.report_notification_emails || []).join(", ")}
+              className={crmInputClass}
+              placeholder="admin@yourbusiness.com, partner@yourbusiness.com"
+            />
+            <p className="text-xs text-muted mt-1">
+              The monthly Executive summary report PDF will be automatically emailed to these addresses on the 1st of each month.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={crmLabelClass} htmlFor="report_default_due_days">
+                Default Net Terms (Days)
+              </label>
+              <input
+                id="report_default_due_days"
+                name="report_default_due_days"
+                type="number"
+                min="1"
+                max="90"
+                defaultValue={settings?.report_default_due_days ?? 14}
+                className={crmInputClass}
+              />
+              <p className="text-xs text-muted mt-1">
+                Used to calculate overdue status & aging buckets when an invoice has no explicit due date.
+              </p>
+            </div>
+
+            <div className="flex flex-col justify-center">
+              <label className="flex items-center gap-2 cursor-pointer mt-4 sm:mt-2">
+                <input
+                  type="checkbox"
+                  name="report_auto_send"
+                  defaultChecked={settings?.report_auto_send ?? true}
+                  className="rounded border-border text-accent-blue focus:ring-accent-blue h-4 w-4 bg-header"
+                />
+                <span className="text-sm font-medium text-foreground">
+                  Enable automated monthly email dispatch
+                </span>
+              </label>
+              <p className="text-xs text-muted ml-6">
+                Fires on the 1st day of every month at 07:00 UTC.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <button type="submit" disabled={loading} className={`${crmPrimaryBtnClass} self-start mt-2`}>
           {loading && <Loader2 size={15} className="animate-spin" />}
           Save settings

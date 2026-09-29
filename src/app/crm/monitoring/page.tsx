@@ -4,6 +4,8 @@ import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTabl
 import { CrmUrlPagination } from "@/components/crm/CrmUrlPagination";
 import { MonitoringActions } from "./MonitoringActions";
 
+import { ReportsSection } from "@/components/crm/ReportsSection";
+
 export const metadata = { title: "Monitoring · CRM" };
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -88,6 +90,8 @@ export default async function CrmMonitoringPage({
         </div>
         <MonitoringActions />
       </div>
+
+      <ReportsSection configuredEmails={settings?.report_notification_emails || []} />
 
       {alerting && (
         <div className="flex items-start gap-2 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg p-3">

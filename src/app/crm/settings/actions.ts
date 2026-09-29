@@ -39,6 +39,14 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
       brevo_daily_cap: parseInt(formData.get("brevo_daily_cap") as string) || 300,
       bounce_alert_threshold: parseFloat(formData.get("bounce_alert_threshold") as string) || 5,
       complaint_alert_threshold: parseFloat(formData.get("complaint_alert_threshold") as string) || 0.1,
+      report_notification_emails: (formData.get("report_notification_emails") as string)
+        ? (formData.get("report_notification_emails") as string)
+            .split(/[,;\n]/)
+            .map((e) => e.trim().toLowerCase())
+            .filter((e) => e.length > 0 && e.includes("@"))
+        : [],
+      report_auto_send: formData.get("report_auto_send") === "on" || formData.get("report_auto_send") === "true",
+      report_default_due_days: parseInt(formData.get("report_default_due_days") as string, 10) || 14,
     })
     .eq("id", "default");
 

@@ -104,6 +104,10 @@ export type CrmSettings = {
   whatsapp_enabled: boolean;
   bounce_alert_threshold: number;
   complaint_alert_threshold: number;
+  report_notification_emails?: string[];
+  report_auto_send?: boolean;
+  report_send_day_of_month?: number;
+  report_default_due_days?: number;
 };
 
 export type CrmEmailEventType =
