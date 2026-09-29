@@ -21,9 +21,9 @@ export function ConditionalChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isCrm = pathname?.startsWith("/crm");
+  const isPortal = pathname?.startsWith("/crm") || pathname?.startsWith("/manage");
 
-  if (isCrm) {
+  if (isPortal) {
     return <>{children}</>;
   }
 

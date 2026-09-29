@@ -1,9 +1,8 @@
-import Link from 'next/link';
 import { logout } from '@/app/login/actions';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, FileText, FolderGit2, History, GraduationCap, User, MessageSquare, LogOut, Send, Settings, Lightbulb, ArrowUpRight } from 'lucide-react';
+import { ManageShell } from '@/components/manage/ManageShell';
 
 export default async function ManageLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -52,65 +51,26 @@ export default async function ManageLayout({ children }: { children: React.React
     supabase.from('subscribers').select('*', { count: 'exact', head: true }),
   ]);
 
-  const navLinks = [
-    { name: 'Dashboard', href: '/manage', icon: LayoutDashboard },
-    { name: 'Profile', href: '/manage/profile', icon: User },
-    { name: 'Posts', href: '/manage/posts', icon: FileText },
-    { name: 'Projects', href: '/manage/projects', icon: FolderGit2 },
-    { name: 'Experience', href: '/manage/experience', icon: History },
-    { name: 'Academic', href: '/manage/academic', icon: GraduationCap },
-    { name: 'Ideas', href: '/manage/ideas', icon: Lightbulb },
-    { name: 'Inquiries', href: '/manage/inquiries', icon: MessageSquare, count: unreadInquiries },
-    { name: 'Newsletter', href: '/manage/newsletter', icon: Send, count: subscriberCount },
-    { name: 'Settings', href: '/manage/settings', icon: Settings },
+  const navLinks: { name: string; href: string; iconName: string; count?: number | null }[] = [
+    { name: 'Dashboard', href: '/manage', iconName: 'LayoutDashboard' },
+    { name: 'Profile', href: '/manage/profile', iconName: 'User' },
+    { name: 'Posts', href: '/manage/posts', iconName: 'FileText' },
+    { name: 'Projects', href: '/manage/projects', iconName: 'FolderGit2' },
+    { name: 'Experience', href: '/manage/experience', iconName: 'History' },
+    { name: 'Academic', href: '/manage/academic', iconName: 'GraduationCap' },
+    { name: 'Ideas', href: '/manage/ideas', iconName: 'Lightbulb' },
+    { name: 'Inquiries', href: '/manage/inquiries', iconName: 'MessageSquare', count: unreadInquiries },
+    { name: 'Newsletter', href: '/manage/newsletter', iconName: 'Send', count: subscriberCount },
+    { name: 'Settings', href: '/manage/settings', iconName: 'Settings' },
   ];
 
   return (
-    <div className="flex flex-col md:flex-row flex-1 gap-8">
-      <aside className="w-full md:w-64 shrink-0">
-        <div className="bg-header/50 border border-border rounded-xl p-4 sticky top-24">
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 px-3">Admin Panel</h2>
-          <nav className="flex flex-col gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className="flex items-center justify-between px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <link.icon size={16} />
-                  {link.name}
-                </div>
-                {link.count !== undefined && link.count !== null && link.count > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-accent-blue text-white text-[10px] font-bold">
-                    {link.count}
-                  </span>
-                )}
-              </Link>
-            ))}
-            <div className="my-2 border-t border-border"></div>
-            <Link
-              href="/crm"
-              className="flex items-center justify-between px-3 py-2 text-sm text-accent-blue hover:bg-accent-blue/10 rounded-md transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <ArrowUpRight size={16} />
-                CRM Portal
-              </div>
-            </Link>
-            <div className="my-2 border-t border-border"></div>
-            <form action={logout}>
-              <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">
-                <LogOut size={16} />
-                Sign Out
-              </button>
-            </form>
-          </nav>
-        </div>
-      </aside>
-      <div className="flex-1 bg-background border border-border rounded-xl p-6">
-        {children}
-      </div>
-    </div>
+    <ManageShell
+      navLinks={navLinks}
+      userEmail={userEmail}
+      logoutAction={logout}
+    >
+      {children}
+    </ManageShell>
   );
 }
