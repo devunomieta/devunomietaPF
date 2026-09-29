@@ -63,12 +63,16 @@ export function CrmPageGuide({
 
   if (isDismissed) {
     return (
-      <div className="flex justify-end -mt-3 mb-1">
+      <div className="flex justify-end -mt-2 mb-2">
         <button
           onClick={handleReopen}
-          className="text-[11px] text-muted hover:text-accent-blue inline-flex items-center gap-1 transition-colors px-2 py-0.5 rounded border border-border/40 hover:border-accent-blue/30 bg-header/10"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-muted hover:text-foreground bg-header/20 hover:bg-header/50 border border-border/70 hover:border-accent-blue/40 transition-all cursor-pointer shadow-2xs group"
+          title={`Click to show ${title} guide`}
         >
-          <Info size={11} /> Guide: {title}
+          <div className="w-4 h-4 rounded-full bg-accent-blue/15 text-accent-blue group-hover:bg-accent-blue group-hover:text-white flex items-center justify-center transition-colors">
+            <Info size={11} />
+          </div>
+          <span>Guide</span>
         </button>
       </div>
     );
