@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { logout } from "@/app/login/actions";
 import { CrmShell, type CrmNavLinkInput } from "@/components/crm/CrmShell";
+import { ConsentGateModal } from "@/components/crm/ConsentGateModal";
 
 export const metadata = {
   title: "CRM",
@@ -54,16 +55,42 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
 
   const filteredNavLinks = allNavLinks.filter((l) => authUser.permissions.pages[l.permissionKey]);
 
+  const requiresConsent = !authUser.isSuperAdmin && authUser.agreementStatus !== "signed";
+
+  // Fetch agreement ID for signed download
+  let activeAgreementId: string | null = null;
+  if (authUser.crmUserId) {
+    const adminDb = createAdminClient();
+    const { data: agr } = await adminDb
+      .from("crm_team_agreements")
+      .select("id")
+      .eq("user_id", authUser.crmUserId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    activeAgreementId = agr?.id || null;
+  }
+
   return (
-    <CrmShell
-      navLinks={filteredNavLinks}
-      adminEmail={userEmail}
-      isSuperAdmin={authUser.isSuperAdmin}
-      displayName={authUser.displayName}
-      roleTitle={authUser.roleTitle}
-      logoutAction={logout}
-    >
-      {children}
-    </CrmShell>
+    <>
+      {requiresConsent && (
+        <ConsentGateModal
+          defaultDisplayName={authUser.displayName}
+          roleTitle={authUser.roleTitle}
+        />
+      )}
+      <CrmShell
+        navLinks={filteredNavLinks}
+        adminEmail={userEmail}
+        isSuperAdmin={authUser.isSuperAdmin}
+        displayName={authUser.displayName}
+        roleTitle={authUser.roleTitle}
+        agreementStatus={authUser.agreementStatus}
+        activeAgreementId={activeAgreementId}
+        logoutAction={logout}
+      >
+        {children}
+      </CrmShell>
+    </>
   );
 }

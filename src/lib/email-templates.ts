@@ -236,4 +236,174 @@ export const weeklyEmailTemplate = (name: string, latestPost?: { title: string, 
   </div>
 </body>
 </html>
-`
+`;
+
+export const assistantOnboardingAgreementEmail = ({
+  name,
+  email,
+  tempPassword,
+  roleTitle,
+  loginUrl,
+}: {
+  name: string;
+  email: string;
+  tempPassword?: string;
+  roleTitle: string;
+  loginUrl: string;
+}) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to the Team - Assistant Onboarding & Agreement</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0b1120;
+      color: #e2e8f0;
+    }
+    .wrapper {
+      max-width: 620px;
+      margin: 24px auto;
+      background-color: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .header {
+      background: linear-gradient(135deg, #0284c7 0%, #1e40af 100%);
+      padding: 32px 28px;
+      text-align: left;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 22px;
+      color: #ffffff;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .header p {
+      margin: 6px 0 0;
+      color: #bae6fd;
+      font-size: 13px;
+    }
+    .content {
+      padding: 30px 28px;
+      line-height: 1.6;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    .callout {
+      background-color: #1e293b;
+      border-left: 4px solid #38bdf8;
+      border-radius: 6px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+    .callout-title {
+      font-weight: 700;
+      color: #f8fafc;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .creds-box {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+    .creds-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .creds-label {
+      color: #94a3b8;
+    }
+    .creds-val {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 13px 26px;
+      border-radius: 8px;
+      margin: 15px 0 25px;
+      text-align: center;
+    }
+    .footer {
+      background-color: #0b1120;
+      border-top: 1px solid #1f2937;
+      padding: 20px 28px;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+    }
+    ul {
+      padding-left: 20px;
+      margin: 10px 0;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Welcome to the Team</h1>
+      <p>Appointment: ${roleTitle} to Joseph Unomieta</p>
+    </div>
+    <div class="content">
+      <p>Hello <strong>${name}</strong>,</p>
+      <p>You have been officially invited and provisioned to join my team as a <strong>${roleTitle}</strong>. In this capacity, you will work closely with me (Joseph Unomieta) co-managing business, scheduling, social media accounts, CRM workflows, and client relationships.</p>
+
+      <div class="callout">
+        <div class="callout-title">📋 Summary of Terms & Key Provisions</div>
+        <ul>
+          <li><strong>Role Responsibilities:</strong> Co-managing administrative schedules, CRM leads/clients, and managing/posting to official social media channels (WhatsApp Business, LinkedIn, X, Instagram).</li>
+          <li><strong>Mentorship & Training:</strong> I will actively guide and train you in systems, technical methodologies, and operational areas where you need development.</li>
+          <li><strong>15% Net Profit Share:</strong> You will earn 15% of the declared <em>net profit</em> for every paying client you actively co-handle (calculated after direct service delivery costs are deducted, upon final invoice settlement).</li>
+          <li><strong>Perpetual NDA:</strong> All information accessed (verbal, written, digital, or observed) must be kept confidential <strong>for life</strong>, with disclosures strictly prohibited unless compelled by a court of law with prior written notice.</li>
+        </ul>
+      </div>
+
+      <div class="creds-box">
+        <div style="font-weight: 600; color: #f8fafc; margin-bottom: 8px; font-size: 13px;">Your Login Credentials</div>
+        <div class="creds-row"><span class="creds-label">Portal URL:</span> <span class="creds-val">${loginUrl}</span></div>
+        <div class="creds-row"><span class="creds-label">Email:</span> <span class="creds-val">${email}</span></div>
+        ${tempPassword ? `<div class="creds-row"><span class="creds-label">Temporary Password:</span> <span class="creds-val">${tempPassword}</span></div>` : ""}
+      </div>
+
+      <p style="color: #f59e0b; font-size: 13px; font-weight: 600;">
+        ⚠️ Mandatory Step on First Login:<br>
+        To access the CRM portal, you will be required to review the complete Personal Assistant Agreement & NDA on your first screen, and provide binding electronic consent by entering your legal First Name, Last Name, and Date of Birth.
+      </p>
+
+      <div style="text-align: center;">
+        <a href="${loginUrl}" class="btn">Log In & Review Agreement →</a>
+      </div>
+
+      <p>I look forward to our productive collaboration.</p>
+      <p>Best regards,<br><strong>Joseph Unomieta</strong><br><span style="font-size: 12px; color: #94a3b8;">Principal & Founder</span></p>
+    </div>
+    <div class="footer">
+      This is an automated administrative dispatch from the DevUnomieta CRM System.<br>
+      © 2026 Joseph Unomieta. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>
+`;

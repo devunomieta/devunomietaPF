@@ -15,9 +15,10 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const { data: invoice } = await supabase.from("crm_invoices").select("*").eq("id", id).maybeSingle();
   if (!invoice) notFound();
 
-  const [{ data: client }, { data: payments }] = await Promise.all([
+  const [{ data: client }, { data: payments }, { data: assistants }] = await Promise.all([
     supabase.from("crm_clients").select("id, name, email, company").eq("id", invoice.client_id).maybeSingle(),
     supabase.from("crm_invoice_payments").select("*").eq("invoice_id", id).order("paid_at", { ascending: false }),
+    supabase.from("crm_users").select("id, display_name, email, role_title").order("display_name"),
   ]);
 
   return (
@@ -29,6 +30,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         invoice={invoice as CrmInvoice}
         client={client}
         payments={(payments as CrmInvoicePayment[]) || []}
+        assistants={assistants || []}
       />
     </div>
   );

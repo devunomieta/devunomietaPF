@@ -30,6 +30,7 @@ export async function saveClient(formData: FormData, id?: string): Promise<Actio
     status: (formData.get("status") as string) || "active",
     tags: parseTags(formData.get("tags")),
     notes: (formData.get("notes") as string)?.trim() || null,
+    co_handled_by: (formData.get("co_handled_by") as string)?.trim() || null,
   };
 
   let error;

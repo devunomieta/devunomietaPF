@@ -199,3 +199,48 @@ export async function voidInvoice(invoiceId: string): Promise<ActionResult> {
   revalidatePath("/crm/invoices");
   return { success: true };
 }
+
+/**
+ * Super Admin or billing manager updates direct delivery costs and calculates declared net profit & 15% assistant profit share upon service delivery.
+ */
+export async function updateInvoiceProfitDeclaration(
+  invoiceId: string,
+  directServiceCost: number,
+  coHandledBy?: string | null
+): Promise<ActionResult> {
+  const supabase = await requireAdmin();
+
+  const { data: invoice } = await supabase
+    .from("crm_invoices")
+    .select("total, currency")
+    .eq("id", invoiceId)
+    .maybeSingle();
+
+  if (!invoice) return { error: "Invoice not found." };
+
+  const { data: payments } = await supabase
+    .from("crm_invoice_payments")
+    .select("amount")
+    .eq("invoice_id", invoiceId);
+
+  const totalPaid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const cost = Math.max(0, directServiceCost || 0);
+  const declaredProfit = Math.max(0, totalPaid - cost);
+  const assistantShare = Number((declaredProfit * 0.15).toFixed(2));
+
+  const { error } = await supabase
+    .from("crm_invoices")
+    .update({
+      co_handled_by: coHandledBy || null,
+      direct_service_cost: cost,
+      declared_profit: declaredProfit,
+      assistant_profit_share: assistantShare,
+    })
+    .eq("id", invoiceId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/crm/invoices/${invoiceId}`);
+  revalidatePath("/crm/finance");
+  return { success: true };
+}

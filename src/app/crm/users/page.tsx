@@ -22,13 +22,22 @@ export default async function CrmUsersPage() {
 
   const adminDb = createAdminClient();
 
-  const [{ data: rawUsers }, { data: permissionsRows }, { data: auditLogs }] = await Promise.all([
+  const [{ data: rawUsers }, { data: permissionsRows }, { data: rawAgreements }, { data: auditLogs }] = await Promise.all([
     adminDb.from("crm_users").select("*").order("created_at", { ascending: false }),
     adminDb.from("crm_user_permissions").select("user_id, permissions"),
+    adminDb.from("crm_team_agreements").select("*").order("created_at", { ascending: false }),
     adminDb.from("crm_audit_logs").select("*").order("created_at", { ascending: false }).limit(100),
   ]);
 
   const permMap = new Map((permissionsRows || []).map((p) => [p.user_id, p.permissions]));
+  
+  // Map latest agreement per user
+  const agreementMap = new Map();
+  (rawAgreements || []).forEach((a) => {
+    if (!agreementMap.has(a.user_id)) {
+      agreementMap.set(a.user_id, a);
+    }
+  });
 
   const users: CrmUser[] = (rawUsers || []).map((u) => ({
     id: u.id,
@@ -37,9 +46,12 @@ export default async function CrmUsersPage() {
     display_name: u.display_name,
     role_title: u.role_title,
     is_active: u.is_active,
+    agreement_status: u.agreement_status || "pending",
+    agreement_signed_at: u.agreement_signed_at || null,
     created_at: u.created_at,
     updated_at: u.updated_at,
     permissions: permMap.get(u.id),
+    agreement: agreementMap.get(u.id) || null,
   }));
 
   return (

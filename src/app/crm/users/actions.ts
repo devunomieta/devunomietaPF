@@ -1,11 +1,22 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { requireCrmUser, recordCrmAudit } from "@/lib/crm/auth";
 import { ROLE_PRESETS } from "@/lib/crm/types";
 import type { ActionResult, CrmPermissionsConfig } from "@/lib/crm/types";
+import { sendEmail } from "@/lib/brevo";
+import { assistantOnboardingAgreementEmail } from "@/lib/email-templates";
+import { 
+  AGREEMENT_VERSION, 
+  AGREEMENT_TITLE, 
+  CANONICAL_AGREEMENT_TERMS, 
+  getAgreementTermsHash, 
+  PRINCIPAL_NAME, 
+  PRINCIPAL_TITLE 
+} from "@/lib/crm/agreements/agreementText";
 
 /**
  * Super Admin or authorized manager invites / adds a new CRM user.
@@ -74,7 +85,7 @@ export async function inviteCrmUser(formData: FormData): Promise<ActionResult> {
     authUserId = newAuthUser.user.id;
   }
 
-  // Insert into crm_users
+  // Insert into crm_users with agreement_status = 'pending'
   const { data: crmUser, error: insertError } = await adminDb
     .from("crm_users")
     .insert([
@@ -84,6 +95,7 @@ export async function inviteCrmUser(formData: FormData): Promise<ActionResult> {
         display_name: displayName,
         role_title: roleTitle,
         is_active: true,
+        agreement_status: "pending",
       },
     ])
     .select("id")
@@ -91,6 +103,26 @@ export async function inviteCrmUser(formData: FormData): Promise<ActionResult> {
 
   if (insertError) {
     return { error: `Failed to create CRM profile: ${insertError.message}` };
+  }
+
+  // Insert initial pending agreement record with terms hash
+  const termsHash = getAgreementTermsHash();
+  const { error: agreementError } = await adminDb.from("crm_team_agreements").insert([
+    {
+      user_id: crmUser.id,
+      auth_user_id: authUserId,
+      version: AGREEMENT_VERSION,
+      title: AGREEMENT_TITLE,
+      terms_hash: termsHash,
+      terms_text: CANONICAL_AGREEMENT_TERMS,
+      status: "pending",
+      principal_name: PRINCIPAL_NAME,
+      principal_title: PRINCIPAL_TITLE,
+    },
+  ]);
+
+  if (agreementError) {
+    console.error("Warning: Could not create agreement record:", agreementError.message);
   }
 
   // Insert permissions
@@ -105,6 +137,30 @@ export async function inviteCrmUser(formData: FormData): Promise<ActionResult> {
     return { error: `Failed to save user permissions: ${permError.message}` };
   }
 
+  // Send onboarding email with credentials & agreement preview
+  try {
+    const headerList = await headers();
+    const host = headerList.get("host") || "devunomieta.xyz";
+    const proto = host.includes("localhost") ? "http" : "https";
+    const loginUrl = `${proto}://${host}/login`;
+
+    const htmlContent = assistantOnboardingAgreementEmail({
+      name: displayName,
+      email,
+      tempPassword: password || undefined,
+      roleTitle,
+      loginUrl,
+    });
+
+    await sendEmail({
+      to: [{ email, name: displayName }],
+      subject: `Welcome to the Team, ${displayName} - Assistant Agreement & Account Setup`,
+      htmlContent,
+    });
+  } catch (emailErr) {
+    console.error("Error dispatching onboarding email:", emailErr);
+  }
+
   // Record audit log
   await recordCrmAudit(
     { email: actor.email, name: actor.displayName },
@@ -112,8 +168,8 @@ export async function inviteCrmUser(formData: FormData): Promise<ActionResult> {
       action: "create",
       entityType: "user",
       entityId: crmUser.id,
-      summary: `Onboarded CRM user ${displayName} (${email}) as ${roleTitle}`,
-      metadata: { permissions: permissionsConfig },
+      summary: `Onboarded CRM user ${displayName} (${email}) as ${roleTitle} with pending Agreement & NDA`,
+      metadata: { permissions: permissionsConfig, agreement_version: AGREEMENT_VERSION },
     }
   );
 
@@ -246,3 +302,179 @@ export async function updateMyPassword(newPassword: string): Promise<ActionResul
 
   return { success: true };
 }
+
+/**
+ * First-login mandatory electronic signing action for team assistants.
+ */
+export async function signAgreementAction(data: {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string; // YYYY-MM-DD
+  termsAccepted: boolean;
+}): Promise<ActionResult> {
+  const actor = await requireCrmUser({ skipAgreementCheck: true });
+  if (actor.isSuperAdmin) {
+    return { success: true };
+  }
+
+  const { firstName, lastName, dateOfBirth, termsAccepted } = data;
+  if (!termsAccepted) {
+    return { error: "You must accept the terms of the Agreement and NDA to proceed." };
+  }
+
+  const trimmedFirst = firstName?.trim();
+  const trimmedLast = lastName?.trim();
+  const dobRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (!trimmedFirst || !trimmedLast) {
+    return { error: "Legal First Name and Last Name are required." };
+  }
+
+  if (!dateOfBirth || !dobRegex.test(dateOfBirth)) {
+    return { error: "Please enter a valid Date of Birth (YYYY-MM-DD)." };
+  }
+
+  // Calculate age verification (must be at least 18)
+  const birthDate = new Date(dateOfBirth);
+  const ageDiffMs = Date.now() - birthDate.getTime();
+  const ageDate = new Date(ageDiffMs);
+  const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+  if (isNaN(age) || age < 18) {
+    return { error: "You must be at least 18 years of age to enter into this legal agreement." };
+  }
+
+  // Telemetry extraction
+  const headerList = await headers();
+  const ipAddress = 
+    headerList.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+    headerList.get("x-real-ip") || 
+    "127.0.0.1";
+  const userAgent = headerList.get("user-agent") || "Unknown Browser / Client";
+
+  const adminDb = createAdminClient();
+  const signedAt = new Date().toISOString();
+
+  // Find user's pending agreement
+  const { data: agreementRow } = await adminDb
+    .from("crm_team_agreements")
+    .select("id, version")
+    .eq("user_id", actor.crmUserId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (agreementRow) {
+    await adminDb
+      .from("crm_team_agreements")
+      .update({
+        first_name: trimmedFirst,
+        last_name: trimmedLast,
+        date_of_birth: dateOfBirth,
+        signed_at: signedAt,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        device_summary: userAgent.slice(0, 80),
+        status: "signed",
+        updated_at: signedAt,
+      })
+      .eq("id", agreementRow.id);
+  } else {
+    // Fallback create agreement row
+    const termsHash = getAgreementTermsHash();
+    await adminDb.from("crm_team_agreements").insert([
+      {
+        user_id: actor.crmUserId,
+        version: AGREEMENT_VERSION,
+        title: AGREEMENT_TITLE,
+        terms_hash: termsHash,
+        terms_text: CANONICAL_AGREEMENT_TERMS,
+        first_name: trimmedFirst,
+        last_name: trimmedLast,
+        date_of_birth: dateOfBirth,
+        signed_at: signedAt,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        device_summary: userAgent.slice(0, 80),
+        status: "signed",
+        principal_name: PRINCIPAL_NAME,
+        principal_title: PRINCIPAL_TITLE,
+      },
+    ]);
+  }
+
+  // Update crm_users status to 'signed'
+  await adminDb
+    .from("crm_users")
+    .update({
+      agreement_status: "signed",
+      agreement_signed_at: signedAt,
+      display_name: `${trimmedFirst} ${trimmedLast}`,
+      updated_at: signedAt,
+    })
+    .eq("id", actor.crmUserId);
+
+  await recordCrmAudit(
+    { email: actor.email, name: `${trimmedFirst} ${trimmedLast}` },
+    {
+      action: "sign_agreement",
+      entityType: "agreement",
+      entityId: actor.crmUserId,
+      summary: `Digitally executed and sealed Personal Assistant Agreement & NDA (${trimmedFirst} ${trimmedLast})`,
+      metadata: { ip: ipAddress, userAgent, signedAt, dob: dateOfBirth },
+    }
+  );
+
+  revalidatePath("/crm");
+  return { success: true };
+}
+
+/**
+ * Super Admin requests re-signature / revokes current signed agreement.
+ */
+export async function requestReSignatureAction(userId: string): Promise<ActionResult> {
+  const actor = await requireCrmUser({ page: "users" });
+  if (!actor.isSuperAdmin) {
+    return { error: "Only Super Admins can request agreement re-signature." };
+  }
+
+  const adminDb = createAdminClient();
+  const termsHash = getAgreementTermsHash();
+
+  // Create a new pending agreement entry
+  await adminDb.from("crm_team_agreements").insert([
+    {
+      user_id: userId,
+      version: AGREEMENT_VERSION,
+      title: AGREEMENT_TITLE,
+      terms_hash: termsHash,
+      terms_text: CANONICAL_AGREEMENT_TERMS,
+      status: "pending",
+      principal_name: PRINCIPAL_NAME,
+      principal_title: PRINCIPAL_TITLE,
+    },
+  ]);
+
+  // Set user agreement_status to 'pending'
+  await adminDb
+    .from("crm_users")
+    .update({
+      agreement_status: "pending",
+      agreement_signed_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+
+  await recordCrmAudit(
+    { email: actor.email, name: actor.displayName },
+    {
+      action: "request_re_signature",
+      entityType: "agreement",
+      entityId: userId,
+      summary: `Requested contract re-signature / revoked agreement for user ${userId}`,
+    }
+  );
+
+  revalidatePath("/crm/users");
+  return { success: true };
+}
+

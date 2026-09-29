@@ -93,6 +93,8 @@ export function CrmShell({
   isSuperAdmin = true,
   displayName = "Team Member",
   roleTitle = "Assistant",
+  activeAgreementId = null,
+  agreementStatus = "pending",
   logoutAction,
   children,
 }: {
@@ -101,6 +103,8 @@ export function CrmShell({
   isSuperAdmin?: boolean;
   displayName?: string;
   roleTitle?: string;
+  activeAgreementId?: string | null;
+  agreementStatus?: "pending" | "signed" | "revoked";
   logoutAction: () => Promise<void>;
   children: React.ReactNode;
 }) {
@@ -184,6 +188,8 @@ export function CrmShell({
           userEmail={adminEmail}
           displayName={displayName}
           roleTitle={roleTitle}
+          agreementId={activeAgreementId}
+          agreementStatus={agreementStatus}
         />
 
         {/* Mobile drawer */}

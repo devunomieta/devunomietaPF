@@ -9,6 +9,8 @@ export type AuthenticatedCrmUser = {
   crmUserId?: string;
   displayName: string;
   roleTitle: string;
+  agreementStatus?: "pending" | "signed" | "revoked";
+  agreementSignedAt?: string | null;
   permissions: CrmPermissionsConfig;
 };
 
@@ -37,6 +39,7 @@ export async function getCrmAuthUser(): Promise<AuthenticatedCrmUser | null> {
       isSuperAdmin: true,
       displayName: user.user_metadata?.full_name || email.split("@")[0],
       roleTitle: "Super Admin",
+      agreementStatus: "signed",
       permissions: SUPER_ADMIN_PERMISSIONS,
     };
   }
@@ -44,7 +47,7 @@ export async function getCrmAuthUser(): Promise<AuthenticatedCrmUser | null> {
   // 2. Check CRM Team User (public.crm_users)
   const { data: crmUser } = await adminDb
     .from("crm_users")
-    .select("id, email, display_name, role_title, is_active")
+    .select("id, email, display_name, role_title, is_active, agreement_status, agreement_signed_at")
     .eq("email", email)
     .eq("is_active", true)
     .maybeSingle();
@@ -66,6 +69,8 @@ export async function getCrmAuthUser(): Promise<AuthenticatedCrmUser | null> {
     crmUserId: crmUser.id,
     displayName: crmUser.display_name,
     roleTitle: crmUser.role_title || "Assistant",
+    agreementStatus: crmUser.agreement_status || "pending",
+    agreementSignedAt: crmUser.agreement_signed_at || null,
     permissions,
   };
 }
@@ -76,6 +81,7 @@ export async function getCrmAuthUser(): Promise<AuthenticatedCrmUser | null> {
 export async function requireCrmUser(requiredPermission?: {
   page?: keyof CrmPermissionsConfig["pages"];
   action?: keyof CrmPermissionsConfig["actions"];
+  skipAgreementCheck?: boolean;
 }) {
   const authUser = await getCrmAuthUser();
   if (!authUser) {
@@ -84,6 +90,11 @@ export async function requireCrmUser(requiredPermission?: {
 
   if (authUser.isSuperAdmin) {
     return authUser;
+  }
+
+  // Mandatory check: Non-admins must have signed agreement
+  if (!requiredPermission?.skipAgreementCheck && authUser.agreementStatus !== "signed") {
+    throw new Error("Unauthorized: You must accept the Team Member Agreement & NDA before performing actions.");
   }
 
   if (requiredPermission?.page && !authUser.permissions.pages[requiredPermission.page]) {

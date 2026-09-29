@@ -12,7 +12,11 @@ import {
   Key, 
   Settings2,
   Clock,
-  Sparkles
+  Sparkles,
+  FileText,
+  Download,
+  ExternalLink,
+  RefreshCw
 } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { CrmTooltip } from "@/components/crm/CrmTooltip";
@@ -23,7 +27,8 @@ import {
   inviteCrmUser, 
   updateCrmUserPermissions, 
   toggleCrmUserStatus, 
-  deleteCrmUser 
+  deleteCrmUser,
+  requestReSignatureAction
 } from "./actions";
 
 const PAGE_KEYS: Array<{ key: keyof CrmPermissionsConfig["pages"]; label: string; desc: string }> = [
@@ -225,14 +230,15 @@ export function UsersManager({
                   <th className="py-3 px-4">Member</th>
                   <th className="py-3 px-4">Role Title</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Permissions Preview</th>
+                  <th className="py-3 px-4">Agreement &amp; NDA</th>
+                  <th className="py-3 px-4">Permissions</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 text-foreground/90">
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-muted">
+                    <td colSpan={6} className="py-12 text-center text-muted">
                       No assistant or team accounts added yet. Click &quot;Add Team Member&quot; to onboard someone.
                     </td>
                   </tr>
@@ -242,6 +248,8 @@ export function UsersManager({
                       ? Object.values(u.permissions.pages).filter(Boolean).length 
                       : 0;
                     const canDeleteRecs = u.permissions?.actions.clients_delete || u.permissions?.actions.leads_delete;
+                    const agreementSigned = u.agreement_status === "signed" || u.agreement?.status === "signed";
+                    const agreementId = u.agreement?.id;
 
                     return (
                       <tr key={u.id} className="hover:bg-header/30 transition-colors">
@@ -270,6 +278,50 @@ export function UsersManager({
                           </span>
                         </td>
                         <td className="py-3 px-4">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                  agreementSigned
+                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                }`}
+                              >
+                                {agreementSigned ? "✓ Signed & Sealed" : "⏳ Pending Consent"}
+                              </span>
+                              {agreementSigned && u.agreement?.signed_at && (
+                                <span className="text-[10px] text-muted">
+                                  {new Date(u.agreement.signed_at).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            {agreementId && (
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <a
+                                  href={`/api/crm/agreements/${agreementId}/download?preview=true`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[11px] text-accent-blue hover:underline flex items-center gap-0.5"
+                                  title="Preview Agreement"
+                                >
+                                  <ExternalLink size={11} />
+                                  <span>Preview</span>
+                                </a>
+                                <span className="text-muted text-[10px]">•</span>
+                                <a
+                                  href={`/api/crm/agreements/${agreementId}/download`}
+                                  download
+                                  className="text-[11px] text-foreground/80 hover:text-accent-blue flex items-center gap-0.5"
+                                  title="Download Signed PDF"
+                                >
+                                  <Download size={11} />
+                                  <span>PDF</span>
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <span className="bg-header/50 border border-border/80 px-2 py-0.5 rounded text-[11px]">
                               {pageCount} of {PAGE_KEYS.length} pages
@@ -287,6 +339,30 @@ export function UsersManager({
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="inline-flex items-center gap-1">
+                            {isSuperAdmin && agreementSigned && (
+                              <button
+                                onClick={async () => {
+                                  if (
+                                    !(await confirm(
+                                      `Revoke existing agreement and require ${u.display_name} to re-sign on their next login?`,
+                                      { danger: true, confirmLabel: "Request Re-Signature" }
+                                    ))
+                                  )
+                                    return;
+                                  const res = await requestReSignatureAction(u.id);
+                                  if ("success" in res) {
+                                    toast("Re-signature requested. User must sign on next login.", "success");
+                                  } else {
+                                    toast(res.error);
+                                  }
+                                }}
+                                className="p-1.5 text-muted hover:text-amber-500 rounded transition-colors"
+                                title="Request contract re-signature"
+                                aria-label="Request contract re-signature"
+                              >
+                                <RefreshCw size={14} />
+                              </button>
+                            )}
                             <button
                               onClick={() => openEditModal(u)}
                               className="p-1.5 text-muted hover:text-accent-blue rounded transition-colors"

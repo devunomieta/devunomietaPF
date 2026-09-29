@@ -12,6 +12,7 @@ export type CrmClient = {
   tags: string[];
   source: string | null;
   notes: string | null;
+  co_handled_by?: string | null;
   created_at: string;
 };
 
@@ -151,6 +152,10 @@ export type CrmInvoice = {
   due_date: string | null;
   notes: string | null;
   sent_at: string | null;
+  co_handled_by?: string | null;
+  direct_service_cost?: number;
+  declared_profit?: number | null;
+  assistant_profit_share?: number | null;
   created_at: string;
 };
 
@@ -198,6 +203,28 @@ export type CrmPermissionsConfig = {
   actions: CrmActionsPermission;
 };
 
+export type CrmTeamAgreement = {
+  id: string;
+  user_id: string;
+  auth_user_id: string | null;
+  version: string;
+  title: string;
+  terms_hash: string;
+  terms_text: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  date_of_birth?: string | null;
+  signed_at?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  device_summary?: string | null;
+  status: "pending" | "signed" | "revoked";
+  principal_name: string;
+  principal_title: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CrmUser = {
   id: string;
   auth_user_id: string | null;
@@ -205,9 +232,12 @@ export type CrmUser = {
   display_name: string;
   role_title: string;
   is_active: boolean;
+  agreement_status?: "pending" | "signed" | "revoked";
+  agreement_signed_at?: string | null;
   created_at: string;
   updated_at: string;
   permissions?: CrmPermissionsConfig;
+  agreement?: CrmTeamAgreement | null;
 };
 
 export type CrmAuditLog = {

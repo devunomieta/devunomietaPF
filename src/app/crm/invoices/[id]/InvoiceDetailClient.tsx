@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Send, Download, Ban, Plus, FileText } from "lucide-react";
+import { Loader2, Send, Download, Ban, Plus, FileText, DollarSign, Calculator, Percent } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import { formatMoney } from "@/lib/crm/currency";
 import type { CrmInvoice, CrmInvoicePayment } from "@/lib/crm/types";
-import { sendInvoice, recordPayment, voidInvoice, getReceiptSignedUrl } from "../actions";
+import { sendInvoice, recordPayment, voidInvoice, getReceiptSignedUrl, updateInvoiceProfitDeclaration } from "../actions";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-muted/20 text-muted",
@@ -139,17 +139,41 @@ export function InvoiceDetailClient({
   invoice,
   client,
   payments,
+  assistants = [],
 }: {
   invoice: CrmInvoice;
   client: { id: string; name: string; email: string | null; company: string | null } | null;
   payments: CrmInvoicePayment[];
+  assistants?: { id: string; display_name: string; email: string; role_title: string }[];
 }) {
   const { toast, confirm } = useCrmFeedback();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [sending, setSending] = useState(false);
 
+  // Profit declaration form state
+  const [coHandledBy, setCoHandledBy] = useState<string>(invoice.co_handled_by || "");
+  const [directCost, setDirectCost] = useState<string>(String(invoice.direct_service_cost || "0"));
+  const [declaring, setDeclaring] = useState(false);
+
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const balance = invoice.total - totalPaid;
+
+  const costNum = Math.max(0, parseFloat(directCost) || 0);
+  const liveNetProfit = Math.max(0, totalPaid - costNum);
+  const liveAssistantShare = Number((liveNetProfit * 0.15).toFixed(2));
+
+  async function handleSaveProfitDeclaration(e: React.FormEvent) {
+    e.preventDefault();
+    setDeclaring(true);
+    const res = await updateInvoiceProfitDeclaration(invoice.id, costNum, coHandledBy || null);
+    setDeclaring(false);
+    if ("success" in res) {
+      toast("Declared net profit & 15% assistant profit share updated.", "success");
+      window.location.reload();
+    } else {
+      toast(res.error);
+    }
+  }
 
   async function handleSend() {
     setSending(true);
@@ -260,6 +284,106 @@ export function InvoiceDetailClient({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* 15% Net Profit Sharing & Service Delivery Declaration Card */}
+      <div className="bg-header/20 border border-border rounded-xl p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+            <Percent size={16} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              15% Net Profit Share &amp; Service Delivery
+            </h2>
+            <p className="text-xs text-muted">
+              Calculates 15% profit for the co-handling assistant based on declared net profit upon delivery.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveProfitDeclaration} className="space-y-4 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={crmLabelClass} htmlFor="coHandledBy">
+                Co-Handling Assistant
+              </label>
+              <select
+                id="coHandledBy"
+                value={coHandledBy}
+                onChange={(e) => setCoHandledBy(e.target.value)}
+                className={crmInputClass}
+              >
+                <option value="">None / Handled by Principal Alone</option>
+                {assistants.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.display_name} ({a.role_title})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={crmLabelClass} htmlFor="directCost">
+                Direct Service Delivery Costs ({invoice.currency})
+              </label>
+              <input
+                id="directCost"
+                type="number"
+                min="0"
+                step="0.01"
+                value={directCost}
+                onChange={(e) => setDirectCost(e.target.value)}
+                placeholder="Software, APIs, hosting, subcontractors..."
+                className={crmInputClass}
+              />
+              <p className="text-[10px] text-muted mt-1">
+                Deducted from gross revenue before profit calculation.
+              </p>
+            </div>
+          </div>
+
+          {/* Real-time Calculation Summary */}
+          <div className="p-3.5 bg-background/50 border border-border/80 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <span className="text-muted block text-[11px]">Total Paid Revenue</span>
+              <span className="font-semibold text-foreground">
+                {formatMoney(totalPaid, invoice.currency)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted block text-[11px]">- Direct Delivery Cost</span>
+              <span className="font-semibold text-red-400">
+                {formatMoney(costNum, invoice.currency)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted block text-[11px]">= Declared Net Profit</span>
+              <span className="font-semibold text-emerald-500">
+                {formatMoney(liveNetProfit, invoice.currency)}
+              </span>
+            </div>
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-lg">
+              <span className="text-emerald-600 dark:text-emerald-400 block text-[11px] font-bold">
+                15% Assistant Share
+              </span>
+              <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                {formatMoney(liveAssistantShare, invoice.currency)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={declaring}
+              className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 flex items-center gap-1.5 shadow-sm transition-colors"
+            >
+              {declaring && <Loader2 size={13} className="animate-spin" />}
+              Save Profit Declaration
+            </button>
+          </div>
+        </form>
       </div>
 
       {invoice.status !== "void" && invoice.status !== "paid" && invoice.status !== "overpaid" && (
