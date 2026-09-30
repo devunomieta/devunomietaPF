@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getCrmAuthUser } from "@/lib/crm/auth";
 import { sendEmail } from "@/lib/brevo";
-import type { CrmThread, CrmMessage } from "@/lib/crm/types";
+import type { CrmThread, CrmMessage, CrmInternalNote, CrmCommunicationTemplate } from "@/lib/crm/types";
 
 function normalizeSubject(subject: string): string {
   if (!subject) return "No Subject";
@@ -47,12 +47,15 @@ export async function getThreads({
       is_starred,
       is_archived,
       folder,
+      channel,
       client_id,
       lead_id,
+      contact_id,
       created_at,
       updated_at,
       client:crm_clients(id, name),
-      lead:crm_leads(id, name)
+      lead:crm_leads(id, name),
+      contact:crm_contacts(id, name, role, email)
     `)
     .order("last_message_at", { ascending: false });
 
@@ -219,6 +222,7 @@ export async function composeNewEmail({
   messageText,
   clientId,
   leadId,
+  contactId,
 }: {
   toEmail: string;
   toName?: string;
@@ -227,6 +231,7 @@ export async function composeNewEmail({
   messageText: string;
   clientId?: string;
   leadId?: string;
+  contactId?: string;
 }) {
   const authUser = await getCrmAuthUser();
   if (!authUser || !authUser.permissions.actions.mailbox_send) {
@@ -268,6 +273,7 @@ export async function composeNewEmail({
         folder: "sent",
         client_id: clientId || null,
         lead_id: leadId || null,
+        contact_id: contactId || null,
       },
     ])
     .select("id")
@@ -417,3 +423,141 @@ export async function simulateInboundReply({
   revalidatePath("/crm/mailbox");
   return { success: true, threadId: targetThreadId };
 }
+
+/**
+ * Fetch all communication threads & messages linked to a client or lead (including linked contacts)
+ */
+export async function getEntityCommunicationFeed(owner: { clientId?: string; leadId?: string }) {
+  const authUser = await getCrmAuthUser();
+  if (!authUser) throw new Error("Unauthorized");
+
+  const adminDb = createAdminClient();
+  let query = adminDb
+    .from("crm_threads")
+    .select(`
+      id,
+      subject,
+      normalized_subject,
+      recipient_email,
+      recipient_name,
+      last_message_preview,
+      last_message_at,
+      unread_count,
+      is_starred,
+      is_archived,
+      folder,
+      channel,
+      client_id,
+      lead_id,
+      contact_id,
+      created_at,
+      updated_at,
+      client:crm_clients(id, name),
+      lead:crm_leads(id, name),
+      contact:crm_contacts(id, name, role, email)
+    `)
+    .order("last_message_at", { ascending: false });
+
+  if (owner.clientId) {
+    query = query.eq("client_id", owner.clientId);
+  } else if (owner.leadId) {
+    query = query.eq("lead_id", owner.leadId);
+  } else {
+    return { threads: [], internalNotes: [] };
+  }
+
+  const { data: threads, error: threadsErr } = await query;
+  if (threadsErr) {
+    console.error("Failed to load entity threads:", threadsErr.message);
+  }
+
+  // Also fetch internal notes for this entity
+  let notesQuery = adminDb
+    .from("crm_internal_notes")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (owner.clientId) {
+    notesQuery = notesQuery.eq("client_id", owner.clientId);
+  } else if (owner.leadId) {
+    notesQuery = notesQuery.eq("lead_id", owner.leadId);
+  }
+
+  const { data: notes, error: notesErr } = await notesQuery;
+  if (notesErr) {
+    console.error("Failed to load internal notes:", notesErr.message);
+  }
+
+  return {
+    threads: (threads || []) as unknown as CrmThread[],
+    internalNotes: (notes || []) as CrmInternalNote[],
+  };
+}
+
+/**
+ * Save an internal team collaboration note
+ */
+export async function saveInternalNote({
+  clientId,
+  leadId,
+  threadId,
+  content,
+}: {
+  clientId?: string;
+  leadId?: string;
+  threadId?: string;
+  content: string;
+}) {
+  const authUser = await getCrmAuthUser();
+  if (!authUser) return { error: "Unauthorized" };
+
+  const cleanContent = content.trim();
+  if (!cleanContent) return { error: "Note content cannot be empty" };
+
+  const adminDb = createAdminClient();
+  const { data, error } = await adminDb
+    .from("crm_internal_notes")
+    .insert([
+      {
+        client_id: clientId || null,
+        lead_id: leadId || null,
+        thread_id: threadId || null,
+        author_email: authUser.email,
+        author_name: authUser.displayName,
+        content: cleanContent,
+      },
+    ])
+    .select("*")
+    .single();
+
+  if (error) return { error: error.message };
+
+  if (clientId) revalidatePath(`/crm/clients/${clientId}`);
+  if (leadId) revalidatePath(`/crm/leads/${leadId}`);
+
+  return { success: true, note: data as CrmInternalNote };
+}
+
+/**
+ * Fetch communication templates / canned snippets
+ */
+export async function getCommunicationTemplates(channel?: "all" | "email" | "whatsapp") {
+  const adminDb = createAdminClient();
+  let query = adminDb
+    .from("crm_communication_templates")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (channel && channel !== "all") {
+    query = query.or(`channel.eq.${channel},channel.eq.all`);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("Failed to load templates:", error.message);
+    return [];
+  }
+
+  return (data || []) as CrmCommunicationTemplate[];
+}
+

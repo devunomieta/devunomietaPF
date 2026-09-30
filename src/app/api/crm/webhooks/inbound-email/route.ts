@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { resolveEntityFromEmail } from "@/lib/crm/communicationResolver";
 
 /**
  * Brevo Inbound Webhook parser.
@@ -226,16 +227,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Resolve client / lead association if not already found
+    // 4. Resolve client / lead / contact association if not already found
+    let contactId: string | null = null;
     if (!clientId && !leadId) {
-      const cleanEmail = fromAddress.toLowerCase().trim();
-      const [{ data: clientRow }, { data: leadRow }] = await Promise.all([
-        supabase.from("crm_clients").select("id").eq("email", cleanEmail).limit(1).maybeSingle(),
-        supabase.from("crm_leads").select("id").eq("email", cleanEmail).limit(1).maybeSingle(),
-      ]);
-
-      if (clientRow) clientId = clientRow.id;
-      if (leadRow) leadId = leadRow.id;
+      const resolved = await resolveEntityFromEmail(fromAddress);
+      clientId = resolved.clientId;
+      leadId = resolved.leadId;
+      contactId = resolved.contactId;
     }
 
     const preview = rawBodyText.slice(0, 140).trim();
@@ -256,6 +254,7 @@ export async function POST(request: Request) {
             folder: "inbox",
             client_id: clientId,
             lead_id: leadId,
+            contact_id: contactId,
           },
         ])
         .select("id")

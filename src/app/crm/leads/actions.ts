@@ -18,6 +18,14 @@ async function getDefaultJourney(supabase: ReturnType<typeof createAdminClient>)
   return data as { id: string; stages: CrmJourneyStage[] } | null;
 }
 
+function parseEmails(raw: FormDataEntryValue | null): string[] {
+  if (!raw) return [];
+  return String(raw)
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export async function saveLead(formData: FormData, id?: string): Promise<ActionResult> {
   await requireCrmUser({ page: "leads", action: "leads_edit" });
   const supabase = createAdminClient();
@@ -25,13 +33,31 @@ export async function saveLead(formData: FormData, id?: string): Promise<ActionR
   const name = (formData.get("name") as string)?.trim();
   if (!name) return { error: "Name is required." };
 
+  const email = (formData.get("email") as string)?.trim() || null;
+  const website = (formData.get("website") as string)?.trim() || null;
+  const additionalEmails = parseEmails(formData.get("additional_emails"));
+
+  let companyDomain: string | null = null;
+  if (website) {
+    try {
+      const url = website.startsWith("http") ? website : `https://${website}`;
+      companyDomain = new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      companyDomain = website.replace(/^www\./, "").split("/")[0] || null;
+    }
+  } else if (email && email.includes("@")) {
+    companyDomain = email.split("@")[1] || null;
+  }
+
   const leadData = {
     name,
-    email: (formData.get("email") as string)?.trim() || null,
+    email,
+    additional_emails: additionalEmails,
+    company_domain: companyDomain,
     phone: (formData.get("phone") as string)?.trim() || null,
     company: (formData.get("company") as string)?.trim() || null,
     location: (formData.get("location") as string)?.trim() || null,
-    website: (formData.get("website") as string)?.trim() || null,
+    website,
     pain_points: (formData.get("pain_points") as string)?.trim() || null,
     proposed_solution: (formData.get("proposed_solution") as string)?.trim() || null,
     score: parseInt(formData.get("score") as string) || 0,
@@ -176,11 +202,23 @@ export async function convertLeadToClient(leadId: string): Promise<ActionResult 
   const result = await promoteLeadToClient(supabase, lead);
   if ("error" in result) return result;
 
+  // If lead belongs to a journey, find the won stage key
+  let wonStageKey = "won";
+  if (lead.journey_id) {
+    const { data: journey } = await supabase.from("crm_journeys").select("stages").eq("id", lead.journey_id).maybeSingle();
+    const wonStage = (journey?.stages as CrmJourneyStage[] | undefined)?.find((s) => s.is_won);
+    if (wonStage) wonStageKey = wonStage.key;
+  }
+
+  await supabase.from("crm_leads").update({ current_stage_key: wonStageKey, status: "won" }).eq("id", leadId);
+
   await supabase.from("crm_stage_events").insert([
-    { journey_id: lead.journey_id, lead_id: leadId, stage_key: "won", note: "Manually converted to client" },
+    { journey_id: lead.journey_id, lead_id: leadId, stage_key: wonStageKey, note: "Manually converted to client" },
   ]);
 
   revalidatePath("/crm/leads");
+  revalidatePath(`/crm/leads/${leadId}`);
   revalidatePath("/crm/clients");
+  revalidatePath("/crm/journeys");
   return { success: true, clientId: result.clientId };
 }

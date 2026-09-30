@@ -55,15 +55,16 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
 
   const columns: CrmColumn<CrmClient>[] = [
     {
-      header: "Name",
+      header: "Company",
       cell: (c) => (
-        <Link href={`/crm/clients/${c.id}`} className="font-medium text-foreground hover:text-accent-blue">
-          {c.name}
+        <Link
+          href={`/crm/clients/${c.id}`}
+          className="font-medium text-foreground hover:text-accent-blue transition-colors"
+        >
+          {c.company || c.name || <span className="text-muted">—</span>}
         </Link>
       ),
     },
-    { header: "Company", cell: (c) => c.company || <span className="text-muted">—</span> },
-    { header: "Location", cell: (c) => c.location || <span className="text-muted">—</span> },
     {
       header: "Website",
       cell: (c) =>
@@ -73,7 +74,7 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="text-accent-blue hover:underline max-w-[130px] truncate block text-xs"
+            className="text-accent-blue hover:underline max-w-[200px] truncate block text-xs"
           >
             {c.website.replace(/^https?:\/\/(www\.)?/, "")}
           </a>
@@ -81,21 +82,24 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
           <span className="text-muted">—</span>
         ),
     },
-    { header: "Email", cell: (c) => c.email || <span className="text-muted">—</span> },
-    { header: "Phone", cell: (c) => c.phone || <span className="text-muted">—</span> },
     {
-      header: "Status",
+      header: "Phone",
       cell: (c) => (
-        <span
-          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-            c.status === "active" ? "bg-accent-green/15 text-accent-green" : "bg-muted/20 text-muted"
-          }`}
-        >
-          {c.status}
+        c.phone ? (
+          <span className="text-foreground/90 text-xs font-mono">{c.phone}</span>
+        ) : (
+          <span className="text-muted">—</span>
+        )
+      ),
+    },
+    {
+      header: "Source",
+      cell: (c) => (
+        <span className="text-muted text-xs capitalize">
+          {c.source ? c.source.replace(/_/g, " ") : "—"}
         </span>
       ),
     },
-    { header: "Source", cell: (c) => <span className="text-muted text-xs">{c.source || "—"}</span> },
     {
       header: "",
       cell: (c) => {
@@ -106,7 +110,7 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
               e.stopPropagation();
               handleDelete(c.id);
             }}
-            className="text-muted hover:text-red-400"
+            className="text-muted hover:text-red-400 p-1 rounded hover:bg-red-400/10 transition-colors"
             aria-label="Delete client"
           >
             <Trash2 size={15} />

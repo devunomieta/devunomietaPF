@@ -9,6 +9,7 @@ export default async function CrmLeadsPage() {
   const { data: leads } = await supabase
     .from("crm_leads")
     .select("*")
+    .is("converted_to_client_id", null)
     .order("created_at", { ascending: false });
 
   return <LeadsManager initialLeads={(leads as CrmLead[]) || []} />;

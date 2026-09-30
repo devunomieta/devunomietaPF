@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { ArrowLeft, Mail, MessageCircle, Receipt } from "lucide-react";
-import type { CrmClient, CrmContact, CrmStageEvent, CrmInvoice } from "@/lib/crm/types";
+import type { CrmClient, CrmContact, CrmStageEvent, CrmInvoice, CrmThread, CrmInternalNote, CrmCommunicationTemplate } from "@/lib/crm/types";
 import { ClientDetailClient } from "./ClientDetailClient";
+import { getEntityCommunicationFeed, getCommunicationTemplates } from "@/app/crm/mailbox/actions";
 
 export const metadata = { title: "Client · CRM" };
 
@@ -11,11 +12,22 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: client }, { data: contacts }, { data: stageEvents }, { data: invoices }] = await Promise.all([
+  const [
+    { data: client },
+    { data: contacts },
+    { data: stageEvents },
+    { data: invoices },
+    { data: whatsappEvents },
+    feed,
+    templates,
+  ] = await Promise.all([
     supabase.from("crm_clients").select("*").eq("id", id).maybeSingle(),
     supabase.from("crm_contacts").select("*").eq("client_id", id).order("created_at", { ascending: false }),
     supabase.from("crm_stage_events").select("*").eq("client_id", id).order("entered_at", { ascending: false }),
     supabase.from("crm_invoices").select("*").eq("client_id", id).order("created_at", { ascending: false }),
+    supabase.from("crm_whatsapp_events").select("id, phone, message, status, direction, created_at").eq("client_id", id).order("created_at", { ascending: false }),
+    getEntityCommunicationFeed({ clientId: id }),
+    getCommunicationTemplates(),
   ]);
 
   if (!client) notFound();
@@ -59,6 +71,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         contacts={(contacts as CrmContact[]) || []}
         stageEvents={(stageEvents as CrmStageEvent[]) || []}
         invoices={(invoices as CrmInvoice[]) || []}
+        threads={(feed?.threads as CrmThread[]) || []}
+        internalNotes={(feed?.internalNotes as CrmInternalNote[]) || []}
+        templates={(templates as CrmCommunicationTemplate[]) || []}
+        whatsAppEvents={(whatsappEvents as any[]) || []}
       />
     </div>
   );

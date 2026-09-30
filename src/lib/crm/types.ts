@@ -2,8 +2,10 @@ export type CrmClient = {
   id: string;
   name: string;
   email: string | null;
+  additional_emails?: string[];
   phone: string | null;
   company: string | null;
+  company_domain?: string | null;
   location: string | null;
   website: string | null;
   pain_points: string | null;
@@ -20,8 +22,10 @@ export type CrmLead = {
   id: string;
   name: string;
   email: string | null;
+  additional_emails?: string[];
   phone: string | null;
   company: string | null;
+  company_domain?: string | null;
   location: string | null;
   website: string | null;
   pain_points: string | null;
@@ -44,6 +48,7 @@ export type CrmContact = {
   name: string;
   role: string | null;
   email: string | null;
+  additional_emails?: string[];
   phone: string | null;
   created_at: string;
 };
@@ -218,12 +223,37 @@ export type CrmThread = {
   is_starred: boolean;
   is_archived: boolean;
   folder: "inbox" | "sent" | "archive" | "trash";
+  channel?: "email" | "whatsapp" | "mixed";
   client_id: string | null;
   lead_id: string | null;
+  contact_id?: string | null;
   created_at: string;
   updated_at: string;
   client?: { id: string; name: string } | null;
   lead?: { id: string; name: string } | null;
+  contact?: { id: string; name: string; role: string | null; email: string | null } | null;
+};
+
+export type CrmInternalNote = {
+  id: string;
+  client_id: string | null;
+  lead_id: string | null;
+  thread_id: string | null;
+  author_email: string;
+  author_name: string;
+  content: string;
+  created_at: string;
+};
+
+export type CrmCommunicationTemplate = {
+  id: string;
+  title: string;
+  shortcut: string;
+  channel: "all" | "email" | "whatsapp";
+  subject: string | null;
+  body: string;
+  category: string;
+  created_at: string;
 };
 
 export type CrmMessage = {
