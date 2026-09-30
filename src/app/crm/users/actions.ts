@@ -346,12 +346,19 @@ export async function signAgreementAction(data: {
     return { error: "Please enter a valid Date of Birth (YYYY-MM-DD)." };
   }
 
-  // Calculate age verification (must be at least 18)
-  const birthDate = new Date(dateOfBirth);
-  const ageDiffMs = Date.now() - birthDate.getTime();
-  const ageDate = new Date(ageDiffMs);
-  const age = Math.abs(ageDate.getUTCFullYear() - 1970);
-  if (isNaN(age) || age < 18) {
+  // Calculate age verification (must be at least 18 from today)
+  const birthDate = new Date(dateOfBirth + "T00:00:00");
+  if (isNaN(birthDate.getTime())) {
+    return { error: "Please enter a valid Date of Birth." };
+  }
+  const today = new Date();
+  let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    calculatedAge--;
+  }
+
+  if (calculatedAge < 18) {
     return { error: "You must be at least 18 years of age to enter into this legal agreement." };
   }
 

@@ -872,7 +872,7 @@ export function UsersManager({
                   className={crmSecondaryBtnClass}
                 >
                   <Settings2 size={13} />
-                  <span>Configure Permissions</span>
+                  <span>Permissions</span>
                 </button>
               </div>
               <button
