@@ -365,3 +365,39 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
   revalidatePath("/crm/monitoring");
   return { success: true };
 }
+
+/**
+ * Delete a single campaign and its associated events
+ */
+export async function deleteCampaign(campaignId: string): Promise<ActionResult> {
+  const supabase = await requireAdmin();
+
+  // Delete associated events first if cascade is not set
+  await supabase.from("crm_email_events").delete().eq("campaign_id", campaignId);
+  const { error } = await supabase.from("crm_email_campaigns").delete().eq("id", campaignId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/crm/campaigns");
+  return { success: true };
+}
+
+/**
+ * Batch delete multiple campaigns
+ */
+export async function batchDeleteCampaigns(campaignIds: string[]): Promise<ActionResult> {
+  if (!campaignIds || campaignIds.length === 0) return { success: true };
+  const supabase = await requireAdmin();
+
+  await supabase.from("crm_email_events").delete().in("campaign_id", campaignIds);
+  const { error } = await supabase.from("crm_email_campaigns").delete().in("id", campaignIds);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/crm/campaigns");
+  return { success: true };
+}

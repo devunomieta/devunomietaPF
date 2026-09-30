@@ -1,7 +1,8 @@
 import { TablePagination } from "./TablePagination";
 
 export type CrmColumn<T> = {
-  header: string;
+  header: React.ReactNode;
+  headerKey?: string;
   cell: (row: T) => React.ReactNode;
   className?: string;
 };
@@ -49,8 +50,8 @@ export function ResponsiveTable<T extends { id: string }>({
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-muted border-b border-border">
-              {columns.map((c) => (
-                <th key={c.header} className="py-2 px-3 font-medium whitespace-nowrap">
+              {columns.map((c, idx) => (
+                <th key={c.headerKey || (typeof c.header === "string" ? c.header : idx)} className="py-2 px-3 font-medium whitespace-nowrap">
                   {c.header}
                 </th>
               ))}
@@ -63,8 +64,8 @@ export function ResponsiveTable<T extends { id: string }>({
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={`border-b border-border/50 ${onRowClick ? "cursor-pointer hover:bg-accent-blue/5" : ""}`}
               >
-                {columns.map((c) => (
-                  <td key={c.header} className={`py-2.5 px-3 ${c.className || ""}`}>
+                {columns.map((c, idx) => (
+                  <td key={c.headerKey || (typeof c.header === "string" ? c.header : idx)} className={`py-2.5 px-3 ${c.className || ""}`}>
                     {c.cell(row)}
                   </td>
                 ))}
@@ -81,8 +82,8 @@ export function ResponsiveTable<T extends { id: string }>({
             onClick={onRowClick ? () => onRowClick(row) : undefined}
             className={`p-3 rounded-lg border border-border bg-header/20 ${onRowClick ? "cursor-pointer active:bg-accent-blue/5" : ""}`}
           >
-            {columns.map((c) => (
-              <div key={c.header} className="flex items-start justify-between gap-3 py-1 text-sm">
+            {columns.map((c, idx) => (
+              <div key={c.headerKey || (typeof c.header === "string" ? c.header : idx)} className="flex items-start justify-between gap-3 py-1 text-sm">
                 <span className="text-muted text-xs uppercase tracking-wide shrink-0 pt-0.5">{c.header}</span>
                 <span className="text-right min-w-0">{c.cell(row)}</span>
               </div>

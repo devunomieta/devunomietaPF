@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
-import { AlertTriangle, Copy, RotateCcw } from "lucide-react";
+import { AlertTriangle, Copy, RotateCcw, CheckCircle2, Wifi, WifiOff } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
-import { CrmUrlPagination } from "@/components/crm/CrmUrlPagination";
-import { isGreenApiConfigured } from "@/lib/crm/green-api";
+import { isGreenApiConfigured, getGreenApiInstanceState } from "@/lib/crm/green-api";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { WhatsAppForm } from "./WhatsAppForm";
 import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
 
 export const metadata = { title: "WhatsApp · CRM" };
+export const dynamic = "force-dynamic";
 
 type EventRow = {
   id: string;
@@ -32,16 +32,26 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function CrmWhatsAppPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; leadId?: string; resendEventId?: string; duplicateMessage?: string; page?: string }>;
+  searchParams: Promise<{ clientId?: string; leadId?: string; resendEventId?: string; duplicateMessage?: string }>;
 }) {
-  const { clientId, leadId, resendEventId, duplicateMessage, page = "1" } = await searchParams;
-  const currentPage = Math.max(1, parseInt(page, 10) || 1);
-  const pageSize = 20;
+  const { clientId, leadId, resendEventId, duplicateMessage } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: journey }, { data: events }, recipientResult, { data: leadRows }, { data: clientRows }, { data: sourceEvent }] = await Promise.all([
+  const [
+    { data: journey },
+    { data: events },
+    recipientResult,
+    { data: leadRows },
+    { data: clientRows },
+    { data: sourceEvent },
+    instanceStatusResult,
+  ] = await Promise.all([
     supabase.from("crm_journeys").select("stages").eq("is_default", true).maybeSingle(),
-    supabase.from("crm_whatsapp_events").select("id, phone, message, status, direction, occurred_at, client_id, lead_id").order("occurred_at", { ascending: false }).limit(500),
+    supabase
+      .from("crm_whatsapp_events")
+      .select("id, phone, message, status, direction, occurred_at, client_id, lead_id")
+      .order("occurred_at", { ascending: false })
+      .limit(5),
     clientId
       ? supabase.from("crm_clients").select("id, name, phone").eq("id", clientId).maybeSingle()
       : leadId
@@ -52,14 +62,16 @@ export default async function CrmWhatsAppPage({
     resendEventId
       ? supabase.from("crm_whatsapp_events").select("*").eq("id", resendEventId).maybeSingle()
       : Promise.resolve({ data: null }),
+    getGreenApiInstanceState(),
   ]);
 
   const stages = ((journey?.stages as CrmJourneyStage[] | undefined) || []).sort((a, b) => a.position - b.position);
   const configured = isGreenApiConfigured();
+  const instanceState = "state" in instanceStatusResult ? instanceStatusResult.state : "disconnected";
+  const isAuthorized = instanceState === "authorized";
 
-  const allEvents = (events as EventRow[]) || [];
-  const start = (currentPage - 1) * pageSize;
-  const pagedEvents = allEvents.slice(start, start + pageSize);
+  // Last 5 activities only
+  const pagedEvents = ((events as EventRow[]) || []).slice(0, 5);
 
   // Preserve recency of tag usage across records
   const recentTagsList: string[] = [];
@@ -133,9 +145,26 @@ export default async function CrmWhatsAppPage({
 
   return (
     <div className="flex flex-col gap-5 w-full">
-      <div>
-        <h1 className="text-xl font-bold text-foreground">WhatsApp</h1>
-        <p className="text-sm text-muted">Single sends and small batches via GREEN-API.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">WhatsApp</h1>
+          <p className="text-sm text-muted">Single sends and small batches via GREEN-API.</p>
+        </div>
+
+        {/* GREEN-API Connection Status Badge */}
+        <div className="flex items-center gap-2">
+          {isAuthorized ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>GREEN-API: Connected ({instanceState})</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-400/15 text-red-400 border border-red-400/30">
+              <WifiOff size={13} />
+              <span>GREEN-API: Disconnected ({instanceState})</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <CrmPageGuide
@@ -149,7 +178,7 @@ export default async function CrmWhatsAppPage({
         ]}
       />
 
-      {!configured && (
+      {!configured ? (
         <div className="flex items-start gap-2 text-sm text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded-lg p-3">
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <span>
@@ -157,21 +186,30 @@ export default async function CrmWhatsAppPage({
             <code>GREEN_API_API_TOKEN_INSTANCE</code>. See <code>docs/CRM_SETUP.md</code> for the full setup guide.
           </span>
         </div>
-      )}
+      ) : !isAuthorized ? (
+        <div className="flex items-start gap-2 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg p-3">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span>
+            <strong>Warning: GREEN-API instance is disconnected</strong> (Status: <code>{instanceState}</code>). Scan the QR code in your GREEN-API console to re-authorize WhatsApp Web.
+          </span>
+        </div>
+      ) : null}
 
       <WhatsAppForm
         stages={stages}
         availableTags={availableTags}
-        disabled={!configured}
+        disabled={!configured || !isAuthorized}
         prefillRecipient={effectiveRecipient}
         prefillMessage={prefillMessage}
         initialMode={sourceEvent && !sourceEvent.phone ? "bulk" : undefined}
       />
 
       <div className="bg-header/20 border border-border rounded-xl p-2 sm:p-4">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider px-2 pt-2 mb-2">Recent activity</h2>
+        <div className="flex items-center justify-between px-2 pt-2 mb-2">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Recent activity</h2>
+          <span className="text-xs text-muted">Showing last 5 activities</span>
+        </div>
         <ResponsiveTable columns={columns} rows={pagedEvents} emptyLabel="No WhatsApp activity yet." />
-        <CrmUrlPagination totalItems={allEvents.length} pageSize={pageSize} />
       </div>
     </div>
   );

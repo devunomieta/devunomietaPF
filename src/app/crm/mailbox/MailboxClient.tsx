@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import {
   Inbox,
   Send,
@@ -65,17 +66,16 @@ export function MailboxClient({
   const [threads, setThreads] = useState<CrmThread[]>(initialThreads);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Sync threads when server revalidates initialThreads
+  // Search state
+  const [search, setSearch] = useState(searchQuery);
+
+  // Sync threads when initialThreads updates
   useEffect(() => {
     setThreads(initialThreads);
   }, [initialThreads]);
 
-  // Search state
-  const [search, setSearch] = useState(searchQuery);
-
   // Realtime search with 250ms debounce
   useEffect(() => {
-    // If search is unchanged from the initial server query, do nothing
     const query = search.trim();
     const timer = setTimeout(async () => {
       setIsSearching(true);
@@ -94,6 +94,67 @@ export function MailboxClient({
 
     return () => clearTimeout(timer);
   }, [search, activeTab]);
+
+  // Helper to re-fetch threads in background
+  const refreshThreadsSilently = async () => {
+    try {
+      const updated = await getThreads({
+        folder: activeTab,
+        search: search.trim(),
+      });
+      setThreads(updated);
+    } catch {
+      // Ignore background refresh errors
+    }
+  };
+
+  // Realtime live updates: Supabase Postgres Changes subscription + gentle 4-second poll fallback
+  useEffect(() => {
+    const supabase = createClient();
+
+    // 1. Subscribe to Postgres Changes on crm_threads and crm_messages
+    const channel = supabase
+      .channel("crm-mailbox-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "crm_threads" },
+        () => {
+          refreshThreadsSilently();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "crm_messages" },
+        (payload) => {
+          refreshThreadsSilently();
+          // If a new message arrived for the currently open thread, reload messages immediately
+          if (payload.new && (payload.new as any).thread_id === selectedThreadId && selectedThreadId) {
+            getThreadMessages(selectedThreadId).then(setMessages).catch(() => {});
+          }
+        }
+      )
+      .subscribe();
+
+    // 2. High-reliability gentle background poll (every 4 seconds) so even if WebSocket disconnects or RLS filters change events, new mail displays instantly
+    const pollInterval = setInterval(() => {
+      refreshThreadsSilently();
+      if (selectedThreadId) {
+        getThreadMessages(selectedThreadId).then((newMsgs) => {
+          setMessages((prev) => {
+            if (newMsgs.length !== prev.length || (newMsgs[newMsgs.length - 1]?.id !== prev[prev.length - 1]?.id)) {
+              return newMsgs;
+            }
+            return prev;
+          });
+        }).catch(() => {});
+      }
+    }, 4000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [activeTab, search, selectedThreadId]);
 
   // Reply box state
   const [replyText, setReplyText] = useState("");

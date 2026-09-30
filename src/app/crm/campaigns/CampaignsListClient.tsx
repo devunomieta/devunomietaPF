@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Mail, Eye, MousePointerClick, Send, CheckCircle2, AlertCircle, FileEdit, ArrowRight, Copy } from "lucide-react";
+import { Plus, Mail, Eye, MousePointerClick, Send, CheckCircle2, AlertCircle, FileEdit, ArrowRight, Copy, Trash2, CheckSquare, Square } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
-import { crmPrimaryBtnClass } from "@/components/crm/CrmModal";
+import { crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
 import { CrmTooltip } from "@/components/crm/CrmTooltip";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+import { deleteCampaign, batchDeleteCampaigns } from "./actions";
 
 export type CampaignWithMetrics = {
   id: string;
@@ -33,8 +35,66 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetrics[] }) {
   const router = useRouter();
+  const { toast, confirm } = useCrmFeedback();
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
   const pageSize = 20;
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === campaigns.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(campaigns.map((c) => c.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSingle = async (campaign: CampaignWithMetrics) => {
+    const confirmed = await confirm(
+      `Delete "${campaign.subject || "Untitled Draft"}"? All associated metrics will be removed permanently.`,
+      { danger: true, confirmLabel: "Delete Campaign" }
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    const res = await deleteCampaign(campaign.id);
+    setIsDeleting(false);
+
+    if ("success" in res) {
+      toast("Campaign deleted successfully.");
+      setSelectedIds((prev) => prev.filter((id) => id !== campaign.id));
+      router.refresh();
+    } else {
+      toast(res.error || "Failed to delete campaign.");
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const confirmed = await confirm(
+      `Delete ${selectedIds.length} selected campaign(s)? This action cannot be undone.`,
+      { danger: true, confirmLabel: `Delete ${selectedIds.length} Campaigns` }
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    const res = await batchDeleteCampaigns(selectedIds);
+    setIsDeleting(false);
+
+    if ("success" in res) {
+      toast(`${selectedIds.length} campaign(s) deleted.`);
+      setSelectedIds([]);
+      router.refresh();
+    } else {
+      toast(res.error || "Failed to batch delete campaigns.");
+    }
+  };
 
   // Aggregate stats across all campaigns
   const totalCampaigns = campaigns.length;
@@ -44,7 +104,52 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
   const avgOpenRate = totalSent > 0 ? Math.round((totalOpens / totalSent) * 100) : 0;
   const avgClickRate = totalSent > 0 ? Math.round((totalClicks / totalSent) * 100) : 0;
 
+  const allSelected = campaigns.length > 0 && selectedIds.length === campaigns.length;
+  const isIndeterminate = selectedIds.length > 0 && selectedIds.length < campaigns.length;
+
   const columns: CrmColumn<CampaignWithMetrics>[] = [
+    {
+      header: (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleSelectAll();
+          }}
+          className="p-1 text-muted hover:text-foreground transition-colors"
+          title={allSelected ? "Deselect all" : "Select all"}
+        >
+          {allSelected ? (
+            <CheckSquare size={16} className="text-accent-blue" />
+          ) : isIndeterminate ? (
+            <div className="w-4 h-4 border border-accent-blue bg-accent-blue/20 rounded flex items-center justify-center text-[10px] text-accent-blue font-bold">
+              -
+            </div>
+          ) : (
+            <Square size={16} />
+          )}
+        </button>
+      ),
+      cell: (c) => {
+        const isChecked = selectedIds.includes(c.id);
+        return (
+          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+            <button
+              type="button"
+              onClick={() => toggleSelectOne(c.id)}
+              className="p-1 text-muted hover:text-foreground transition-colors"
+              title={isChecked ? "Deselect" : "Select"}
+            >
+              {isChecked ? (
+                <CheckSquare size={16} className="text-accent-blue" />
+              ) : (
+                <Square size={16} />
+              )}
+            </button>
+          </div>
+        );
+      },
+    },
     {
       header: "Campaign / Subject",
       cell: (c) => (
@@ -144,11 +249,21 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
           ) : (
             <Link
               href={`/crm/campaigns/${c.id}`}
-              className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
+              className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground hover:underline"
             >
               Analytics <ArrowRight size={13} />
             </Link>
           )}
+
+          <button
+            type="button"
+            onClick={() => handleDeleteSingle(c)}
+            disabled={isDeleting}
+            title="Delete campaign"
+            className="p-1 rounded-md text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors ml-1"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       ),
     },
@@ -238,7 +353,33 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
       </div>
 
       {/* Campaigns Table with Full Row Clickability */}
-      <div className="bg-header/20 border border-border rounded-2xl p-2 sm:p-4 shadow-xs">
+      <div className="bg-header/20 border border-border rounded-2xl p-2 sm:p-4 shadow-xs flex flex-col gap-3">
+        {selectedIds.length > 0 && (
+          <div className="flex items-center justify-between bg-header/60 border border-border/80 px-4 py-2.5 rounded-xl animate-in fade-in duration-200">
+            <span className="text-xs text-foreground font-medium">
+              <span className="font-semibold text-accent-blue">{selectedIds.length}</span> campaign{selectedIds.length > 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="px-2.5 py-1 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                Clear selection
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchDelete}
+                disabled={isDeleting}
+                className="px-3 py-1.5 text-xs font-semibold bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                <span>{isDeleting ? "Deleting..." : `Delete Selected (${selectedIds.length})`}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <ResponsiveTable
           columns={columns}
           rows={campaigns}
