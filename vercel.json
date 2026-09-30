@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/crm-jobs",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/crm-monthly-reports",
+      "schedule": "0 8 1 * *"
     }
   ]
 }

@@ -135,20 +135,33 @@ export function MailboxClient({
       )
       .subscribe();
 
-    // 2. High-reliability gentle background poll (every 4 seconds) so even if WebSocket disconnects or RLS filters change events, new mail displays instantly
-    const pollInterval = setInterval(() => {
-      refreshThreadsSilently();
-      if (selectedThreadId) {
-        getThreadMessages(selectedThreadId).then((newMsgs) => {
+    // 2. High-reliability gentle background poll fallback:
+    // Only polls when the browser tab is active/visible, protecting server resources and bandwidth
+    let isFetching = false;
+    const pollInterval = setInterval(async () => {
+      // If the tab is backgrounded / user is away, do not ping the server
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      if (isFetching) return; // Concurrency guard
+      isFetching = true;
+      try {
+        await refreshThreadsSilently();
+        if (selectedThreadId) {
+          const newMsgs = await getThreadMessages(selectedThreadId);
           setMessages((prev) => {
             if (newMsgs.length !== prev.length || (newMsgs[newMsgs.length - 1]?.id !== prev[prev.length - 1]?.id)) {
               return newMsgs;
             }
             return prev;
           });
-        }).catch(() => {});
+        }
+      } catch {
+        // Ignore background polling errors
+      } finally {
+        isFetching = false;
       }
-    }, 4000);
+    }, 6000);
 
     return () => {
       supabase.removeChannel(channel);
