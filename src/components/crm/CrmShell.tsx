@@ -22,6 +22,7 @@ import {
   UserCheck,
   Shield,
   Inbox,
+  ChevronDown,
 } from "lucide-react";
 import { CrmFeedbackProvider } from "./CrmFeedbackProvider";
 import { CrmProfileModal } from "./CrmProfileModal";
@@ -57,34 +58,171 @@ export type CrmNavLinkInput = {
   count?: number | null;
 };
 
+export type CrmNavGroup = {
+  title: string;
+  icon?: typeof LayoutDashboard;
+  links: NavLink[];
+};
+
 function NavList({ links, pathname, onNavigate }: { links: NavLink[]; pathname: string; onNavigate?: () => void }) {
+  // Group definition according to user requirements:
+  // 1. Standalone: Dashboard
+  // 2. Contacts & Growth: Leads, Clients, Journeys, Import
+  // 3. Communications: Mailbox, Campaigns, WhatsApp
+  // 4. Invoices & Finance: Invoices, Finance
+  // 5. System & Team: Monitoring, Team Users, Settings
+  const dashboardLink = links.find((l) => l.href === "/crm");
+
+  const groups: {
+    id: string;
+    title: string;
+    icon: any;
+    links: NavLink[];
+  }[] = [
+    {
+      id: "contacts",
+      title: "Contacts & Leads",
+      icon: Users,
+      links: links.filter((l) => ["/crm/leads", "/crm/clients", "/crm/journeys", "/crm/import"].includes(l.href)),
+    },
+    {
+      id: "communications",
+      title: "Communications",
+      icon: Mail,
+      links: links.filter((l) => ["/crm/mailbox", "/crm/campaigns", "/crm/whatsapp"].includes(l.href)),
+    },
+    {
+      id: "finance",
+      title: "Invoices & Finance",
+      icon: Receipt,
+      links: links.filter((l) => ["/crm/invoices", "/crm/finance"].includes(l.href)),
+    },
+    {
+      id: "system",
+      title: "System",
+      icon: Shield,
+      links: links.filter((l) => ["/crm/monitoring", "/crm/users", "/crm/settings"].includes(l.href)),
+    },
+  ];
+
+  // Helper to determine if a group contains active path
+  const isGroupActive = (grp: (typeof groups)[0]) =>
+    grp.links.some(
+      (link) => pathname === link.href || (link.href !== "/crm" && pathname.startsWith(link.href))
+    );
+
+  // Accordion state: by default, auto-expand any group that has active route, or all by default
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (id: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   return (
-    <nav className="flex flex-col gap-1">
-      {links.map((link) => {
-        const active = pathname === link.href || (link.href !== "/crm" && pathname.startsWith(link.href));
-        return (
+    <nav className="flex flex-col gap-2">
+      {/* 1. Dashboard standalone link */}
+      {dashboardLink && (
+        <div>
           <Link
-            key={link.name}
-            href={link.href}
+            href={dashboardLink.href}
             onClick={onNavigate}
             className={`flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${
-              active
-                ? "bg-accent-blue/15 text-foreground"
+              pathname === "/crm"
+                ? "bg-accent-blue/15 text-foreground font-semibold"
                 : "text-muted hover:text-foreground hover:bg-accent-blue/10"
             }`}
           >
             <div className="flex items-center gap-3">
-              <link.icon size={16} />
-              {link.name}
+              <dashboardLink.icon size={16} />
+              {dashboardLink.name}
             </div>
-            {!!link.count && (
+            {!!dashboardLink.count && (
               <span className="px-1.5 py-0.5 rounded-full bg-accent-blue text-white text-[10px] font-bold">
-                {link.count}
+                {dashboardLink.count}
               </span>
             )}
           </Link>
-        );
-      })}
+        </div>
+      )}
+
+      {/* 2. Grouped Dropdowns */}
+      {groups
+        .filter((g) => g.links.length > 0)
+        .map((group) => {
+          const active = isGroupActive(group);
+          const isCollapsed = collapsedGroups[group.id] ?? false;
+          const totalBadgeCount = group.links.reduce((acc, curr) => acc + (curr.count || 0), 0);
+          const GroupIcon = group.icon;
+
+          return (
+            <div key={group.id} className="space-y-0.5">
+              {/* Dropdown Header Trigger */}
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.id)}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors group select-none ${
+                  active
+                    ? "text-foreground bg-header/40"
+                    : "text-muted hover:text-foreground hover:bg-header/20"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <GroupIcon size={14} className={active ? "text-accent-blue" : "text-muted group-hover:text-foreground"} />
+                  <span>{group.title}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {totalBadgeCount > 0 && isCollapsed && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-accent-blue text-white text-[9px] font-bold">
+                      {totalBadgeCount}
+                    </span>
+                  )}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 text-muted group-hover:text-foreground ${
+                      isCollapsed ? "-rotate-90" : "rotate-0"
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Dropdown Items */}
+              {!isCollapsed && (
+                <div className="pl-3 pr-1 pt-0.5 space-y-0.5 border-l border-border/50 ml-3">
+                  {group.links.map((link) => {
+                    const isLinkActive =
+                      pathname === link.href || (link.href !== "/crm" && pathname.startsWith(link.href));
+                    return (
+                      <Link
+                        key={link.name}
+                        href={link.href}
+                        onClick={onNavigate}
+                        className={`flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md transition-colors ${
+                          isLinkActive
+                            ? "bg-accent-blue/15 text-foreground font-semibold"
+                            : "text-muted hover:text-foreground hover:bg-accent-blue/10"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <link.icon size={14} className={isLinkActive ? "text-accent-blue" : ""} />
+                          <span>{link.name}</span>
+                        </div>
+                        {!!link.count && (
+                          <span className="px-1.5 py-0.2 rounded-full bg-accent-blue text-white text-[9px] font-bold">
+                            {link.count}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
     </nav>
   );
 }

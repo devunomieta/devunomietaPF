@@ -24,6 +24,7 @@ import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
 import { MailboxRichEditor } from "@/components/crm/mailbox/MailboxRichEditor";
 import ReactMarkdown from "react-markdown";
 import {
+  getThreads,
   getThreadMessages,
   replyToThread,
   composeNewEmail,
@@ -60,8 +61,39 @@ export function MailboxClient({
   const [messages, setMessages] = useState<CrmMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
-  // Search
+  // Threads state (initialized from server, dynamically updated in realtime)
+  const [threads, setThreads] = useState<CrmThread[]>(initialThreads);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Sync threads when server revalidates initialThreads
+  useEffect(() => {
+    setThreads(initialThreads);
+  }, [initialThreads]);
+
+  // Search state
   const [search, setSearch] = useState(searchQuery);
+
+  // Realtime search with 250ms debounce
+  useEffect(() => {
+    // If search is unchanged from the initial server query, do nothing
+    const query = search.trim();
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await getThreads({
+          folder: activeTab,
+          search: query,
+        });
+        setThreads(results);
+      } catch (err) {
+        console.error("Realtime search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [search, activeTab]);
 
   // Reply box state
   const [replyText, setReplyText] = useState("");
@@ -109,24 +141,22 @@ export function MailboxClient({
 
   // Handle Tab switch
   const switchTab = (tab: "inbox" | "sent") => {
+    setSelectedThreadId(null);
+    setSearch("");
     startTransition(() => {
-      setSelectedThreadId(null);
       const params = new URLSearchParams();
       params.set("folder", tab);
-      if (search) params.set("q", search);
       router.push(`/crm/mailbox?${params.toString()}`);
     });
   };
 
-  // Handle Search submit
+  // Handle Search submit (allows Enter to update URL if desired, but search already happened in realtime)
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    startTransition(() => {
-      const params = new URLSearchParams();
-      params.set("folder", activeTab);
-      if (search.trim()) params.set("q", search.trim());
-      router.push(`/crm/mailbox?${params.toString()}`);
-    });
+    const params = new URLSearchParams();
+    params.set("folder", activeTab);
+    if (search.trim()) params.set("q", search.trim());
+    router.replace(`/crm/mailbox?${params.toString()}`);
   };
 
   // Helper to extract clean plain text from HTML
@@ -222,8 +252,8 @@ export function MailboxClient({
     router.refresh();
   };
 
-  const selectedThread = initialThreads.find((t) => t.id === selectedThreadId);
-  const unreadCount = initialThreads.filter((t) => t.unread_count > 0).length;
+  const selectedThread = threads.find((t) => t.id === selectedThreadId) || initialThreads.find((t) => t.id === selectedThreadId);
+  const unreadCount = threads.filter((t) => t.unread_count > 0).length;
 
   return (
     <div className="space-y-4">
@@ -322,32 +352,31 @@ export function MailboxClient({
           </button>
         </div>
 
-        {/* Search */}
+        {/* Realtime Search */}
         <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search email, contact, or subject..."
-            className={`${crmInputClass} pl-9 pr-8 text-xs py-1.5`}
+            placeholder="Search email, contact, or subject (realtime)..."
+            className={`${crmInputClass} pl-9 pr-14 text-xs py-1.5`}
           />
-          {search && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                startTransition(() => {
-                  const params = new URLSearchParams();
-                  params.set("folder", activeTab);
-                  router.push(`/crm/mailbox?${params.toString()}`);
-                });
-              }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground text-xs"
-            >
-              ✕
-            </button>
-          )}
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {isSearching && (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-accent-blue mr-1" />
+            )}
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="text-muted hover:text-foreground text-xs p-0.5"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </form>
 
         <button
@@ -355,7 +384,7 @@ export function MailboxClient({
           className="p-2 border border-border rounded-lg text-muted hover:text-foreground hover:bg-header/40 transition-colors self-end sm:self-auto"
           title="Refresh messages"
         >
-          <RefreshCw className={`w-4 h-4 ${isPending ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${isPending || isSearching ? "animate-spin" : ""}`} />
         </button>
       </div>
 
@@ -367,18 +396,22 @@ export function MailboxClient({
             selectedThreadId ? "hidden md:block" : "block"
           } md:col-span-5 lg:col-span-4 border-r border-border overflow-y-auto max-h-[720px] divide-y divide-border/60`}
         >
-          {initialThreads.length === 0 ? (
+          {threads.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center text-muted">
               <MailOpen className="w-10 h-10 mb-2 stroke-1 opacity-40 text-muted" />
-              <p className="text-sm font-semibold text-foreground">No conversations yet</p>
+              <p className="text-sm font-semibold text-foreground">
+                {search.trim() ? "No matching conversations" : "No conversations yet"}
+              </p>
               <p className="text-xs text-muted mt-1 max-w-[220px]">
-                {activeTab === "inbox"
+                {search.trim()
+                  ? "Try a different search query."
+                  : activeTab === "inbox"
                   ? "Replies and inbound customer emails will appear here automatically."
                   : "Direct 1:1 outbound emails sent from Mailbox will appear here."}
               </p>
             </div>
           ) : (
-            initialThreads.map((thread) => {
+            threads.map((thread) => {
               const isSelected = thread.id === selectedThreadId;
               const isUnread = thread.unread_count > 0;
 
