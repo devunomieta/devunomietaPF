@@ -178,7 +178,7 @@ export async function processImportJobBatch(
 
 type BulkSendPayload = {
   campaignId: string;
-  recipients: { email: string; name?: string; clientId?: string; leadId?: string }[];
+  recipients: { email: string; name?: string; clientId?: string; leadId?: string; contactId?: string }[];
   subject: string;
   html: string;
 };
@@ -208,6 +208,8 @@ export async function processBulkSendJobBatch(
   );
   const suppressedSet = new Set((suppressed || []).map((s) => String(s.email).toLowerCase()));
 
+  const { recordCampaignEmailInEntityFeed } = await import("@/lib/crm/communicationResolver");
+
   let sentCount = 0;
   for (const recipient of batch) {
     if (suppressedSet.has(recipient.email.toLowerCase())) continue;
@@ -216,6 +218,8 @@ export async function processBulkSendJobBatch(
     const personalizedHtml = personalizeText(html, recipient);
     const result = await sendEmail({ to: [{ email: recipient.email, name: recipient.name }], subject: personalizedSubject, htmlContent: personalizedHtml });
 
+    const messageId = "messageId" in result ? result.messageId : null;
+
     const { error: logError } = await supabase.from("crm_email_events").insert([
       {
         campaign_id: campaignId,
@@ -223,12 +227,33 @@ export async function processBulkSendJobBatch(
         lead_id: recipient.leadId || null,
         recipient_email: recipient.email,
         type: "error" in result ? "error" : "sent",
-        message_id: "messageId" in result ? result.messageId : null,
+        message_id: messageId,
         meta: "error" in result ? { error: result.error } : {},
       },
     ]);
     if (logError) console.error(`crm_email_events insert failed for ${recipient.email}:`, logError.message);
-    if (!("error" in result)) sentCount++;
+
+    if (!("error" in result)) {
+      sentCount++;
+      // If this recipient is an existing lead or client contact in the system,
+      // record it into crm_threads and crm_messages so it appears in their mail history
+      if (recipient.clientId || recipient.leadId) {
+        try {
+          await recordCampaignEmailInEntityFeed({
+            recipientEmail: recipient.email,
+            recipientName: recipient.name,
+            subject: personalizedSubject,
+            htmlContent: personalizedHtml,
+            messageId,
+            clientId: recipient.clientId,
+            leadId: recipient.leadId,
+            contactId: recipient.contactId,
+          });
+        } catch (feedErr) {
+          console.error(`Failed to record campaign email in feed for ${recipient.email}:`, feedErr);
+        }
+      }
+    }
   }
 
   const newProgress = job.progress + batch.length;

@@ -213,3 +213,331 @@ export async function resolveEntityFromEmail(rawEmail: string): Promise<Resolved
     matchedVia: "none",
   };
 }
+
+/**
+ * Batch resolve entities for an array of emails.
+ * Handles primary & additional emails on contacts, clients, and leads.
+ */
+export async function batchResolveEntitiesFromEmails(
+  emails: string[]
+): Promise<Map<string, ResolvedEntityIdentity>> {
+  const map = new Map<string, ResolvedEntityIdentity>();
+  if (!emails || emails.length === 0) return map;
+
+  const normalizedEmails = Array.from(
+    new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))
+  );
+
+  const supabase = createAdminClient();
+
+  // 1. Fetch contacts matching any email or additional_emails
+  const { data: contactsData } = await supabase
+    .from("crm_contacts")
+    .select("id, name, role, email, additional_emails, client_id, lead_id");
+
+  // 2. Fetch clients
+  const { data: clientsData } = await supabase
+    .from("crm_clients")
+    .select("id, name, email, additional_emails, website, company_domain");
+
+  // 3. Fetch leads
+  const { data: leadsData } = await supabase
+    .from("crm_leads")
+    .select("id, name, email, additional_emails, website, company_domain");
+
+  type ContactRecord = {
+    id: string;
+    name: string;
+    role: string | null;
+    email: string | null;
+    additional_emails: string[] | null;
+    client_id: string | null;
+    lead_id: string | null;
+  };
+
+  type EntityRecord = {
+    id: string;
+    name: string;
+    email: string | null;
+    additional_emails: string[] | null;
+    website: string | null;
+    company_domain: string | null;
+  };
+
+  // Index contacts
+  const contactExactMap = new Map<string, ContactRecord>();
+  const contactSecMap = new Map<string, ContactRecord>();
+  for (const c of (contactsData || []) as ContactRecord[]) {
+    if (c.email) contactExactMap.set(c.email.trim().toLowerCase(), c);
+    if (Array.isArray(c.additional_emails)) {
+      for (const sec of c.additional_emails) {
+        if (sec) contactSecMap.set(sec.trim().toLowerCase(), c);
+      }
+    }
+  }
+
+  // Index clients
+  const clientExactMap = new Map<string, EntityRecord>();
+  const clientSecMap = new Map<string, EntityRecord>();
+  for (const cl of (clientsData || []) as EntityRecord[]) {
+    if (cl.email) clientExactMap.set(cl.email.trim().toLowerCase(), cl);
+    if (Array.isArray(cl.additional_emails)) {
+      for (const sec of cl.additional_emails) {
+        if (sec) clientSecMap.set(sec.trim().toLowerCase(), cl);
+      }
+    }
+  }
+
+  // Index leads
+  const leadExactMap = new Map<string, EntityRecord>();
+  const leadSecMap = new Map<string, EntityRecord>();
+  for (const ld of (leadsData || []) as EntityRecord[]) {
+    if (ld.email) leadExactMap.set(ld.email.trim().toLowerCase(), ld);
+    if (Array.isArray(ld.additional_emails)) {
+      for (const sec of ld.additional_emails) {
+        if (sec) leadSecMap.set(sec.trim().toLowerCase(), ld);
+      }
+    }
+  }
+
+  for (const cleanEmail of normalizedEmails) {
+    // 1. Contact exact
+    if (contactExactMap.has(cleanEmail)) {
+      const c = contactExactMap.get(cleanEmail)!;
+      map.set(cleanEmail, {
+        clientId: c.client_id,
+        leadId: c.lead_id,
+        contactId: c.id,
+        matchedVia: "contact_exact",
+        contactName: c.name,
+        contactRole: c.role || undefined,
+      });
+      continue;
+    }
+
+    // 2. Contact secondary
+    if (contactSecMap.has(cleanEmail)) {
+      const c = contactSecMap.get(cleanEmail)!;
+      map.set(cleanEmail, {
+        clientId: c.client_id,
+        leadId: c.lead_id,
+        contactId: c.id,
+        matchedVia: "contact_secondary",
+        contactName: c.name,
+        contactRole: c.role || undefined,
+      });
+      continue;
+    }
+
+    // 3. Client exact
+    if (clientExactMap.has(cleanEmail)) {
+      const cl = clientExactMap.get(cleanEmail)!;
+      map.set(cleanEmail, {
+        clientId: cl.id,
+        leadId: null,
+        contactId: null,
+        matchedVia: "client_exact",
+        entityName: cl.name,
+      });
+      continue;
+    }
+
+    // 4. Client secondary
+    if (clientSecMap.has(cleanEmail)) {
+      const cl = clientSecMap.get(cleanEmail)!;
+      map.set(cleanEmail, {
+        clientId: cl.id,
+        leadId: null,
+        contactId: null,
+        matchedVia: "client_secondary",
+        entityName: cl.name,
+      });
+      continue;
+    }
+
+    // 5. Lead exact
+    if (leadExactMap.has(cleanEmail)) {
+      const ld = leadExactMap.get(cleanEmail)!;
+      map.set(cleanEmail, {
+        clientId: null,
+        leadId: ld.id,
+        contactId: null,
+        matchedVia: "lead_exact",
+        entityName: ld.name,
+      });
+      continue;
+    }
+
+    // 6. Lead secondary
+    if (leadSecMap.has(cleanEmail)) {
+      const ld = leadSecMap.get(cleanEmail)!;
+      map.set(cleanEmail, {
+        clientId: null,
+        leadId: ld.id,
+        contactId: null,
+        matchedVia: "lead_secondary",
+        entityName: ld.name,
+      });
+      continue;
+    }
+
+    // 7. Domain matching fallback
+    const domain = extractCleanDomain(cleanEmail);
+    if (domain && !GENERIC_EMAIL_DOMAINS.has(domain)) {
+      const clDomain = (clientsData || []).find(
+        (cl) =>
+          extractCleanDomain(cl.company_domain) === domain ||
+          extractCleanDomain(cl.website) === domain
+      );
+      if (clDomain) {
+        map.set(cleanEmail, {
+          clientId: clDomain.id,
+          leadId: null,
+          contactId: null,
+          matchedVia: "company_domain",
+          entityName: clDomain.name,
+        });
+        continue;
+      }
+
+      const ldDomain = (leadsData || []).find(
+        (ld) =>
+          extractCleanDomain(ld.company_domain) === domain ||
+          extractCleanDomain(ld.website) === domain
+      );
+      if (ldDomain) {
+        map.set(cleanEmail, {
+          clientId: null,
+          leadId: ldDomain.id,
+          contactId: null,
+          matchedVia: "company_domain",
+          entityName: ldDomain.name,
+        });
+        continue;
+      }
+    }
+
+    map.set(cleanEmail, {
+      clientId: null,
+      leadId: null,
+      contactId: null,
+      matchedVia: "none",
+    });
+  }
+
+  return map;
+}
+
+/**
+ * Ensures a sent campaign email is recorded in crm_threads and crm_messages
+ * so it immediately appears in the contact / lead / client communication timeline.
+ */
+export async function recordCampaignEmailInEntityFeed({
+  recipientEmail,
+  recipientName,
+  subject,
+  htmlContent,
+  messageId,
+  clientId,
+  leadId,
+  contactId,
+}: {
+  recipientEmail: string;
+  recipientName?: string | null;
+  subject: string;
+  htmlContent: string;
+  messageId?: string | null;
+  clientId?: string | null;
+  leadId?: string | null;
+  contactId?: string | null;
+}) {
+  // Only record in thread feed if attached to a client or lead
+  if (!clientId && !leadId) return;
+
+  const adminDb = createAdminClient();
+  const cleanEmail = recipientEmail.trim().toLowerCase();
+  const cleanSubject = subject.trim() || "Campaign Message";
+  const normalizedSub = cleanSubject
+    .replace(/^(\s*(re|fwd|fw)\s*:\s*)+/i, "")
+    .trim()
+    .toLowerCase();
+
+  const plainText = htmlContent.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const preview = plainText.slice(0, 140).trim();
+  const sentAt = new Date().toISOString();
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "info@devunomieta.xyz";
+  const senderName = process.env.BREVO_SENDER_NAME || "Joseph Unomieta";
+
+  // Check if an existing thread exists for this entity and recipient email with matching normalized subject
+  let threadQuery = adminDb
+    .from("crm_threads")
+    .select("id")
+    .eq("recipient_email", cleanEmail)
+    .eq("normalized_subject", normalizedSub)
+    .limit(1);
+
+  if (clientId) {
+    threadQuery = threadQuery.eq("client_id", clientId);
+  } else if (leadId) {
+    threadQuery = threadQuery.eq("lead_id", leadId);
+  }
+
+  const { data: existingThread } = await threadQuery.maybeSingle();
+
+  let targetThreadId = existingThread?.id;
+
+  if (targetThreadId) {
+    await adminDb
+      .from("crm_threads")
+      .update({
+        last_message_preview: `Campaign: ${preview}`,
+        last_message_at: sentAt,
+        folder: "sent",
+        updated_at: sentAt,
+      })
+      .eq("id", targetThreadId);
+  } else {
+    const { data: newThread, error: newThreadErr } = await adminDb
+      .from("crm_threads")
+      .insert([
+        {
+          subject: cleanSubject,
+          normalized_subject: normalizedSub,
+          recipient_email: cleanEmail,
+          recipient_name: recipientName || null,
+          last_message_preview: `Campaign: ${preview}`,
+          last_message_at: sentAt,
+          unread_count: 0,
+          folder: "sent",
+          client_id: clientId || null,
+          lead_id: leadId || null,
+          contact_id: contactId || null,
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (!newThreadErr && newThread) {
+      targetThreadId = newThread.id;
+    }
+  }
+
+  if (targetThreadId) {
+    await adminDb.from("crm_messages").insert([
+      {
+        thread_id: targetThreadId,
+        direction: "outbound",
+        from_email: senderEmail,
+        from_name: senderName,
+        to_recipients: [{ email: cleanEmail, name: recipientName || undefined }],
+        cc_recipients: [],
+        subject: cleanSubject,
+        body_text: plainText,
+        body_html: htmlContent,
+        message_id: messageId || null,
+        sent_at: sentAt,
+      },
+    ]);
+  }
+}
+

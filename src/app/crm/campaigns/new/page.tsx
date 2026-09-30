@@ -65,6 +65,7 @@ export default async function NewCampaignPage({
           subject: duplicateId ? `Copy of ${sourceCampaign.subject}` : sourceCampaign.subject,
           html: sourceCampaign.html,
           audience: sourceCampaign.audience,
+          kind: sourceCampaign.kind,
         } : null}
       />
     </div>

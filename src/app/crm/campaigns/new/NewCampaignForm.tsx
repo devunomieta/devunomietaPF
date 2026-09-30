@@ -18,11 +18,20 @@ import {
   Bookmark,
   Calendar,
   Clock,
+  ListFilter,
+  ClipboardList,
 } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
-import { sendSingleEmail, createBulkCampaign, previewAudienceCount, saveCampaignDraft } from "../actions";
+import {
+  sendSingleEmail,
+  createBulkCampaign,
+  previewAudienceCount,
+  saveCampaignDraft,
+  previewCustomAudienceDetails,
+} from "../actions";
+import { parseRawEmailsList } from "@/lib/crm/emailParser";
 import { analyzeEmailSpam, type SpamAnalysis } from "@/lib/crm/emailSpamScore";
 import { RichEmailEditor } from "@/components/crm/campaigns/RichEmailEditor";
 import { CampaignPreviewModal } from "@/components/crm/campaigns/CampaignPreviewModal";
@@ -34,10 +43,12 @@ type InitialDraft = {
   id: string;
   subject: string;
   html: string;
+  kind?: string;
   audience?: {
     segment?: "clients" | "leads" | "all";
     tags?: string[];
     stageKey?: string;
+    customEmails?: string[];
   };
 };
 
@@ -59,13 +70,31 @@ export function NewCampaignForm({
   const router = useRouter();
   const { toast, canPerform } = useCrmFeedback();
   const [draftId, setDraftId] = useState<string | null>(initialDraft?.id || null);
-  const [mode, setMode] = useState<"single" | "bulk">(prefillRecipient ? "single" : "bulk");
+  const [mode, setMode] = useState<"single" | "bulk" | "custom">(
+    prefillRecipient
+      ? "single"
+      : initialDraft?.kind === "custom" || (initialDraft?.audience?.customEmails && initialDraft.audience.customEmails.length > 0)
+      ? "custom"
+      : "bulk"
+  );
   const [segment, setSegment] = useState<"clients" | "leads" | "all">(initialDraft?.audience?.segment || "leads");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>(initialDraft?.audience?.tags || []);
   const [stageKey, setStageKey] = useState(initialDraft?.audience?.stageKey || "");
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+
+  // Custom Batch Paste State
+  const [customEmailsRaw, setCustomEmailsRaw] = useState<string>(
+    initialDraft?.audience?.customEmails?.join("\n") || ""
+  );
+  const [customAnalysis, setCustomAnalysis] = useState<{
+    validCount: number;
+    matchedCount: number;
+    suppressedCount: number;
+    samples: Array<{ email: string; name?: string; matched: boolean; type?: string }>;
+  } | null>(null);
+  const [checkingCustom, setCheckingCustom] = useState(false);
 
   // Form State
   const [subject, setSubject] = useState(initialDraft?.subject || "");
@@ -88,7 +117,7 @@ export function NewCampaignForm({
   const [spamAnalysis, setSpamAnalysis] = useState<SpamAnalysis | null>(null);
   const [showSpamDetails, setShowSpamDetails] = useState(false);
 
-  // Recalculate audience on changes
+  // Recalculate audience on changes for bulk mode
   useEffect(() => {
     if (mode !== "bulk") return;
     const timeout = setTimeout(async () => {
@@ -101,6 +130,27 @@ export function NewCampaignForm({
     }, 250);
     return () => clearTimeout(timeout);
   }, [mode, segment, selectedTags, stageKey]);
+
+  // Recalculate custom audience validation & CRM match preview on paste/edit
+  useEffect(() => {
+    if (mode !== "custom") return;
+    if (!customEmailsRaw.trim()) {
+      setCustomAnalysis(null);
+      return;
+    }
+    setCheckingCustom(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const details = await previewCustomAudienceDetails(customEmailsRaw);
+        setCustomAnalysis(details);
+      } catch (err) {
+        console.error("Failed to preview custom audience:", err);
+      } finally {
+        setCheckingCustom(false);
+      }
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [mode, customEmailsRaw]);
 
   // Real-time spam checker with debouncing
   useEffect(() => {
@@ -149,9 +199,6 @@ export function NewCampaignForm({
     setTagSearchInput("");
   }
 
-  // Filter recommendations:
-  // When input has >= 3 chars, show matches from availableTags
-  // When input has < 3 chars, show at least 5 recommendations (most recently used)
   const matchingTags = tagSearchInput.trim().length >= 3
     ? availableTags.filter((t) =>
         t.toLowerCase().includes(tagSearchInput.trim().toLowerCase())
@@ -169,9 +216,15 @@ export function NewCampaignForm({
     if (draftId) fd.set("draftId", draftId);
     fd.set("subject", subject || "(Untitled Draft)");
     fd.set("html", bodyHtml);
-    fd.set("segment", segment);
-    fd.set("tags", selectedTags.join(","));
-    fd.set("stageKey", stageKey);
+    fd.set("mode", mode);
+
+    if (mode === "custom") {
+      fd.set("customEmails", customEmailsRaw);
+    } else {
+      fd.set("segment", segment);
+      fd.set("tags", selectedTags.join(","));
+      fd.set("stageKey", stageKey);
+    }
 
     const res = await saveCampaignDraft(fd);
     setSavingDraft(false);
@@ -195,14 +248,28 @@ export function NewCampaignForm({
       return;
     }
 
+    if (mode === "custom") {
+      const valid = parseRawEmailsList(customEmailsRaw);
+      if (valid.length === 0) {
+        toast("Please paste at least one valid recipient email address.");
+        return;
+      }
+    }
+
     setLoading(true);
     const formData = new FormData(e.currentTarget);
     if (draftId) formData.set("draftId", draftId);
     formData.set("subject", subject);
     formData.set("html", bodyHtml);
-    formData.set("segment", segment);
-    formData.set("tags", selectedTags.join(","));
-    formData.set("stageKey", stageKey);
+    formData.set("mode", mode);
+
+    if (mode === "custom") {
+      formData.set("customEmails", customEmailsRaw);
+    } else {
+      formData.set("segment", segment);
+      formData.set("tags", selectedTags.join(","));
+      formData.set("stageKey", stageKey);
+    }
 
     if (isScheduled && scheduledDate) {
       formData.set("scheduledAt", `${scheduledDate}T${scheduledTime || "09:00"}:00Z`);
@@ -223,29 +290,43 @@ export function NewCampaignForm({
   return (
     <>
       <form onSubmit={handleSubmit} className="bg-header/20 border border-border rounded-xl p-5 sm:p-6 flex flex-col gap-5">
-      {/* Mode Selector */}
-      <div className="flex gap-2">
+      {/* Mode Selector - 3 Modes */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setMode("single")}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
             mode === "single"
               ? "bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/30"
               : "border-border text-muted hover:text-foreground"
           }`}
         >
+          <Mail size={13} />
           Single send
         </button>
         <button
           type="button"
           onClick={() => setMode("bulk")}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
             mode === "bulk"
               ? "bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/30"
               : "border-border text-muted hover:text-foreground"
           }`}
         >
+          <Users size={13} />
           Bulk campaign
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("custom")}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
+            mode === "custom"
+              ? "bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/30"
+              : "border-border text-muted hover:text-foreground"
+          }`}
+        >
+          <ClipboardList size={13} />
+          Custom list (batch paste)
         </button>
       </div>
 
@@ -282,6 +363,105 @@ export function NewCampaignForm({
             </div>
           </div>
         </>
+      ) : mode === "custom" ? (
+        /* Custom Audience Batch Paste UI */
+        <div className="flex flex-col gap-4 bg-background/50 border border-border/80 rounded-xl p-4 animate-in fade-in duration-200">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={crmLabelClass} htmlFor="customEmails" style={{ marginBottom: 0 }}>
+                Batch Paste Recipient Emails *
+              </label>
+              <span className="text-[11px] text-muted">
+                Separated by commas, newlines, semicolons, or spaces
+              </span>
+            </div>
+            <textarea
+              id="customEmails"
+              name="customEmails"
+              rows={4}
+              value={customEmailsRaw}
+              onChange={(e) => setCustomEmailsRaw(e.target.value)}
+              placeholder="e.g. sarah@example.com, john.doe@company.org&#10;contact@client.com; doctor@clinic.net"
+              className={`${crmInputClass} font-mono text-xs leading-relaxed resize-y`}
+            />
+          </div>
+
+          {/* Real-time Validation & CRM Match Breakdown */}
+          <div className="bg-header/40 border border-border rounded-lg p-3.5 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+              <div className="flex items-center gap-2 text-foreground">
+                <Users size={15} className="text-accent-blue" />
+                <span>
+                  {checkingCustom ? (
+                    <span className="flex items-center gap-1.5 text-muted">
+                      <Loader2 size={12} className="animate-spin" /> Resolving emails & CRM contacts…
+                    </span>
+                  ) : !customAnalysis ? (
+                    <span className="text-muted">Paste email addresses above to calculate audience and match CRM records.</span>
+                  ) : (
+                    <>
+                      <strong className="text-accent-blue text-sm font-semibold">{customAnalysis.validCount - customAnalysis.suppressedCount}</strong> recipient(s) ready to send.
+                    </>
+                  )}
+                </span>
+              </div>
+
+              {customAnalysis && customAnalysis.validCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Check size={11} />
+                    {customAnalysis.matchedCount} matched in CRM
+                  </span>
+                  {customAnalysis.suppressedCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                      <ShieldAlert size={11} />
+                      {customAnalysis.suppressedCount} suppressed
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Note & Sample Resolved Entities Chips */}
+            {customAnalysis && customAnalysis.samples.length > 0 && (
+              <div className="pt-2 border-t border-border/50 text-[11px] text-muted flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground/80">Recipients Preview & CRM Linking:</span>
+                  <span className="text-[10px] text-muted/80">Showing first {customAnalysis.samples.length}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {customAnalysis.samples.map((s, idx) => (
+                    <span
+                      key={idx}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] border ${
+                        s.matched
+                          ? "bg-accent-blue/10 border-accent-blue/30 text-accent-blue font-medium"
+                          : "bg-header/60 border-border text-foreground/75"
+                      }`}
+                      title={s.matched ? `Linked to ${s.type}: ${s.name || s.email} (Email will show in their contact timeline)` : "External recipient"}
+                    >
+                      {s.matched && <Check size={10} className="text-accent-blue" />}
+                      <span>{s.name ? `${s.name} (${s.email})` : s.email}</span>
+                      {s.type && (
+                        <span className="text-[9px] uppercase px-1 rounded bg-accent-blue/20 text-accent-blue font-semibold">
+                          {s.type}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                  {customAnalysis.validCount > customAnalysis.samples.length && (
+                    <span className="text-[11px] text-muted self-center ml-1">
+                      +{customAnalysis.validCount - customAnalysis.samples.length} more
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-emerald-400/90 mt-1">
+                  ✓ Any email matching an existing Lead, Client, or Contact will be automatically linked to their communication timeline history.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col gap-4 bg-background/50 border border-border/80 rounded-xl p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

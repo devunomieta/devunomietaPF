@@ -5,6 +5,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { requireCrmUser } from "@/lib/crm/auth";
 import { sendEmail } from "@/lib/brevo";
 import { processBulkSendJobBatch, getTodaysSentEmailCount } from "@/lib/crm/jobs";
+import { parseRawEmailsList } from "@/lib/crm/emailParser";
 import type { ActionResult } from "@/lib/crm/types";
 
 type SendResult = { success: true; warning?: string } | { error: string };
@@ -32,10 +33,26 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
     .single();
   if (campaignError) return { error: campaignError.message };
 
+  const { resolveEntityFromEmail, recordCampaignEmailInEntityFeed } = await import("@/lib/crm/communicationResolver");
+  let resolvedClientId = clientId;
+  let resolvedLeadId = leadId;
+  let resolvedContactId: string | null = null;
+  let resolvedName = name;
+
+  if (!resolvedClientId && !resolvedLeadId) {
+    const resolved = await resolveEntityFromEmail(email);
+    if (resolved.clientId) resolvedClientId = resolved.clientId;
+    if (resolved.leadId) resolvedLeadId = resolved.leadId;
+    if (resolved.contactId) resolvedContactId = resolved.contactId;
+    if (!resolvedName && (resolved.contactName || resolved.entityName)) {
+      resolvedName = resolved.contactName || resolved.entityName || "";
+    }
+  }
+
   const { personalizeText } = await import("@/lib/crm/personalization");
   const { renderBulletproofEmail } = await import("@/lib/crm/emailTemplate");
-  const personalizedSubject = personalizeText(subject, { name, email });
-  const personalizedBody = personalizeText(html, { name, email });
+  const personalizedSubject = personalizeText(subject, { name: resolvedName, email });
+  const personalizedBody = personalizeText(html, { name: resolvedName, email });
   const fullHtml = renderBulletproofEmail({
     subject: personalizedSubject,
     contentHtml: personalizedBody,
@@ -43,16 +60,18 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
     senderAddress: "Joseph Unomieta",
   });
 
-  const result = await sendEmail({ to: [{ email, name }], subject: personalizedSubject, htmlContent: fullHtml });
+  const result = await sendEmail({ to: [{ email, name: resolvedName }], subject: personalizedSubject, htmlContent: fullHtml });
+
+  const messageId = "messageId" in result ? result.messageId : null;
 
   const { error: logError } = await supabase.from("crm_email_events").insert([
     {
       campaign_id: campaign.id,
-      client_id: clientId,
-      lead_id: leadId,
+      client_id: resolvedClientId,
+      lead_id: resolvedLeadId,
       recipient_email: email,
       type: "error" in result ? "error" : "sent",
-      message_id: "messageId" in result ? result.messageId : null,
+      message_id: messageId,
       meta: "error" in result ? { error: result.error } : {},
     },
   ]);
@@ -65,9 +84,27 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
 
   if ("error" in result) return { error: result.error };
 
+  // If this email is associated with a client or lead in the CRM, record in communications timeline
+  if (resolvedClientId || resolvedLeadId) {
+    try {
+      await recordCampaignEmailInEntityFeed({
+        recipientEmail: email,
+        recipientName: resolvedName,
+        subject: personalizedSubject,
+        htmlContent: fullHtml,
+        messageId,
+        clientId: resolvedClientId,
+        leadId: resolvedLeadId,
+        contactId: resolvedContactId,
+      });
+    } catch (feedErr) {
+      console.error(`Failed to record single campaign email in feed for ${email}:`, feedErr);
+    }
+  }
+
   revalidatePath("/crm/campaigns");
-  if (clientId) revalidatePath(`/crm/clients/${clientId}`);
-  if (leadId) revalidatePath(`/crm/leads/${leadId}`);
+  if (resolvedClientId) revalidatePath(`/crm/clients/${resolvedClientId}`);
+  if (resolvedLeadId) revalidatePath(`/crm/leads/${resolvedLeadId}`);
 
   if (logError) {
     return { success: true, warning: `Sent, but couldn't save it to the activity log: ${logError.message}` };
@@ -75,7 +112,101 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
   return { success: true };
 }
 
-type Audience = { segment: "clients" | "leads" | "all"; tags: string[]; stageKey: string };
+type Audience = {
+  segment?: "clients" | "leads" | "all";
+  tags?: string[];
+  stageKey?: string;
+  customEmails?: string[];
+};
+
+export async function resolveCustomAudience(
+  supabase: ReturnType<typeof createAdminClient>,
+  rawEmails: string[] | string
+) {
+  const emailList = Array.isArray(rawEmails) ? rawEmails : parseRawEmailsList(rawEmails);
+  if (emailList.length === 0) return [];
+
+  const { batchResolveEntitiesFromEmails } = await import("@/lib/crm/communicationResolver");
+  const entityMap = await batchResolveEntitiesFromEmails(emailList);
+
+  const { data: suppressed } = await supabase
+    .from("crm_suppressions")
+    .select("email")
+    .in("email", emailList);
+  const suppressedSet = new Set((suppressed || []).map((s) => String(s.email).toLowerCase()));
+
+  return emailList
+    .filter((email) => !suppressedSet.has(email.toLowerCase()))
+    .map((email) => {
+      const entity = entityMap.get(email.toLowerCase());
+      return {
+        email,
+        name: entity?.contactName || entity?.entityName || undefined,
+        clientId: entity?.clientId || undefined,
+        leadId: entity?.leadId || undefined,
+        contactId: entity?.contactId || undefined,
+      };
+    });
+}
+
+export async function previewCustomAudienceDetails(rawInput: string): Promise<{
+  validCount: number;
+  matchedCount: number;
+  suppressedCount: number;
+  samples: Array<{ email: string; name?: string; matched: boolean; type?: string }>;
+}> {
+  await requireCrmUser({ page: "campaigns" });
+  const supabase = createAdminClient();
+  const parsed = parseRawEmailsList(rawInput);
+  if (parsed.length === 0) {
+    return { validCount: 0, matchedCount: 0, suppressedCount: 0, samples: [] };
+  }
+
+  const { batchResolveEntitiesFromEmails } = await import("@/lib/crm/communicationResolver");
+  const entityMap = await batchResolveEntitiesFromEmails(parsed);
+
+  const { data: suppressed } = await supabase
+    .from("crm_suppressions")
+    .select("email")
+    .in("email", parsed);
+  const suppressedSet = new Set((suppressed || []).map((s) => String(s.email).toLowerCase()));
+
+  let matchedCount = 0;
+  let suppressedCount = 0;
+
+  const samples: Array<{ email: string; name?: string; matched: boolean; type?: string }> = [];
+
+  for (let i = 0; i < parsed.length; i++) {
+    const email = parsed[i];
+    const isSuppressed = suppressedSet.has(email);
+    if (isSuppressed) suppressedCount++;
+
+    const entity = entityMap.get(email);
+    const isMatched = !!(entity && (entity.clientId || entity.leadId || entity.contactId));
+    if (isMatched) matchedCount++;
+
+    if (i < 8) {
+      let type: string | undefined;
+      if (entity?.clientId) type = "Client";
+      else if (entity?.leadId) type = "Lead";
+      else if (entity?.contactId) type = "Contact";
+
+      samples.push({
+        email,
+        name: entity?.contactName || entity?.entityName,
+        matched: isMatched,
+        type,
+      });
+    }
+  }
+
+  return {
+    validCount: parsed.length,
+    matchedCount,
+    suppressedCount,
+    samples,
+  };
+}
 
 async function resolveAudience(supabase: ReturnType<typeof createAdminClient>, audience: Audience) {
   const rows: Array<{
@@ -90,14 +221,14 @@ async function resolveAudience(supabase: ReturnType<typeof createAdminClient>, a
 
   if (audience.segment === "all" || audience.segment === "clients") {
     let clientsQuery = supabase.from("crm_clients").select("id, name, email, company, phone, tags").not("email", "is", null);
-    if (audience.tags.length > 0) clientsQuery = clientsQuery.overlaps("tags", audience.tags);
+    if (audience.tags && audience.tags.length > 0) clientsQuery = clientsQuery.overlaps("tags", audience.tags);
     const { data: clientsData } = await clientsQuery;
     (clientsData || []).forEach((c) => rows.push({ ...c, isClient: true }));
   }
 
   if (audience.segment === "all" || audience.segment === "leads") {
     let leadsQuery = supabase.from("crm_leads").select("id, name, email, company, phone, tags, current_stage_key").not("email", "is", null);
-    if (audience.tags.length > 0) leadsQuery = leadsQuery.overlaps("tags", audience.tags);
+    if (audience.tags && audience.tags.length > 0) leadsQuery = leadsQuery.overlaps("tags", audience.tags);
     if (audience.stageKey && audience.segment === "leads") leadsQuery = leadsQuery.eq("current_stage_key", audience.stageKey);
     const { data: leadsData } = await leadsQuery;
     (leadsData || []).forEach((l) => rows.push({ ...l, isLead: true }));
@@ -227,11 +358,20 @@ export async function saveCampaignDraft(formData: FormData): Promise<{ success: 
   const draftId = (formData.get("draftId") as string) || null;
   const subject = (formData.get("subject") as string)?.trim() || "(Untitled Draft)";
   const html = (formData.get("html") as string) || "";
+  const mode = (formData.get("mode") as string) || "bulk";
+  const customEmailsRaw = (formData.get("customEmails") as string) || "";
   const segment = (formData.get("segment") as "clients" | "leads" | "all") || "leads";
   const stageKey = (formData.get("stageKey") as string) || "";
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
 
-  const audience: Audience = { segment, tags, stageKey };
+  const customEmails = parseRawEmailsList(customEmailsRaw);
+  const isCustomMode = mode === "custom";
+
+  const audience: Audience = isCustomMode
+    ? { customEmails }
+    : { segment, tags, stageKey };
+
+  const kind = isCustomMode ? "custom" : "bulk";
 
   if (draftId) {
     const { error } = await supabase
@@ -240,6 +380,7 @@ export async function saveCampaignDraft(formData: FormData): Promise<{ success: 
         subject,
         html,
         audience,
+        kind,
         status: "draft",
       })
       .eq("id", draftId);
@@ -256,7 +397,7 @@ export async function saveCampaignDraft(formData: FormData): Promise<{ success: 
         subject,
         html,
         audience,
-        kind: "bulk",
+        kind,
         status: "draft",
         total_recipients: 0,
       },
@@ -277,6 +418,8 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
   const draftId = (formData.get("draftId") as string) || null;
   const subject = (formData.get("subject") as string)?.trim();
   const html = formData.get("html") as string;
+  const mode = (formData.get("mode") as string) || "bulk";
+  const customEmailsRaw = (formData.get("customEmails") as string) || "";
   const segment = (formData.get("segment") as "clients" | "leads" | "all") || "leads";
   const stageKey = (formData.get("stageKey") as string) || "";
   const tags = (formData.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [];
@@ -284,9 +427,34 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
 
   if (!subject || !html) return { error: "Subject and message are required." };
 
-  const audience: Audience = { segment, tags, stageKey };
-  const recipients = await resolveAudience(supabase, audience);
-  if (recipients.length === 0) return { error: "No recipients match that audience." };
+  const isCustomMode = mode === "custom";
+  const kind = isCustomMode ? "custom" : "bulk";
+
+  let recipients: Array<{
+    email: string;
+    name?: string;
+    company?: string | null;
+    phone?: string | null;
+    clientId?: string;
+    leadId?: string;
+    contactId?: string;
+  }> = [];
+
+  let audience: Audience;
+
+  if (isCustomMode) {
+    const customEmails = parseRawEmailsList(customEmailsRaw);
+    if (customEmails.length === 0) {
+      return { error: "Please enter at least one valid recipient email address." };
+    }
+    audience = { customEmails };
+    recipients = await resolveCustomAudience(supabase, customEmails);
+  } else {
+    audience = { segment, tags, stageKey };
+    recipients = await resolveAudience(supabase, audience);
+  }
+
+  if (recipients.length === 0) return { error: "No recipients match that audience or all are suppressed." };
 
   const { renderBulletproofEmail } = await import("@/lib/crm/emailTemplate");
   const wrappedHtml = renderBulletproofEmail({
@@ -307,7 +475,7 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
       .update({
         subject,
         html: wrappedHtml,
-        kind: "bulk",
+        kind,
         status: initialStatus,
         scheduled_at: isScheduled ? new Date(scheduledAt).toISOString() : null,
         audience,
@@ -323,7 +491,7 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
         {
           subject,
           html: wrappedHtml,
-          kind: "bulk",
+          kind,
           status: initialStatus,
           scheduled_at: isScheduled ? new Date(scheduledAt).toISOString() : null,
           audience,
