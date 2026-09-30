@@ -7,6 +7,7 @@ export const metadata = {
   title: "CRM Mailbox — Gmail-like Inbound Threads & Replies",
   robots: { index: false, follow: false },
 };
+export const dynamic = "force-dynamic";
 
 export default async function CrmMailboxPage({
   searchParams,

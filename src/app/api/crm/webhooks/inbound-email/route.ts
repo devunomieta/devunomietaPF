@@ -284,27 +284,39 @@ export async function POST(request: Request) {
     }
 
     // 6. Insert message
-    const { error: msgErr } = await supabase.from("crm_messages").insert([
+    // Attempt insert with security/reply_to metadata; fall back to base columns if schema hasn't migrated them yet
+    const baseMessagePayload = {
+      thread_id: threadId,
+      direction: "inbound",
+      from_email: fromAddress.toLowerCase().trim(),
+      from_name: fromName || null,
+      to_recipients: toRecipients,
+      cc_recipients: ccRecipients,
+      subject,
+      body_text: rawBodyText,
+      body_html: sanitizedHtml,
+      message_id: messageId,
+      in_reply_to: inReplyTo,
+      references_header: referencesHeader,
+      attachments,
+      raw_payload: item,
+      sent_at: sentAt,
+    };
+
+    let { error: msgErr } = await supabase.from("crm_messages").insert([
       {
-        thread_id: threadId,
-        direction: "inbound",
-        from_email: fromAddress.toLowerCase().trim(),
-        from_name: fromName || null,
+        ...baseMessagePayload,
         reply_to: replyToAddress ? replyToAddress.toLowerCase().trim() : null,
-        to_recipients: toRecipients,
-        cc_recipients: ccRecipients,
-        subject,
-        body_text: rawBodyText,
-        body_html: sanitizedHtml,
-        message_id: messageId,
-        in_reply_to: inReplyTo,
-        references_header: referencesHeader,
-        attachments,
         security_status: securityStatus,
-        raw_payload: item,
-        sent_at: sentAt,
       },
     ]);
+
+    // If column missing in schema cache, fallback to base columns
+    if (msgErr && msgErr.message?.includes("column")) {
+      console.warn("[Inbound Email] Retrying insert with base message columns:", msgErr.message);
+      const fallback = await supabase.from("crm_messages").insert([baseMessagePayload]);
+      msgErr = fallback.error;
+    }
 
     if (msgErr) {
       console.error("[Inbound Email] Error inserting message:", msgErr.message);
