@@ -345,112 +345,341 @@ export async function renderInvoicesPdf(data: InvoicesReportData): Promise<Buffe
 // -------------------------------------------------------------
 // 4. Executive ("ALL") Report PDF
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+// 4. Executive ("ALL") Comprehensive Report Dossier PDF
+// -------------------------------------------------------------
 export async function renderExecutivePdf(data: ExecutiveReportData): Promise<Buffer> {
+  const brandColor = data.settings?.brand_color || "#0284c7";
+  const currency = data.invoicesSummary.currency || "NGN";
+
   const doc = (
     <Document>
-      {/* Page 1: Executive KPI Overview */}
+      {/* PAGE 1: EXECUTIVE BRIEFING & FINANCIAL POSITION */}
       <Page size="A4" style={styles.page}>
-        <Header title="EXECUTIVE CRM PERFORMANCE REPORT" period={data.range.label} data={data} />
+        <Header title="EXECUTIVE CRM PERFORMANCE DOSSIER" period={data.range.label} data={data} />
 
+        {/* Primary Financial & Pipeline KPIs */}
         <View style={styles.kpiContainer}>
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Revenue Billed</Text>
-            <Text style={styles.kpiValue}>{formatMoneyPlain(data.invoicesSummary.grossInvoiced, data.invoicesSummary.currency)}</Text>
-            <Text style={styles.kpiSub}>Invoiced in period</Text>
+            <Text style={styles.kpiLabel}>Gross Invoiced</Text>
+            <Text style={styles.kpiValue}>{formatMoneyPlain(data.invoicesSummary.grossInvoiced, currency)}</Text>
+            <Text style={styles.kpiSub}>{data.invoicesSummary.totalInvoices} billing records</Text>
           </View>
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>Cash Inflow</Text>
-            <Text style={[styles.kpiValue, { color: "#16a34a" }]}>{formatMoneyPlain(data.invoicesSummary.netCollected, data.invoicesSummary.currency)}</Text>
-            <Text style={styles.kpiSub}>Actual cash collected</Text>
+            <Text style={[styles.kpiValue, { color: "#16a34a" }]}>{formatMoneyPlain(data.invoicesSummary.netCollected, currency)}</Text>
+            <Text style={styles.kpiSub}>Actual settled cash</Text>
           </View>
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Unpaid Receivables</Text>
+            <Text style={styles.kpiLabel}>Receivables</Text>
             <Text style={[styles.kpiValue, { color: data.invoicesSummary.totalOutstanding > 0 ? "#dc2626" : "#111827" }]}>
-              {formatMoneyPlain(data.invoicesSummary.totalOutstanding, data.invoicesSummary.currency)}
+              {formatMoneyPlain(data.invoicesSummary.totalOutstanding, currency)}
             </Text>
-            <Text style={styles.kpiSub}>Outstanding balances</Text>
+            <Text style={styles.kpiSub}>Outstanding balance</Text>
           </View>
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>Pipeline Win Rate</Text>
-            <Text style={[styles.kpiValue, { color: "#0284c7" }]}>{data.leadsSummary.winRate}%</Text>
-            <Text style={styles.kpiSub}>{data.leadsSummary.wonCount} won · {data.leadsSummary.openCount} in play</Text>
+            <Text style={[styles.kpiValue, { color: brandColor }]}>{data.leadsSummary.winRate}%</Text>
+            <Text style={styles.kpiSub}>{data.leadsSummary.wonCount} won · {data.leadsSummary.totalLeads} total</Text>
           </View>
         </View>
 
-        {/* Section: Receivables Aging */}
-        <Text style={styles.sectionTitle}>1. Cash Flow & Receivables Aging</Text>
+        {/* Secondary Operational Metrics */}
+        <View style={[styles.kpiContainer, { marginTop: -4 }]}>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Active Clients</Text>
+            <Text style={styles.kpiValue}>{data.clientsSummary.totalClients}</Text>
+            <Text style={styles.kpiSub}>{data.clientsSummary.newClientsCount} new this period</Text>
+          </View>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Active Leads In Play</Text>
+            <Text style={styles.kpiValue}>{data.leadsSummary.openCount}</Text>
+            <Text style={styles.kpiSub}>{data.leadsSummary.stalledCount} stalled (&gt;21d)</Text>
+          </View>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Current Receivables</Text>
+            <Text style={styles.kpiValue}>{formatMoneyPlain(data.invoicesSummary.agingCurrent.amount, currency)}</Text>
+            <Text style={styles.kpiSub}>{data.invoicesSummary.agingCurrent.count} within 30 days</Text>
+          </View>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Delinquent (&gt;30d)</Text>
+            <Text style={[styles.kpiValue, { color: (data.invoicesSummary.agingOverdue30.amount + data.invoicesSummary.agingCritical60.amount) > 0 ? "#dc2626" : "#16a34a" }]}>
+              {formatMoneyPlain(data.invoicesSummary.agingOverdue30.amount + data.invoicesSummary.agingCritical60.amount, currency)}
+            </Text>
+            <Text style={styles.kpiSub}>{data.invoicesSummary.agingOverdue30.count + data.invoicesSummary.agingCritical60.count} delinquent invoices</Text>
+          </View>
+        </View>
+
+        {/* Section 1: Receivables Aging Breakdown */}
+        <Text style={styles.sectionTitle}>1. Receivables Aging & Delinquency Exposure</Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={{ flex: 3 }}>Aging Window</Text>
-            <Text style={{ flex: 2, textAlign: "center" }}>Invoices Count</Text>
-            <Text style={{ flex: 3, textAlign: "right" }}>Outstanding Balance</Text>
+            <Text style={{ flex: 2 }}>Payment Risk Level</Text>
+            <Text style={{ flex: 1.5, textAlign: "center" }}>Count</Text>
+            <Text style={{ flex: 2.5, textAlign: "right" }}>Outstanding Balance</Text>
           </View>
           <View style={styles.tableRow}>
-            <Text style={{ flex: 3 }}>Current (0–30 Days)</Text>
-            <Text style={{ flex: 2, textAlign: "center" }}>{data.invoicesSummary.agingCurrent.count}</Text>
-            <Text style={{ flex: 3, textAlign: "right", fontWeight: 700 }}>
-              {formatMoneyPlain(data.invoicesSummary.agingCurrent.amount, data.invoicesSummary.currency)}
+            <Text style={{ flex: 3, fontWeight: 700 }}>Current (0–30 Days)</Text>
+            <Text style={{ flex: 2, color: "#16a34a", fontSize: 8 }}>Standard Term</Text>
+            <Text style={{ flex: 1.5, textAlign: "center" }}>{data.invoicesSummary.agingCurrent.count}</Text>
+            <Text style={{ flex: 2.5, textAlign: "right", fontWeight: 700 }}>
+              {formatMoneyPlain(data.invoicesSummary.agingCurrent.amount, currency)}
             </Text>
           </View>
           <View style={styles.tableRow}>
             <Text style={{ flex: 3, color: "#b45309", fontWeight: 700 }}>Overdue (31–60 Days)</Text>
-            <Text style={{ flex: 2, textAlign: "center" }}>{data.invoicesSummary.agingOverdue30.count}</Text>
-            <Text style={{ flex: 3, textAlign: "right", color: "#b45309", fontWeight: 700 }}>
-              {formatMoneyPlain(data.invoicesSummary.agingOverdue30.amount, data.invoicesSummary.currency)}
+            <Text style={{ flex: 2, color: "#b45309", fontSize: 8 }}>Follow-Up Required</Text>
+            <Text style={{ flex: 1.5, textAlign: "center" }}>{data.invoicesSummary.agingOverdue30.count}</Text>
+            <Text style={{ flex: 2.5, textAlign: "right", color: "#b45309", fontWeight: 700 }}>
+              {formatMoneyPlain(data.invoicesSummary.agingOverdue30.amount, currency)}
             </Text>
           </View>
           <View style={styles.tableRow}>
             <Text style={{ flex: 3, color: "#dc2626", fontWeight: 700 }}>Critical Delinquent (&gt;60 Days)</Text>
-            <Text style={{ flex: 2, textAlign: "center" }}>{data.invoicesSummary.agingCritical60.count}</Text>
-            <Text style={{ flex: 3, textAlign: "right", color: "#dc2626", fontWeight: 700 }}>
-              {formatMoneyPlain(data.invoicesSummary.agingCritical60.amount, data.invoicesSummary.currency)}
+            <Text style={{ flex: 2, color: "#dc2626", fontSize: 8 }}>High Default Risk</Text>
+            <Text style={{ flex: 1.5, textAlign: "center" }}>{data.invoicesSummary.agingCritical60.count}</Text>
+            <Text style={{ flex: 2.5, textAlign: "right", color: "#dc2626", fontWeight: 700 }}>
+              {formatMoneyPlain(data.invoicesSummary.agingCritical60.amount, currency)}
             </Text>
           </View>
         </View>
 
-        {/* Top Delinquent Accounts */}
-        <Text style={styles.sectionTitle}>2. Top Unpaid Invoices Requiring Follow-Up</Text>
+        {/* Section 2: Top Unsettled Accounts */}
+        <Text style={styles.sectionTitle}>2. High Priority Delinquent Accounts Requiring Intervention</Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={{ flex: 2 }}>Invoice</Text>
-            <Text style={{ flex: 3 }}>Client</Text>
-            <Text style={{ flex: 2 }}>Due Date</Text>
-            <Text style={{ flex: 2, textAlign: "right" }}>Balance Due</Text>
+            <Text style={{ flex: 2 }}>Invoice #</Text>
+            <Text style={{ flex: 3 }}>Client Name</Text>
+            <Text style={{ flex: 2 }}>Effective Due Date</Text>
+            <Text style={{ flex: 1.5, textAlign: "center" }}>Aging Status</Text>
+            <Text style={{ flex: 2, textAlign: "right" }}>Balance Outstanding</Text>
           </View>
-          {data.topDebtors.slice(0, 5).map((d) => (
-            <View key={d.id} style={styles.tableRow}>
-              <Text style={{ flex: 2, fontWeight: 700 }}>{d.number}</Text>
-              <Text style={{ flex: 3 }}>{d.clientName}</Text>
-              <Text style={{ flex: 2, color: "#6b7280" }}>{d.effectiveDueDate}</Text>
-              <Text style={{ flex: 2, textAlign: "right", fontWeight: 700, color: "#dc2626" }}>
-                {formatMoneyPlain(d.balance, d.currency)}
+          {data.topDebtors.length === 0 ? (
+            <View style={styles.tableRow}>
+              <Text style={{ flex: 10, textAlign: "center", color: "#16a34a", paddingVertical: 4 }}>
+                ✓ No delinquent accounts. All issued invoices are in good standing or settled.
               </Text>
             </View>
-          ))}
+          ) : (
+            data.topDebtors.slice(0, 6).map((d, idx) => (
+              <View key={d.id} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <Text style={{ flex: 2, fontWeight: 700 }}>{d.number}</Text>
+                <View style={{ flex: 3 }}>
+                  <Text style={{ fontWeight: 700 }}>{d.clientName}</Text>
+                  <Text style={{ fontSize: 7, color: "#6b7280" }}>{d.clientCompany || "—"}</Text>
+                </View>
+                <Text style={{ flex: 2, color: "#6b7280", fontSize: 8 }}>{d.effectiveDueDate}</Text>
+                <View style={{ flex: 1.5, alignItems: "center" }}>
+                  {d.agingBucket === "critical_60" ? (
+                    <Text style={styles.badgeCritical}>&gt;60D</Text>
+                  ) : d.agingBucket === "overdue_30" ? (
+                    <Text style={styles.badgeWarning}>30-60D</Text>
+                  ) : (
+                    <Text style={{ fontSize: 7, color: "#16a34a" }}>CURRENT</Text>
+                  )}
+                </View>
+                <Text style={{ flex: 2, textAlign: "right", fontWeight: 700, color: "#dc2626" }}>
+                  {formatMoneyPlain(d.balance, d.currency)}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
 
-        {/* Stalled Leads Alerts */}
-        {data.stalledLeads.length > 0 && (
+        <Footer pageStr="Section 1 · Executive Briefing & Aging" />
+      </Page>
+
+      {/* PAGE 2: COMPLETE CLIENTS DIRECTORY & FINANCIAL POSITIONS */}
+      <Page size="A4" style={styles.page}>
+        <Header title="CLIENT DIRECTORY & FINANCIAL LEDGER" period={data.range.label} data={data} />
+        
+        <Text style={styles.sectionTitle}>3. Client Directory Ledger (All Client Accounts)</Text>
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={{ flex: 3 }}>Client & Organization</Text>
+            <Text style={{ flex: 1.5 }}>Status</Text>
+            <Text style={{ flex: 1.8, textAlign: "right" }}>Total Billed</Text>
+            <Text style={{ flex: 1.8, textAlign: "right" }}>Total Paid</Text>
+            <Text style={{ flex: 1.9, textAlign: "right" }}>Balance Due</Text>
+          </View>
+          {(data.allClients || []).length === 0 ? (
+            <View style={styles.tableRow}>
+              <Text style={{ flex: 10, textAlign: "center", color: "#6b7280", paddingVertical: 8 }}>
+                No client records found for this period.
+              </Text>
+            </View>
+          ) : (
+            (data.allClients || []).map((c, idx) => (
+              <View key={c.id} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]} wrap={false}>
+                <View style={{ flex: 3 }}>
+                  <Text style={{ fontWeight: 700, color: "#111827" }}>{c.name}</Text>
+                  <Text style={{ fontSize: 7.5, color: "#6b7280" }}>{c.company || c.email || "Individual"}</Text>
+                </View>
+                <View style={{ flex: 1.5 }}>
+                  {c.classification === "new" ? (
+                    <Text style={styles.badgeNew}>NEW</Text>
+                  ) : (
+                    <Text style={styles.badgeBf}>CARRIED</Text>
+                  )}
+                </View>
+                <Text style={{ flex: 1.8, textAlign: "right", color: "#374151" }}>
+                  {formatMoneyPlain(c.totalBilled, c.currency)}
+                </Text>
+                <Text style={{ flex: 1.8, textAlign: "right", color: "#16a34a" }}>
+                  {formatMoneyPlain(c.totalPaid, c.currency)}
+                </Text>
+                <Text style={{ flex: 1.9, textAlign: "right", fontWeight: 700, color: c.balance > 0 ? "#dc2626" : "#16a34a" }}>
+                  {formatMoneyPlain(c.balance, c.currency)}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Milestone Log */}
+        {data.recentMilestones.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { color: "#b45309" }]}>3. Stalled Deal Pipeline (No Activity &gt;21 Days)</Text>
+            <Text style={styles.sectionTitle}>Recent Account Milestones & Onboardings</Text>
             <View style={styles.table}>
               <View style={styles.tableHeader}>
-                <Text style={{ flex: 3 }}>Prospect</Text>
-                <Text style={{ flex: 2.5 }}>Current Stage</Text>
-                <Text style={{ flex: 2.5, textAlign: "right" }}>Days Idle</Text>
+                <Text style={{ flex: 5 }}>Milestone Summary</Text>
+                <Text style={{ flex: 3 }}>Category / Entity</Text>
+                <Text style={{ flex: 2, textAlign: "right" }}>Recorded Date</Text>
               </View>
-              {data.stalledLeads.slice(0, 4).map((sl) => (
-                <View key={sl.id} style={styles.tableRow}>
-                  <Text style={{ flex: 3, fontWeight: 700 }}>{sl.name} ({sl.company || "Individual"})</Text>
-                  <Text style={{ flex: 2.5, color: "#6b7280" }}>{sl.current_stage_label}</Text>
-                  <Text style={{ flex: 2.5, textAlign: "right", color: "#b45309", fontWeight: 700 }}>{sl.daysSinceLastActivity} days inactive</Text>
+              {data.recentMilestones.map((m, idx) => (
+                <View key={idx} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]}>
+                  <Text style={{ flex: 5, fontWeight: 700 }}>{m.title}</Text>
+                  <Text style={{ flex: 3, color: "#6b7280" }}>{m.subtitle}</Text>
+                  <Text style={{ flex: 2, textAlign: "right", color: "#6b7280" }}>{m.date}</Text>
                 </View>
               ))}
             </View>
           </>
         )}
 
-        <Footer pageStr="Page 1 of 1" />
+        <Footer pageStr="Section 2 · Client Directory Ledger" />
+      </Page>
+
+      {/* PAGE 3: SALES PIPELINE & DEALS */}
+      <Page size="A4" style={styles.page}>
+        <Header title="SALES PIPELINE & PROSPECTS DIRECTORY" period={data.range.label} data={data} />
+        
+        <Text style={styles.sectionTitle}>4. Pipeline Stages & Prospect Health (All Leads)</Text>
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={{ flex: 3 }}>Prospect Name</Text>
+            <Text style={{ flex: 2.2 }}>Current Stage</Text>
+            <Text style={{ flex: 1.2, textAlign: "center" }}>Score</Text>
+            <Text style={{ flex: 1.6, textAlign: "center" }}>Status</Text>
+            <Text style={{ flex: 2, textAlign: "right" }}>Activity / Days Idle</Text>
+          </View>
+          {(data.allLeads || []).length === 0 ? (
+            <View style={styles.tableRow}>
+              <Text style={{ flex: 10, textAlign: "center", color: "#6b7280", paddingVertical: 8 }}>
+                No active or historical leads found for this period.
+              </Text>
+            </View>
+          ) : (
+            (data.allLeads || []).map((l, idx) => (
+              <View key={l.id} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]} wrap={false}>
+                <View style={{ flex: 3 }}>
+                  <Text style={{ fontWeight: 700 }}>{l.name}</Text>
+                  <Text style={{ fontSize: 7, color: "#6b7280" }}>{l.company || l.email || "—"}</Text>
+                </View>
+                <Text style={{ flex: 2.2, color: "#374151" }}>{l.current_stage_label || l.current_stage_key}</Text>
+                <Text style={{ flex: 1.2, textAlign: "center", fontWeight: 700 }}>{l.score}</Text>
+                <View style={{ flex: 1.6, alignItems: "center" }}>
+                  {l.status === "won" ? (
+                    <Text style={styles.badgeWon}>WON</Text>
+                  ) : l.status === "lost" ? (
+                    <Text style={styles.badgeLost}>LOST</Text>
+                  ) : (
+                    <Text style={styles.badgeOpen}>IN PLAY</Text>
+                  )}
+                </View>
+                <Text style={{ flex: 2, textAlign: "right", color: l.isStalled ? "#b45309" : "#6b7280", fontWeight: l.isStalled ? 700 : 400 }}>
+                  {l.daysSinceLastActivity}d {l.isStalled ? "⚠ Stalled" : "Active"}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Stalled Deals Sub-ledger */}
+        {data.stalledLeads.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: "#b45309" }]}>Stalled Opportunities Requiring Attention (&gt;21 Days Inactive)</Text>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={{ flex: 3.5 }}>Prospect & Organization</Text>
+                <Text style={{ flex: 3 }}>Pipeline Stage</Text>
+                <Text style={{ flex: 3.5, textAlign: "right" }}>Days Since Last Touchpoint</Text>
+              </View>
+              {data.stalledLeads.map((sl, idx) => (
+                <View key={sl.id} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]}>
+                  <Text style={{ flex: 3.5, fontWeight: 700 }}>{sl.name} ({sl.company || "Individual"})</Text>
+                  <Text style={{ flex: 3, color: "#6b7280" }}>{sl.current_stage_label}</Text>
+                  <Text style={{ flex: 3.5, textAlign: "right", color: "#b45309", fontWeight: 700 }}>
+                    {sl.daysSinceLastActivity} days inactive
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        <Footer pageStr="Section 3 · Sales Pipeline Directory" />
+      </Page>
+
+      {/* PAGE 4: COMPLETE BILLING & INVOICES LEDGER */}
+      <Page size="A4" style={styles.page}>
+        <Header title="INVOICES & RECEIVABLES COMPLETE LEDGER" period={data.range.label} data={data} />
+        
+        <Text style={styles.sectionTitle}>5. Master Billing Records & Settlement Status</Text>
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={{ flex: 1.8 }}>Invoice #</Text>
+            <Text style={{ flex: 2.8 }}>Client</Text>
+            <Text style={{ flex: 1.8 }}>Due Date</Text>
+            <Text style={{ flex: 1.8, textAlign: "right" }}>Total</Text>
+            <Text style={{ flex: 1.8, textAlign: "right" }}>Balance</Text>
+            <Text style={{ flex: 1.5, textAlign: "center" }}>Aging Status</Text>
+          </View>
+          {(data.allInvoices || []).length === 0 ? (
+            <View style={styles.tableRow}>
+              <Text style={{ flex: 10, textAlign: "center", color: "#6b7280", paddingVertical: 8 }}>
+                No invoices found for this reporting period.
+              </Text>
+            </View>
+          ) : (
+            (data.allInvoices || []).map((inv, idx) => (
+              <View key={inv.id} style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]} wrap={false}>
+                <Text style={{ flex: 1.8, fontWeight: 700 }}>{inv.number}</Text>
+                <View style={{ flex: 2.8 }}>
+                  <Text style={{ fontWeight: 700 }}>{inv.clientName}</Text>
+                  <Text style={{ fontSize: 7, color: "#6b7280" }}>{inv.clientCompany || "—"}</Text>
+                </View>
+                <Text style={{ flex: 1.8, fontSize: 8, color: "#6b7280" }}>{inv.effectiveDueDate}</Text>
+                <Text style={{ flex: 1.8, textAlign: "right" }}>{formatMoneyPlain(inv.total, inv.currency)}</Text>
+                <Text style={{ flex: 1.8, textAlign: "right", fontWeight: 700, color: inv.balance > 0 ? "#dc2626" : "#16a34a" }}>
+                  {formatMoneyPlain(inv.balance, inv.currency)}
+                </Text>
+                <View style={{ flex: 1.5, alignItems: "center" }}>
+                  {inv.agingBucket === "critical_60" ? (
+                    <Text style={styles.badgeCritical}>&gt;60D</Text>
+                  ) : inv.agingBucket === "overdue_30" ? (
+                    <Text style={styles.badgeWarning}>30-60D</Text>
+                  ) : (
+                    <Text style={{ fontSize: 7, color: "#16a34a" }}>CURRENT</Text>
+                  )}
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
+        <Footer pageStr="Section 4 · Master Billing & Receivables Ledger" />
       </Page>
     </Document>
   );

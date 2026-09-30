@@ -242,54 +242,54 @@ export function AgreementPdfDocument(props: AgreementPdfProps) {
         </View>
 
         {/* Article 1 */}
-        <Text style={styles.sectionTitle}>Article 1: Appointment & Scope of Services</Text>
+        <Text style={styles.sectionTitle}>Article 1: Collaborative Engagement & Scope</Text>
         <Text style={styles.paragraph}>
-          The Principal hereby engages the Assistant, and the Assistant hereby accepts engagement, to serve as a Virtual and/or Physical Personal Assistant to Joseph Unomieta. The scope of services includes:
+          Exceptional work is built on mutual respect and continuous shared growth. The Principal warmly engages the Assistant as a trusted Virtual and/or Physical Personal Assistant to Joseph Unomieta. The scope of responsibilities includes:
         </Text>
         <View style={styles.bulletPoint}>
           <Text style={styles.bulletDot}>•</Text>
           <Text style={styles.bulletText}>
-            Co-managing personal, business, operational, and scheduling affairs of the Principal with absolute discretion and diligence.
+            Executive operations: co-managing professional schedules, day-to-day operational workflows, appointments, and delegated executive tasks with promptness and discretion.
           </Text>
         </View>
         <View style={styles.bulletPoint}>
           <Text style={styles.bulletDot}>•</Text>
           <Text style={styles.bulletText}>
-            Direct authority to organize, manage, and publish content across the Principal&apos;s official social media channels and communications handles (including WhatsApp Business, LinkedIn, X/Twitter, Instagram, and official email).
+            Channel stewardship: organizing, curating, and publishing content across official communication channels (WhatsApp Business, LinkedIn, X/Twitter, Instagram, and official email).
           </Text>
         </View>
         <View style={styles.bulletPoint}>
           <Text style={styles.bulletDot}>•</Text>
           <Text style={styles.bulletText}>
-            Authorized CRM operation: maintaining leads, organizing contact pipelines, coordinating communication campaigns, and executing administrative delegations.
+            CRM stewardship: keeping client records up-to-date, logging touchpoints, coordinating email campaigns, and nurturing prospective relationships.
           </Text>
         </View>
 
         {/* Article 2 */}
-        <Text style={styles.sectionTitle}>Article 2: Mentorship & Professional Development</Text>
+        <Text style={styles.sectionTitle}>Article 2: Active Mentorship & Personal Growth</Text>
         <Text style={styles.paragraph}>
-          The Principal commits to provide active mentorship, structured technical guidance, and skill enhancement in areas where deficiencies, learning curves, or process improvements are identified. The Assistant commits to receptiveness, high performance, and continuous professional growth.
+          We view your journey as an opportunity to build lifelong, high-leverage skills. The Principal is personally dedicated to mentoring the Assistant, offering hands-on coaching, technical guidance, and operational methodologies whenever new learning curves or growth opportunities arise.
         </Text>
 
         {/* Article 3 */}
         <Text style={styles.sectionTitle}>Article 3: Compensation & 15% Net Profit-Sharing Formula</Text>
         <Text style={styles.paragraph}>
-          In consideration for services rendered, the Assistant is entitled to fifteen percent (15%) of the net declared profit from every paying client whose account or project the Assistant actively co-handled with the Principal.
+          We win together. In consideration of services rendered, the Assistant is directly rewarded with fifteen percent (15%) of declared net profit from every paying client account or project actively co-handled with the Principal.
         </Text>
         <View style={styles.highlightBox}>
           <Text style={styles.highlightText}>
-            CRITICAL DEFINITION: 15% OF NET PROFIT (NOT GROSS REVENUE OR TOTAL PAID INVOICE)
+            TRANSPARENT METRIC: 15% OF NET PROFIT (NOT GROSS REVENUE OR TOTAL FUNDS RECEIVED)
           </Text>
           <Text style={{ fontSize: 8, color: "#1e3a8a", marginTop: 2 }}>
             Formula: Assistant Profit Share = 15% × (Gross Paid Client Revenue - Direct Service Delivery Costs)
           </Text>
         </View>
         <Text style={styles.paragraph}>
-          All direct delivery expenditures—including third-party software licenses, cloud infrastructure, domain procurements, payment gateway processing fees, sub-contractor fees, and logistical outlays—shall be deducted prior to calculating net profit. Profit is determined and declared upon successful completion of service delivery and full invoice settlement.
+          All direct project expenditures—including software/API licenses, cloud servers, domain registrations, payment processing fees, and sub-contractor costs—are deducted first. Net profit is calculated and formally declared upon successful completion of service delivery and full invoice settlement.
         </Text>
 
         <View style={styles.footer}>
-          <Text>Personal Assistant Agreement & NDA | Document ID: {props.agreementId.slice(0, 8)}</Text>
+          <Text>Personal Assistant Collaboration Agreement & NDA | Ref: {props.agreementId.slice(0, 8)}</Text>
           <Text>Page 1 of 2</Text>
         </View>
       </Page>
@@ -298,7 +298,7 @@ export function AgreementPdfDocument(props: AgreementPdfProps) {
       <Page size="A4" style={styles.page}>
         <View style={styles.headerBanner}>
           <View>
-            <Text style={styles.docTitle}>Personal Assistant Agreement & NDA</Text>
+            <Text style={styles.docTitle}>Personal Assistant Collaboration Agreement & NDA</Text>
             <Text style={styles.docSub}>Articles 4–6 & Official Signatures</Text>
           </View>
           <Text style={isSigned ? styles.badgeSigned : styles.badgePending}>
@@ -307,39 +307,39 @@ export function AgreementPdfDocument(props: AgreementPdfProps) {
         </View>
 
         {/* Article 4 */}
-        <Text style={styles.sectionTitle}>Article 4: Perpetual Non-Disclosure Agreement (Confidentiality)</Text>
+        <Text style={styles.sectionTitle}>Article 4: Mutual Trust & Perpetual Confidentiality (NDA)</Text>
         <Text style={styles.paragraph}>
-          The Assistant acknowledges access to sensitive, proprietary, financial, and personal affairs of the Principal. The obligation to preserve strict confidentiality is PERPETUAL (FOR LIFE) and survives any severance of this engagement indefinitely.
+          In this collaborative role, the Assistant accesses proprietary strategies, financial figures, systems, and client data. Because trust has no expiration date, the obligation to safeguard all Confidential Information remains PERPETUAL (FOR LIFE) and survives any conclusion of this engagement indefinitely.
         </Text>
         <View style={styles.bulletPoint}>
           <Text style={styles.bulletDot}>•</Text>
           <Text style={styles.bulletText}>
-            Applies to all information whether communicated verbally, in writing, electronically, or observed directly.
+            Protects all non-public information communicated verbally, in writing, seen in databases, or observed during operations.
           </Text>
         </View>
         <View style={styles.bulletPoint}>
           <Text style={styles.bulletDot}>•</Text>
           <Text style={styles.bulletText}>
-            Zero unauthorized duplication, transmission, screenshotting, or dissemination to third parties under any circumstances.
+            Zero unauthorized duplication, copying, leaking, or distribution of files, credentials, or client data to any third party.
           </Text>
         </View>
         <View style={styles.bulletPoint}>
           <Text style={styles.bulletDot}>•</Text>
           <Text style={styles.bulletText}>
-            Sole Exception: Disclosures strictly mandated by a court of competent jurisdiction under prior written notice to the Principal.
+            Sole Exception: Mandatory disclosures required by a court of competent jurisdiction under immediate prior written notice to the Principal.
           </Text>
         </View>
 
         {/* Article 5 */}
         <Text style={styles.sectionTitle}>Article 5: Non-Solicitation & Intellectual Property</Text>
         <Text style={styles.paragraph}>
-          The Assistant shall not solicit, divert, or engage independently with any of the Principal&apos;s clients, leads, or partners during the engagement and for 24 months thereafter. All work product, account credentials, and CRM materials remain the exclusive property of the Principal.
+          During our collaboration and for twenty-four (24) months thereafter, the Assistant agrees not to solicit or divert clients, leads, or partners introduced through the Principal. All CRM systems, code, and materials remain the exclusive property of the Principal.
         </Text>
 
         {/* Article 6 */}
         <Text style={styles.sectionTitle}>Article 6: Electronic Execution & Audit Telemetry</Text>
         <Text style={styles.paragraph}>
-          Execution via authenticated portal login with verified First Name, Last Name, and Date of Birth constitutes an intentional, legally binding signature under electronic commerce legislation.
+          Electronic execution through authenticated portal login with verified First Name, Last Name, and Date of Birth constitutes an intentional, legally binding signature under electronic commerce laws.
         </Text>
 
         {/* Signatures & Execution Block */}

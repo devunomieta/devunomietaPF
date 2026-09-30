@@ -16,7 +16,7 @@ import { sendTestReportAction } from "@/app/crm/monitoring/actions";
 import type { ReportCadence } from "@/lib/crm/reports/data";
 
 const MODULES = [
-  { key: "executive", label: "Executive Summary (ALL)" },
+  { key: "executive", label: "Executive Full Dossier (ALL Systems)" },
   { key: "clients", label: "Clients Directory & Accounts" },
   { key: "leads", label: "Sales Leads & Pipeline" },
   { key: "invoices", label: "Invoices, Receivables & Aging" },

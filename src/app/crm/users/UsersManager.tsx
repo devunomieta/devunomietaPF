@@ -16,7 +16,12 @@ import {
   FileText,
   Download,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Info,
+  Calendar,
+  ShieldCheck,
+  Mail,
+  UserCheck
 } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
 import { CrmTooltip } from "@/components/crm/CrmTooltip";
@@ -82,6 +87,9 @@ export function UsersManager({
   const [editPerms, setEditPerms] = useState<CrmPermissionsConfig | null>(null);
   const [editRoleTitle, setEditRoleTitle] = useState("");
   const [editLoading, setEditLoading] = useState(false);
+
+  // User Details Modal State
+  const [selectedUserDetail, setSelectedUserDetail] = useState<CrmUser | null>(null);
 
   // Handle Preset Selection
   function handlePresetChange(presetKey: string) {
@@ -252,9 +260,14 @@ export function UsersManager({
                     const agreementId = u.agreement?.id;
 
                     return (
-                      <tr key={u.id} className="hover:bg-header/30 transition-colors">
+                      <tr 
+                        key={u.id} 
+                        onClick={() => setSelectedUserDetail(u)}
+                        className="hover:bg-header/40 cursor-pointer transition-colors group"
+                        title="Click to view complete member profile, agreements & telemetry"
+                      >
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-foreground flex items-center gap-1.5">
+                          <div className="font-semibold text-foreground group-hover:text-accent-blue transition-colors flex items-center gap-1.5">
                             {u.display_name}
                             {u.email === currentUserEmail && (
                               <span className="text-[10px] bg-accent-blue/15 text-accent-blue px-1.5 py-0.5 rounded">You</span>
@@ -277,8 +290,8 @@ export function UsersManager({
                             {u.is_active ? "Active" : "Suspended"}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col gap-1">
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-1.5">
                               <span
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
@@ -296,26 +309,25 @@ export function UsersManager({
                               )}
                             </div>
                             {agreementId && (
-                              <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="flex items-center gap-1.5">
                                 <a
                                   href={`/api/crm/agreements/${agreementId}/download?preview=true`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-[11px] text-accent-blue hover:underline flex items-center gap-0.5"
-                                  title="Preview Agreement"
+                                  className="px-2 py-0.5 rounded text-[11px] font-medium border border-border/80 hover:bg-header/50 text-foreground/90 flex items-center gap-1 transition-colors"
+                                  title="Preview Agreement Document"
                                 >
-                                  <ExternalLink size={11} />
+                                  <ExternalLink size={11} className="text-accent-blue" />
                                   <span>Preview</span>
                                 </a>
-                                <span className="text-muted text-[10px]">•</span>
                                 <a
                                   href={`/api/crm/agreements/${agreementId}/download`}
                                   download
-                                  className="text-[11px] text-foreground/80 hover:text-accent-blue flex items-center gap-0.5"
-                                  title="Download Signed PDF"
+                                  className="px-2 py-0.5 rounded text-[11px] font-medium bg-accent-blue/15 hover:bg-accent-blue/25 text-accent-blue border border-accent-blue/30 flex items-center gap-1 transition-colors"
+                                  title="Download Signed Agreement PDF"
                                 >
                                   <Download size={11} />
-                                  <span>PDF</span>
+                                  <span>Download PDF</span>
                                 </a>
                               </div>
                             )}
@@ -337,8 +349,16 @@ export function UsersManager({
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => setSelectedUserDetail(u)}
+                              className="p-1.5 text-muted hover:text-foreground rounded transition-colors"
+                              title="View details"
+                              aria-label="View details"
+                            >
+                              <Info size={15} />
+                            </button>
                             {isSuperAdmin && agreementSigned && (
                               <button
                                 onClick={async () => {
@@ -684,6 +704,183 @@ export function UsersManager({
               >
                 {editLoading && <Loader2 size={14} className="animate-spin" />}
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </CrmModal>
+      )}
+
+      {/* Modal 3: User Profile & Signed Agreement Dossier Review */}
+      {selectedUserDetail && (
+        <CrmModal
+          open={!!selectedUserDetail}
+          onClose={() => setSelectedUserDetail(null)}
+          title={`Team Member: ${selectedUserDetail.display_name}`}
+        >
+          <div className="flex flex-col gap-4 text-xs">
+            {/* Identity Card */}
+            <div className="bg-header/30 border border-border/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground">{selectedUserDetail.display_name}</h3>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                      selectedUserDetail.is_active
+                        ? "bg-accent-green/15 text-accent-green border-accent-green/30"
+                        : "bg-red-400/15 text-red-400 border-red-400/30"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${selectedUserDetail.is_active ? "bg-accent-green" : "bg-red-400"}`} />
+                    {selectedUserDetail.is_active ? "Active" : "Suspended"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mt-0.5 flex items-center gap-1.5">
+                  <Mail size={12} /> {selectedUserDetail.email}
+                </p>
+                <p className="text-[11px] text-muted mt-0.5">
+                  Member since {new Date(selectedUserDetail.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex flex-col items-start sm:items-end gap-1">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/30 capitalize">
+                  {selectedUserDetail.role_title}
+                </span>
+                <span className="text-[11px] text-muted">
+                  ID: {selectedUserDetail.id.slice(0, 13)}...
+                </span>
+              </div>
+            </div>
+
+            {/* Agreement & Legal Consent Status */}
+            <div className="p-4 bg-muted/20 border border-border rounded-xl flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    <FileText size={16} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Assistant Agreement & Perpetual NDA</h4>
+                    <p className="text-[11px] text-muted">15% Net Profit Share · Perpetual Confidentiality</p>
+                  </div>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                    selectedUserDetail.agreement_status === "signed" || selectedUserDetail.agreement?.status === "signed"
+                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                  }`}
+                >
+                  {selectedUserDetail.agreement_status === "signed" || selectedUserDetail.agreement?.status === "signed"
+                    ? "✓ Legally Signed & Sealed"
+                    : "⏳ Pending User Consent"}
+                </span>
+              </div>
+
+              {selectedUserDetail.agreement && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border/50 text-[11px]">
+                  <div>
+                    <span className="text-muted block">Contract Version:</span>
+                    <span className="font-semibold text-foreground">{selectedUserDetail.agreement.version}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted block">Execution Date:</span>
+                    <span className="font-semibold text-foreground">
+                      {selectedUserDetail.agreement.signed_at 
+                        ? new Date(selectedUserDetail.agreement.signed_at).toLocaleString() 
+                        : "Awaiting execution"}
+                    </span>
+                  </div>
+                  {isSuperAdmin && selectedUserDetail.agreement.date_of_birth && (
+                    <div>
+                      <span className="text-muted block">Date of Birth (Protected):</span>
+                      <span className="font-semibold text-foreground">{selectedUserDetail.agreement.date_of_birth}</span>
+                    </div>
+                  )}
+                  {selectedUserDetail.agreement.ip_address && (
+                    <div>
+                      <span className="text-muted block">Signing IP Address:</span>
+                      <span className="font-mono text-foreground">{selectedUserDetail.agreement.ip_address}</span>
+                    </div>
+                  )}
+                  {selectedUserDetail.agreement.device_summary && (
+                    <div className="sm:col-span-2">
+                      <span className="text-muted block">Signing Device Telemetry:</span>
+                      <span className="text-foreground/90">{selectedUserDetail.agreement.device_summary}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons for Agreement */}
+              {selectedUserDetail.agreement?.id && (
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                  <a
+                    href={`/api/crm/agreements/${selectedUserDetail.agreement.id}/download?preview=true`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border border-border hover:bg-header/50 text-foreground flex items-center gap-1.5 transition-colors"
+                  >
+                    <ExternalLink size={13} className="text-accent-blue" />
+                    <span>Preview Agreement Copy</span>
+                  </a>
+                  <a
+                    href={`/api/crm/agreements/${selectedUserDetail.agreement.id}/download`}
+                    download
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-accent-blue text-white hover:bg-accent-blue/90 flex items-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <Download size={13} />
+                    <span>Download Signed PDF</span>
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Modular Permissions Breakdown */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1.5">
+                <ShieldCheck size={13} className="text-accent-blue" />
+                Active Modular Permissions
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {PAGE_KEYS.map((p) => {
+                  const allowed = selectedUserDetail.permissions?.pages[p.key];
+                  return (
+                    <div
+                      key={p.key}
+                      className={`p-2 rounded border text-[11px] flex items-center justify-between ${
+                        allowed ? "bg-accent-blue/5 border-accent-blue/30 text-foreground" : "bg-muted/10 border-border/40 text-muted opacity-50"
+                      }`}
+                    >
+                      <span>{p.label}</span>
+                      <span className="font-bold">{allowed ? "✓" : "—"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer Modal Actions */}
+            <div className="flex justify-between items-center gap-2 mt-2 pt-3 border-t border-border">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const u = selectedUserDetail;
+                    setSelectedUserDetail(null);
+                    openEditModal(u);
+                  }}
+                  className={crmSecondaryBtnClass}
+                >
+                  <Settings2 size={13} />
+                  <span>Configure Permissions</span>
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedUserDetail(null)}
+                className={crmPrimaryBtnClass}
+              >
+                Close Details
               </button>
             </div>
           </div>

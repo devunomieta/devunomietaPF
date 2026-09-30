@@ -363,41 +363,41 @@ export const assistantOnboardingAgreementEmail = ({
 <body>
   <div class="wrapper">
     <div class="header">
-      <h1>Welcome to the Team</h1>
-      <p>Appointment: ${roleTitle} to Joseph Unomieta</p>
+      <h1>Welcome to Our Team!</h1>
+      <p>Your Role: ${roleTitle} · Working with Joseph Unomieta</p>
     </div>
     <div class="content">
       <p>Hello <strong>${name}</strong>,</p>
-      <p>You have been officially invited and provisioned to join my team as a <strong>${roleTitle}</strong>. In this capacity, you will work closely with me (Joseph Unomieta) co-managing business, scheduling, social media accounts, CRM workflows, and client relationships.</p>
+      <p>I am thrilled to officially welcome you to the team as a <strong>${roleTitle}</strong>! In this role, you will be working closely with me to coordinate key operational workflows, nurture our client relationships, manage our messaging channels, and help drive our projects forward.</p>
 
       <div class="callout">
-        <div class="callout-title">📋 Summary of Terms & Key Provisions</div>
+        <div class="callout-title">🤝 Our Mutual Commitments & Highlights</div>
         <ul>
-          <li><strong>Role Responsibilities:</strong> Co-managing administrative schedules, CRM leads/clients, and managing/posting to official social media channels (WhatsApp Business, LinkedIn, X, Instagram).</li>
-          <li><strong>Mentorship & Training:</strong> I will actively guide and train you in systems, technical methodologies, and operational areas where you need development.</li>
-          <li><strong>15% Net Profit Share:</strong> You will earn 15% of the declared <em>net profit</em> for every paying client you actively co-handle (calculated after direct service delivery costs are deducted, upon final invoice settlement).</li>
-          <li><strong>Perpetual NDA:</strong> All information accessed (verbal, written, digital, or observed) must be kept confidential <strong>for life</strong>, with disclosures strictly prohibited unless compelled by a court of law with prior written notice.</li>
+          <li><strong>Meaningful Day-to-Day Impact:</strong> Co-managing administrative schedules, nurturing CRM leads and client accounts, and curating posts across our official channels (WhatsApp Business, LinkedIn, X, Instagram).</li>
+          <li><strong>Dedicated Mentorship & Growth:</strong> I am personally committed to guiding and mentoring you, sharing technical insights, and helping you develop high-leverage skills every step of the way.</li>
+          <li><strong>Shared Success (15% Net Profit Share):</strong> You earn 15% of declared net profit on every paying client project you actively co-handle (calculated after direct delivery expenses are deducted, once the client's invoice is settled).</li>
+          <li><strong>Mutual Trust & Perpetual Confidentiality:</strong> Because we will work with proprietary ideas, client data, and systems, safeguarding this information with lifelong discretion is foundational to our mutual trust.</li>
         </ul>
       </div>
 
       <div class="creds-box">
-        <div style="font-weight: 600; color: #f8fafc; margin-bottom: 8px; font-size: 13px;">Your Login Credentials</div>
+        <div style="font-weight: 600; color: #f8fafc; margin-bottom: 8px; font-size: 13px;">Your Portal Access Credentials</div>
         <div class="creds-row"><span class="creds-label">Portal URL:</span> <span class="creds-val">${loginUrl}</span></div>
-        <div class="creds-row"><span class="creds-label">Email:</span> <span class="creds-val">${email}</span></div>
+        <div class="creds-row"><span class="creds-label">Account Email:</span> <span class="creds-val">${email}</span></div>
         ${tempPassword ? `<div class="creds-row"><span class="creds-label">Temporary Password:</span> <span class="creds-val">${tempPassword}</span></div>` : ""}
       </div>
 
-      <p style="color: #f59e0b; font-size: 13px; font-weight: 600;">
-        ⚠️ Mandatory Step on First Login:<br>
-        To access the CRM portal, you will be required to review the complete Personal Assistant Agreement & NDA on your first screen, and provide binding electronic consent by entering your legal First Name, Last Name, and Date of Birth.
+      <p style="color: #38bdf8; font-size: 13px; font-weight: 600;">
+        ✨ Getting Started on Your First Sign-In:<br>
+        When you log in for the first time, you'll see a quick onboarding screen where you can review our full Assistant Collaboration Agreement & NDA, verify your basic details (legal name and date of birth), and seal your digital agreement. Once signed, your full CRM workspace will unlock immediately.
       </p>
 
       <div style="text-align: center;">
-        <a href="${loginUrl}" class="btn">Log In & Review Agreement →</a>
+        <a href="${loginUrl}" class="btn">Log In & Complete Setup →</a>
       </div>
 
-      <p>I look forward to our productive collaboration.</p>
-      <p>Best regards,<br><strong>Joseph Unomieta</strong><br><span style="font-size: 12px; color: #94a3b8;">Principal & Founder</span></p>
+      <p>I'm genuinely excited to build, learn, and succeed together!</p>
+      <p>Warmest regards,<br><strong>Joseph Unomieta</strong><br><span style="font-size: 12px; color: #94a3b8;">Principal & Founder</span></p>
     </div>
     <div class="footer">
       This is an automated administrative dispatch from the DevUnomieta CRM System.<br>

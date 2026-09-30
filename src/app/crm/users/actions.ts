@@ -261,10 +261,22 @@ export async function deleteCrmUser(userId: string): Promise<ActionResult> {
   }
 
   const adminDb = createAdminClient();
-  const { data: userRow } = await adminDb.from("crm_users").select("email, display_name").eq("id", userId).maybeSingle();
+  const { data: userRow } = await adminDb
+    .from("crm_users")
+    .select("email, display_name, auth_user_id")
+    .eq("id", userId)
+    .maybeSingle();
 
+  // Delete CRM user record first (cascades permissions & agreements)
   const { error } = await adminDb.from("crm_users").delete().eq("id", userId);
   if (error) return { error: error.message };
+
+  // If there's an associated auth user, delete it in background / non-blocking so response is fast
+  if (userRow?.auth_user_id) {
+    adminDb.auth.admin.deleteUser(userRow.auth_user_id).catch((err) => {
+      console.error("Warning: could not delete auth account:", err);
+    });
+  }
 
   await recordCrmAudit(
     { email: actor.email, name: actor.displayName },

@@ -160,6 +160,9 @@ export type ExecutiveReportData = {
   topDebtors: InvoiceReportItem[]; // top unpaid accounts
   stalledLeads: LeadReportItem[];
   recentMilestones: { title: string; subtitle: string; date: string; tag: string }[];
+  allClients: ClientReportItem[];
+  allLeads: LeadReportItem[];
+  allInvoices: InvoiceReportItem[];
 };
 
 export async function fetchClientsReportData(
@@ -593,5 +596,8 @@ export async function fetchExecutiveReportData(
     topDebtors,
     stalledLeads,
     recentMilestones,
+    allClients: clientsData.clients,
+    allLeads: leadsData.leads,
+    allInvoices: invoicesData.invoices,
   };
 }
