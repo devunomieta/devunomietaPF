@@ -336,7 +336,9 @@ export async function fetchLeadsReportData(
     eventsByLead.set(ev.lead_id, list);
   }
 
-  const now = new Date(range.endDate).getTime();
+  // Cap reference date at the current real-world timestamp so that yearly or forward-looking
+  // report periods do not compute idle days against a future date (e.g. Dec 31st).
+  const referenceDate = Math.min(new Date(range.endDate).getTime(), Date.now());
   let newLeads = 0;
   let carriedOver = 0;
   let won = 0;
@@ -357,7 +359,7 @@ export async function fetchLeadsReportData(
 
     const history = eventsByLead.get(l.id) || [];
     const latestEventDate = history[0]?.entered_at ? new Date(history[0].entered_at).getTime() : new Date(l.created_at).getTime();
-    const daysSince = Math.max(0, Math.floor((now - latestEventDate) / (1000 * 60 * 60 * 24)));
+    const daysSince = Math.max(0, Math.floor((referenceDate - latestEventDate) / (1000 * 60 * 60 * 24)));
     const isStalled = l.status === "open" && daysSince > 21;
     if (isStalled) stalled++;
 
@@ -439,7 +441,9 @@ export async function fetchInvoicesReportData(
     paymentsMap.set(p.invoice_id, list);
   }
 
-  const reportDate = new Date(range.endDate).getTime();
+  // Cap reference date at the current real-world timestamp so that yearly or forward-looking
+  // report periods do not compute overdue aging against a future date.
+  const reportDate = Math.min(new Date(range.endDate).getTime(), Date.now());
   let grossInvoiced = 0;
   let netCollected = 0;
   let totalOutstanding = 0;

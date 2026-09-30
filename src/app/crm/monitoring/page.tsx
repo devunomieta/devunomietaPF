@@ -31,26 +31,55 @@ export default async function CrmMonitoringPage({
   since.setDate(since.getDate() - 30);
 
   const [{ data: events }, { data: jobs }, { data: settings }] = await Promise.all([
-    supabase.from("crm_email_events").select("type").gte("occurred_at", since.toISOString()),
+    supabase.from("crm_email_events").select("id, type, message_id, recipient_email, occurred_at, meta").gte("occurred_at", since.toISOString()),
     supabase.from("crm_jobs").select("id, type, status, progress, total, error, created_at").order("created_at", { ascending: false }).limit(200),
     supabase.from("crm_settings").select("*").eq("id", "default").maybeSingle(),
   ]);
 
-  const counts: Record<string, number> = {};
-  for (const e of events || []) counts[e.type] = (counts[e.type] || 0) + 1;
+  // Aggregate events per unique email / message instance
+  const sentMessageIds = new Set<string>();
+  const deliveredMessageIds = new Set<string>();
+  const openedMessageIds = new Set<string>();
+  const clickedMessageIds = new Set<string>();
+  const bouncedEvents: Array<{ id: string; email: string; type: string; date: string; reason?: string }> = [];
+  let complaints = 0;
 
-  const sent = counts.sent || 0;
-  const delivered = counts.delivered || 0;
-  const bounced = (counts.hard_bounce || 0) + (counts.soft_bounce || 0);
-  const complaints = counts.complaint || 0;
-  const opened = counts.opened || 0;
-  const clicked = counts.clicked || 0;
+  for (const e of events || []) {
+    const msgKey = e.message_id || e.recipient_email || e.id;
+    if (e.type === "sent") {
+      sentMessageIds.add(msgKey);
+    } else if (e.type === "delivered") {
+      deliveredMessageIds.add(msgKey);
+    } else if (e.type === "opened") {
+      openedMessageIds.add(msgKey);
+    } else if (e.type === "clicked") {
+      clickedMessageIds.add(msgKey);
+    } else if (e.type === "hard_bounce" || e.type === "soft_bounce") {
+      bouncedEvents.push({
+        id: e.id,
+        email: e.recipient_email || "Unknown",
+        type: e.type === "hard_bounce" ? "Hard Bounce" : "Soft Bounce",
+        date: new Date(e.occurred_at).toLocaleString(),
+        reason: (e.meta as Record<string, unknown>)?.reason as string || (e.meta as Record<string, unknown>)?.raw_event as string || "Mailbox temporarily unavailable / full",
+      });
+    } else if (e.type === "complaint") {
+      complaints++;
+    }
+  }
 
-  const bounceRate = pct(bounced, sent || delivered);
-  const complaintRate = pct(complaints, sent || delivered);
-  const deliveryRate = pct(delivered, sent);
-  const openRate = pct(opened, delivered || sent);
-  const clickRate = pct(clicked, delivered || sent);
+  // If external transactional sends or test emails were delivered directly without an explicit 'sent' event,
+  // ensure the effective total attempts reflect all known delivered/bounced/sent messages.
+  const totalAttempted = Math.max(sentMessageIds.size, deliveredMessageIds.size + bouncedEvents.length);
+  const delivered = deliveredMessageIds.size;
+  const bounced = bouncedEvents.length;
+  const opened = openedMessageIds.size;
+  const clicked = clickedMessageIds.size;
+
+  const deliveryRate = totalAttempted > 0 ? Math.min(100, pct(delivered, totalAttempted)) : 0;
+  const bounceRate = totalAttempted > 0 ? pct(bounced, totalAttempted) : 0;
+  const complaintRate = totalAttempted > 0 ? pct(complaints, totalAttempted) : 0;
+  const openRate = delivered > 0 ? pct(opened, delivered) : 0;
+  const clickRate = delivered > 0 ? pct(clicked, delivered) : 0;
 
   const bounceThreshold = settings?.bounce_alert_threshold ?? 5;
   const complaintThreshold = settings?.complaint_alert_threshold ?? 0.1;
@@ -120,8 +149,8 @@ export default async function CrmMonitoringPage({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="bg-header/20 border border-border rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{sent}</p>
-          <p className="text-xs text-muted">emails sent (30d)</p>
+          <p className="text-lg font-bold text-foreground">{totalAttempted}</p>
+          <p className="text-xs text-muted">emails dispatched (30d)</p>
         </div>
         <div className="bg-header/20 border border-border rounded-xl p-3 text-center">
           <p className="text-lg font-bold text-accent-blue">{pendingJobs}</p>
@@ -132,6 +161,43 @@ export default async function CrmMonitoringPage({
           <p className="text-xs text-muted">jobs failed</p>
         </div>
       </div>
+
+      {bouncedEvents.length > 0 && (
+        <div className="bg-header/20 border border-border rounded-xl p-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              Bounced Emails & Delivery Failures ({bouncedEvents.length})
+            </h2>
+            <span className="text-xs text-muted">Tracked via Brevo delivery webhooks</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-border/80 text-muted">
+                  <th className="py-2 px-3">Recipient Email</th>
+                  <th className="py-2 px-3">Bounce Type</th>
+                  <th className="py-2 px-3">Diagnostic Reason</th>
+                  <th className="py-2 px-3 text-right">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {bouncedEvents.map((b) => (
+                  <tr key={b.id} className="hover:bg-white/5 transition-colors">
+                    <td className="py-2.5 px-3 font-semibold text-foreground font-mono">{b.email}</td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-400/15 text-red-400 border border-red-400/25">
+                        {b.type}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-muted">{b.reason}</td>
+                    <td className="py-2.5 px-3 text-right text-muted">{b.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="bg-header/20 border border-border rounded-xl p-2 sm:p-4">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider px-2 pt-2 mb-2">Recent jobs</h2>
