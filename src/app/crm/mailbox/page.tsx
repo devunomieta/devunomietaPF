@@ -4,7 +4,7 @@ import { getThreads } from "./actions";
 import { MailboxClient } from "./MailboxClient";
 
 export const metadata = {
-  title: "CRM Mailbox — Gmail-like Inbound Threads & Replies",
+  title: "CRM Mailbox — System Inbound Threads & Replies",
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";
