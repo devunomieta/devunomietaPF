@@ -47,14 +47,16 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
 
   const columns: CrmColumn<CrmLead>[] = [
     {
-      header: "Name",
+      header: "Company",
       cell: (l) => (
-        <Link href={`/crm/leads/${l.id}`} className="font-medium text-foreground hover:text-accent-blue">
-          {l.name}
+        <Link
+          href={`/crm/leads/${l.id}`}
+          className="font-medium text-foreground hover:text-accent-blue transition-colors"
+        >
+          {l.company || l.name || <span className="text-muted">—</span>}
         </Link>
       ),
     },
-    { header: "Company", cell: (l) => l.company || <span className="text-muted">—</span> },
     { header: "Location", cell: (l) => l.location || <span className="text-muted">—</span> },
     {
       header: "Website",
@@ -65,7 +67,7 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="text-accent-blue hover:underline max-w-[140px] truncate block text-xs"
+            className="text-accent-blue hover:underline max-w-[200px] truncate block text-xs"
           >
             {l.website.replace(/^https?:\/\/(www\.)?/, "")}
           </a>
@@ -73,15 +75,14 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
           <span className="text-muted">—</span>
         ),
     },
-    { header: "Stage", cell: (l) => <span className="text-muted">{l.current_stage_key}</span> },
-    { header: "Score", cell: (l) => l.score },
     {
-      header: "Status",
+      header: "Stage",
       cell: (l) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[l.status]}`}>{l.status}</span>
+        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-header/60 border border-border text-foreground/80">
+          {l.current_stage_key || "lead"}
+        </span>
       ),
     },
-    { header: "Source", cell: (l) => <span className="text-muted text-xs">{l.source || "—"}</span> },
     {
       header: "",
       cell: (l) => (
@@ -90,7 +91,7 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
             e.stopPropagation();
             handleDelete(l.id);
           }}
-          className="text-muted hover:text-red-400"
+          className="text-muted hover:text-red-400 p-1 rounded hover:bg-red-400/10 transition-colors"
           aria-label="Delete lead"
         >
           <Trash2 size={15} />
