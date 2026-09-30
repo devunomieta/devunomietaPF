@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { requireCrmUser } from "@/lib/crm/auth";
 import { sendEmail } from "@/lib/brevo";
 import { processBulkSendJobBatch, getTodaysSentEmailCount } from "@/lib/crm/jobs";
 import type { ActionResult } from "@/lib/crm/types";
@@ -9,7 +10,8 @@ import type { ActionResult } from "@/lib/crm/types";
 type SendResult = { success: true; warning?: string } | { error: string };
 
 export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
+  const supabase = createAdminClient();
 
   const email = (formData.get("email") as string)?.trim();
   const name = (formData.get("recipientName") as string)?.trim();
@@ -75,7 +77,7 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
 
 type Audience = { segment: "clients" | "leads" | "all"; tags: string[]; stageKey: string };
 
-async function resolveAudience(supabase: Awaited<ReturnType<typeof requireAdmin>>, audience: Audience) {
+async function resolveAudience(supabase: ReturnType<typeof createAdminClient>, audience: Audience) {
   const rows: Array<{
     id: string;
     name: string;
@@ -129,14 +131,14 @@ async function resolveAudience(supabase: Awaited<ReturnType<typeof requireAdmin>
 }
 
 export async function previewAudienceCount(audience: Audience): Promise<{ count: number }> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "campaigns" });
+  const supabase = createAdminClient();
   const recipients = await resolveAudience(supabase, audience);
   return { count: recipients.length };
 }
 
 export async function uploadCampaignImage(formData: FormData): Promise<{ success: true; url: string } | { error: string }> {
-  await requireAdmin();
-  const { createAdminClient } = await import("@/utils/supabase/admin");
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
   const adminDb = createAdminClient();
 
   const file = formData.get("file") as File;
@@ -173,7 +175,7 @@ export async function sendTestCampaignEmail({
   subject: string;
   html: string;
 }): Promise<{ success: true } | { error: string }> {
-  await requireAdmin();
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
 
   if (!emails || emails.length === 0) return { error: "No recipient emails provided." };
   if (!subject || !html) return { error: "Subject and content are required for test email." };
@@ -219,7 +221,8 @@ export async function sendTestCampaignEmail({
 }
 
 export async function saveCampaignDraft(formData: FormData): Promise<{ success: true; draftId: string } | { error: string }> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
+  const supabase = createAdminClient();
 
   const draftId = (formData.get("draftId") as string) || null;
   const subject = (formData.get("subject") as string)?.trim() || "(Untitled Draft)";
@@ -268,7 +271,8 @@ export async function saveCampaignDraft(formData: FormData): Promise<{ success: 
 }
 
 export async function createBulkCampaign(formData: FormData): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
+  const supabase = createAdminClient();
 
   const draftId = (formData.get("draftId") as string) || null;
   const subject = (formData.get("subject") as string)?.trim();
@@ -370,7 +374,8 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
  * Delete a single campaign and its associated events
  */
 export async function deleteCampaign(campaignId: string): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
+  const supabase = createAdminClient();
 
   // Delete associated events first if cascade is not set
   await supabase.from("crm_email_events").delete().eq("campaign_id", campaignId);
@@ -389,7 +394,8 @@ export async function deleteCampaign(campaignId: string): Promise<ActionResult> 
  */
 export async function batchDeleteCampaigns(campaignIds: string[]): Promise<ActionResult> {
   if (!campaignIds || campaignIds.length === 0) return { success: true };
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
+  const supabase = createAdminClient();
 
   await supabase.from("crm_email_events").delete().in("campaign_id", campaignIds);
   const { error } = await supabase.from("crm_email_campaigns").delete().in("id", campaignIds);

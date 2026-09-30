@@ -57,7 +57,7 @@ export function NewCampaignForm({
   initialDraft?: InitialDraft | null;
 }) {
   const router = useRouter();
-  const { toast } = useCrmFeedback();
+  const { toast, canPerform } = useCrmFeedback();
   const [draftId, setDraftId] = useState<string | null>(initialDraft?.id || null);
   const [mode, setMode] = useState<"single" | "bulk">(prefillRecipient ? "single" : "bulk");
   const [segment, setSegment] = useState<"clients" | "leads" | "all">(initialDraft?.audience?.segment || "leads");
@@ -538,8 +538,9 @@ export function NewCampaignForm({
             <button
               type="button"
               onClick={() => setShowTestSendModal(true)}
-              className="px-2.5 py-1 rounded-lg border border-border bg-header/30 hover:bg-header text-xs text-muted hover:text-foreground flex items-center gap-1.5 transition"
-              title="Send a quick test email to yourself"
+              disabled={!canPerform("campaigns_send")}
+              className="px-2.5 py-1 rounded-lg border border-border bg-header/30 hover:bg-header text-xs text-muted hover:text-foreground flex items-center gap-1.5 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!canPerform("campaigns_send") ? "Permission required to send test emails" : "Send a quick test email to yourself"}
             >
               <Mail size={13} className="text-accent-blue" />
               <span>Send Test</span>
@@ -672,9 +673,9 @@ export function NewCampaignForm({
           <button
             type="button"
             onClick={handleSaveDraft}
-            disabled={savingDraft || loading}
-            className="px-3.5 py-1.5 rounded-lg border border-border bg-header/40 hover:bg-header text-xs text-foreground font-medium flex items-center gap-1.5 transition disabled:opacity-50"
-            title="Save progress and resume later"
+            disabled={savingDraft || loading || !canPerform("campaigns_send")}
+            className="px-3.5 py-1.5 rounded-lg border border-border bg-header/40 hover:bg-header text-xs text-foreground font-medium flex items-center gap-1.5 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!canPerform("campaigns_send") ? "Permission required to manage drafts" : "Save progress and resume later"}
           >
             {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Bookmark size={14} />}
             <span>Save Draft</span>
@@ -682,10 +683,17 @@ export function NewCampaignForm({
         </div>
 
         <div className="flex items-center gap-2">
+          {!canPerform("campaigns_send") && (
+            <span className="text-xs text-yellow-400 font-medium">Sending disabled for your role</span>
+          )}
           <button type="button" onClick={() => router.back()} className={crmSecondaryBtnClass}>
             Cancel
           </button>
-          <button type="submit" disabled={loading} className={crmPrimaryBtnClass}>
+          <button
+            type="submit"
+            disabled={loading || !canPerform("campaigns_send")}
+            className={`${crmPrimaryBtnClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
             {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
             {mode === "single"
               ? "Send email"

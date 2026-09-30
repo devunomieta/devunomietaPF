@@ -146,9 +146,12 @@ export function InvoiceDetailClient({
   payments: CrmInvoicePayment[];
   assistants?: { id: string; display_name: string; email: string; role_title: string }[];
 }) {
-  const { toast, confirm } = useCrmFeedback();
+  const { toast, confirm, canPerform } = useCrmFeedback();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [sending, setSending] = useState(false);
+
+  const canCreateInvoices = canPerform("invoices_create");
+  const canDeleteInvoices = canPerform("invoices_delete");
 
   // Profit declaration form state
   const [coHandledBy, setCoHandledBy] = useState<string>(invoice.co_handled_by || "");
@@ -208,7 +211,7 @@ export function InvoiceDetailClient({
           <a href={`/api/crm/invoices/${invoice.id}/pdf`} target="_blank" rel="noreferrer" className={crmSecondaryBtnClass}>
             <Download size={14} className="inline mr-1.5 -mt-0.5" /> PDF
           </a>
-          {invoice.status !== "void" && (
+          {invoice.status !== "void" && canCreateInvoices && (
             <button onClick={handleSend} disabled={sending} className={crmPrimaryBtnClass}>
               {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               {invoice.status === "draft" ? "Send" : "Resend"}
@@ -264,9 +267,11 @@ export function InvoiceDetailClient({
       <div className="bg-header/20 border border-border rounded-xl p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Payments</h2>
-          <button onClick={() => setPaymentOpen(true)} className="text-accent-blue hover:underline text-sm inline-flex items-center gap-1">
-            <Plus size={14} /> Record payment
-          </button>
+          {canCreateInvoices && (
+            <button onClick={() => setPaymentOpen(true)} className="text-accent-blue hover:underline text-sm inline-flex items-center gap-1">
+              <Plus size={14} /> Record payment
+            </button>
+          )}
         </div>
         {payments.length === 0 && <p className="text-sm text-muted py-2">No payments recorded yet.</p>}
         <div className="flex flex-col gap-2">
@@ -386,7 +391,7 @@ export function InvoiceDetailClient({
         </form>
       </div>
 
-      {invoice.status !== "void" && invoice.status !== "paid" && invoice.status !== "overpaid" && (
+      {invoice.status !== "void" && invoice.status !== "paid" && invoice.status !== "overpaid" && canDeleteInvoices && (
         <button onClick={handleVoid} className="text-sm text-red-400 hover:underline self-start inline-flex items-center gap-1">
           <Ban size={14} /> Void this invoice
         </button>

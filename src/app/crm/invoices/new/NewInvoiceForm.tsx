@@ -22,7 +22,8 @@ export function NewInvoiceForm({
   defaultTaxRate: number;
 }) {
   const router = useRouter();
-  const { toast } = useCrmFeedback();
+  const { toast, canPerform } = useCrmFeedback();
+  const canCreate = canPerform("invoices_create");
   const [items, setItems] = useState<LineItem[]>([{ description: "", qty: "1", unit_price: "" }]);
   const [currency, setCurrency] = useState(defaultCurrency);
   const [taxRate, setTaxRate] = useState(String(defaultTaxRate));
@@ -144,9 +145,20 @@ export function NewInvoiceForm({
         </div>
       </div>
 
+      {!canCreate && (
+        <div className="p-3 text-xs bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-lg">
+          You do not have permission to create invoices. This action is disabled for your role.
+        </div>
+      )}
+
       <div className="flex justify-end gap-2">
         <button type="button" onClick={() => router.back()} className={crmSecondaryBtnClass}>Cancel</button>
-        <button type="submit" disabled={loading} className={crmPrimaryBtnClass}>
+        <button
+          type="submit"
+          disabled={loading || !canCreate}
+          className={`${crmPrimaryBtnClass} ${!canCreate ? "opacity-50 cursor-not-allowed" : ""}`}
+          title={!canCreate ? "Permission required to create invoices" : undefined}
+        >
           {loading && <Loader2 size={15} className="animate-spin" />}
           Create invoice
         </button>

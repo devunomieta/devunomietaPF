@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/requireAdmin";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { requireCrmUser } from "@/lib/crm/auth";
 import { sendEmail } from "@/lib/brevo";
 import { renderInvoicePdf } from "@/lib/crm/invoice-pdf";
 import { formatMoney } from "@/lib/crm/currency";
 import type { ActionResult, CrmInvoiceLineItem, CrmInvoice, CrmSettings } from "@/lib/crm/types";
 
-async function recomputeInvoiceStatus(supabase: Awaited<ReturnType<typeof requireAdmin>>, invoiceId: string) {
+async function recomputeInvoiceStatus(supabase: ReturnType<typeof createAdminClient>, invoiceId: string) {
   const { data: invoice } = await supabase.from("crm_invoices").select("*").eq("id", invoiceId).maybeSingle();
   if (!invoice) return;
 
@@ -34,7 +34,8 @@ async function recomputeInvoiceStatus(supabase: Awaited<ReturnType<typeof requir
 }
 
 export async function createInvoice(formData: FormData): Promise<ActionResult & { invoiceId?: string }> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "invoices", action: "invoices_create" });
+  const supabase = createAdminClient();
 
   const clientId = formData.get("clientId") as string;
   if (!clientId) return { error: "Choose a client." };
@@ -96,7 +97,8 @@ export async function createInvoice(formData: FormData): Promise<ActionResult & 
 }
 
 export async function sendInvoice(invoiceId: string): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "invoices", action: "invoices_create" });
+  const supabase = createAdminClient();
 
   const { data: invoice } = await supabase.from("crm_invoices").select("*").eq("id", invoiceId).maybeSingle();
   if (!invoice) return { error: "Invoice not found." };
@@ -131,7 +133,8 @@ export async function sendInvoice(invoiceId: string): Promise<ActionResult> {
 }
 
 export async function recordPayment(formData: FormData): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "invoices", action: "invoices_create" });
+  const supabase = createAdminClient();
 
   const invoiceId = formData.get("invoiceId") as string;
   const amount = parseFloat(formData.get("amount") as string);
@@ -184,7 +187,7 @@ export async function recordPayment(formData: FormData): Promise<ActionResult> {
 }
 
 export async function getReceiptSignedUrl(path: string): Promise<{ url: string } | { error: string }> {
-  await requireAdmin();
+  await requireCrmUser({ page: "invoices" });
   const adminDb = createAdminClient();
   const { data, error } = await adminDb.storage.from("crm-receipts").createSignedUrl(path, 60 * 10);
   if (error || !data) return { error: error?.message || "Could not create a link for this receipt." };
@@ -192,7 +195,8 @@ export async function getReceiptSignedUrl(path: string): Promise<{ url: string }
 }
 
 export async function voidInvoice(invoiceId: string): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "invoices", action: "invoices_delete" });
+  const supabase = createAdminClient();
   const { error } = await supabase.from("crm_invoices").update({ status: "void" }).eq("id", invoiceId);
   if (error) return { error: error.message };
   revalidatePath(`/crm/invoices/${invoiceId}`);
@@ -208,7 +212,8 @@ export async function updateInvoiceProfitDeclaration(
   directServiceCost: number,
   coHandledBy?: string | null
 ): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "invoices", action: "invoices_create" });
+  const supabase = createAdminClient();
 
   const { data: invoice } = await supabase
     .from("crm_invoices")

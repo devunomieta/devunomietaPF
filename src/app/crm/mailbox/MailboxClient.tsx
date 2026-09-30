@@ -19,6 +19,7 @@ import {
   MailOpen,
   Sparkles,
   Shield,
+  ShieldAlert,
 } from "lucide-react";
 import type { CrmThread, CrmMessage } from "@/lib/crm/types";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
@@ -370,10 +371,19 @@ export function MailboxClient({
             </button>
           )}
 
-          {canSend && (
+          {canSend ? (
             <button
               onClick={() => setShowCompose(true)}
               className={crmPrimaryBtnClass}
+            >
+              <PenSquare size={15} />
+              <span>Compose Email</span>
+            </button>
+          ) : (
+            <button
+              disabled
+              title="You do not have permission to compose or send emails"
+              className={`${crmPrimaryBtnClass} opacity-40 cursor-not-allowed`}
             >
               <PenSquare size={15} />
               <span>Compose Email</span>
@@ -720,7 +730,7 @@ export function MailboxClient({
               </div>
 
               {/* Reply Box Footer */}
-              {canSend && (
+              {canSend ? (
                 <div className="p-3 border-t border-border bg-header/10 flex-shrink-0">
                   {replyError && (
                     <div className="mb-2 p-2 text-xs bg-red-400/10 border border-red-400/30 text-red-400 rounded-lg flex items-center gap-1.5">
@@ -763,6 +773,11 @@ export function MailboxClient({
                       </button>
                     </div>
                   </div>
+                </div>
+              ) : (
+                <div className="p-3 border-t border-border bg-header/10 flex-shrink-0 flex items-center gap-2 text-xs text-muted">
+                  <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Replying and sending is disabled for your role. You can only view thread history.</span>
                 </div>
               )}
             </div>

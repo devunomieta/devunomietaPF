@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { requireCrmUser } from "@/lib/crm/auth";
 import { sendWhatsAppMessage } from "@/lib/crm/green-api";
 import { processBulkWhatsAppJobBatch } from "@/lib/crm/jobs";
 import type { ActionResult } from "@/lib/crm/types";
@@ -9,7 +10,8 @@ import type { ActionResult } from "@/lib/crm/types";
 type SendResult = { success: true; warning?: string } | { error: string };
 
 export async function sendSingleWhatsApp(formData: FormData): Promise<SendResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "whatsapp", action: "whatsapp_send" });
+  const supabase = createAdminClient();
 
   const phone = (formData.get("phone") as string)?.trim();
   const message = (formData.get("message") as string)?.trim();
@@ -46,7 +48,7 @@ export async function sendSingleWhatsApp(formData: FormData): Promise<SendResult
 
 type Audience = { segment: "clients" | "leads" | "all"; tags: string[]; stageKey: string };
 
-async function resolveWhatsAppAudience(supabase: Awaited<ReturnType<typeof requireAdmin>>, audience: Audience) {
+async function resolveWhatsAppAudience(supabase: ReturnType<typeof createAdminClient>, audience: Audience) {
   const rows: Array<{
     id: string;
     name: string;
@@ -90,13 +92,15 @@ async function resolveWhatsAppAudience(supabase: Awaited<ReturnType<typeof requi
 }
 
 export async function previewWhatsAppAudienceCount(audience: Audience): Promise<{ count: number }> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "whatsapp" });
+  const supabase = createAdminClient();
   const recipients = await resolveWhatsAppAudience(supabase, audience);
   return { count: recipients.length };
 }
 
 export async function createBulkWhatsApp(formData: FormData): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "whatsapp", action: "whatsapp_send" });
+  const supabase = createAdminClient();
 
   const message = (formData.get("message") as string)?.trim();
   const segment = (formData.get("segment") as "clients" | "leads" | "all") || "leads";

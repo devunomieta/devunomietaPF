@@ -41,6 +41,10 @@ export default async function CrmInvoicesPage({
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
   const pageSize = 20;
 
+  const { getCrmAuthUser } = await import("@/lib/crm/auth");
+  const authUser = await getCrmAuthUser();
+  const canCreateInvoices = authUser ? (authUser.isSuperAdmin || !!authUser.permissions?.actions?.invoices_create) : false;
+
   const supabase = await createClient();
   const { data: invoices } = await supabase
     .from("crm_invoices")
@@ -76,13 +80,27 @@ export default async function CrmInvoicesPage({
           <h1 className="text-xl font-bold text-foreground">Invoices</h1>
           <p className="text-sm text-muted">{rows.length} total</p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Link href="/crm/invoices/new" className={crmPrimaryBtnClass}>
-            <Plus size={15} />
-            New invoice
-          </Link>
-          <CrmTooltip text="Create a professional billing invoice with line items, tax, and PDF generation." />
-        </div>
+        {canCreateInvoices ? (
+          <div className="flex items-center gap-1.5">
+            <Link href="/crm/invoices/new" className={crmPrimaryBtnClass}>
+              <Plus size={15} />
+              New invoice
+            </Link>
+            <CrmTooltip text="Create a professional billing invoice with line items, tax, and PDF generation." />
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <button
+              disabled
+              title="You do not have permission to create invoices"
+              className={`${crmPrimaryBtnClass} opacity-40 cursor-not-allowed`}
+            >
+              <Plus size={15} />
+              New invoice
+            </button>
+            <CrmTooltip text="Permission required to generate invoices." />
+          </div>
+        )}
       </div>
 
       <CrmPageGuide

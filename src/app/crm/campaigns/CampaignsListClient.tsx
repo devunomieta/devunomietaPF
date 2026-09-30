@@ -35,11 +35,13 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetrics[] }) {
   const router = useRouter();
-  const { toast, confirm } = useCrmFeedback();
+  const { toast, confirm, canPerform } = useCrmFeedback();
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const pageSize = 20;
+
+  const canSendCampaigns = canPerform("campaigns_send");
 
   const toggleSelectAll = () => {
     if (selectedIds.length === campaigns.length) {
@@ -108,48 +110,52 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
   const isIndeterminate = selectedIds.length > 0 && selectedIds.length < campaigns.length;
 
   const columns: CrmColumn<CampaignWithMetrics>[] = [
-    {
-      header: (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleSelectAll();
-          }}
-          className="p-1 text-muted hover:text-foreground transition-colors"
-          title={allSelected ? "Deselect all" : "Select all"}
-        >
-          {allSelected ? (
-            <CheckSquare size={16} className="text-accent-blue" />
-          ) : isIndeterminate ? (
-            <div className="w-4 h-4 border border-accent-blue bg-accent-blue/20 rounded flex items-center justify-center text-[10px] text-accent-blue font-bold">
-              -
-            </div>
-          ) : (
-            <Square size={16} />
-          )}
-        </button>
-      ),
-      cell: (c) => {
-        const isChecked = selectedIds.includes(c.id);
-        return (
-          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-            <button
-              type="button"
-              onClick={() => toggleSelectOne(c.id)}
-              className="p-1 text-muted hover:text-foreground transition-colors"
-              title={isChecked ? "Deselect" : "Select"}
-            >
-              {isChecked ? (
-                <CheckSquare size={16} className="text-accent-blue" />
-              ) : (
-                <Square size={16} />
-              )}
-            </button>
-          </div>
-        );
-      },
-    },
+    ...(canSendCampaigns
+      ? [
+          {
+            header: (
+              <button
+                type="button"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  toggleSelectAll();
+                }}
+                className="p-1 text-muted hover:text-foreground transition-colors"
+                title={allSelected ? "Deselect all" : "Select all"}
+              >
+                {allSelected ? (
+                  <CheckSquare size={16} className="text-accent-blue" />
+                ) : isIndeterminate ? (
+                  <div className="w-4 h-4 border border-accent-blue bg-accent-blue/20 rounded flex items-center justify-center text-[10px] text-accent-blue font-bold">
+                    -
+                  </div>
+                ) : (
+                  <Square size={16} />
+                )}
+              </button>
+            ),
+            cell: (c: CampaignWithMetrics) => {
+              const isChecked = selectedIds.includes(c.id);
+              return (
+                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => toggleSelectOne(c.id)}
+                    className="p-1 text-muted hover:text-foreground transition-colors"
+                    title={isChecked ? "Deselect" : "Select"}
+                  >
+                    {isChecked ? (
+                      <CheckSquare size={16} className="text-accent-blue" />
+                    ) : (
+                      <Square size={16} />
+                    )}
+                  </button>
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     {
       header: "Campaign / Subject",
       cell: (c) => (
@@ -231,21 +237,27 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
       header: "",
       cell: (c) => (
         <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-          <Link
-            href={`/crm/campaigns/new?duplicateId=${c.id}`}
-            title="Duplicate & Edit"
-            className="p-1 rounded-md text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
-          >
-            <Copy size={14} />
-          </Link>
+          {canSendCampaigns && (
+            <Link
+              href={`/crm/campaigns/new?duplicateId=${c.id}`}
+              title="Duplicate & Edit"
+              className="p-1 rounded-md text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
+            >
+              <Copy size={14} />
+            </Link>
+          )}
 
           {c.status === "draft" ? (
-            <Link
-              href={`/crm/campaigns/new?draftId=${c.id}`}
-              className="inline-flex items-center gap-1 text-xs text-accent-blue font-medium hover:underline"
-            >
-              Resume <ArrowRight size={13} />
-            </Link>
+            canSendCampaigns ? (
+              <Link
+                href={`/crm/campaigns/new?draftId=${c.id}`}
+                className="inline-flex items-center gap-1 text-xs text-accent-blue font-medium hover:underline"
+              >
+                Resume <ArrowRight size={13} />
+              </Link>
+            ) : (
+              <span className="text-xs text-muted">Draft</span>
+            )
           ) : (
             <Link
               href={`/crm/campaigns/${c.id}`}
@@ -255,15 +267,17 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
             </Link>
           )}
 
-          <button
-            type="button"
-            onClick={() => handleDeleteSingle(c)}
-            disabled={isDeleting}
-            title="Delete campaign"
-            className="p-1 rounded-md text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors ml-1"
-          >
-            <Trash2 size={14} />
-          </button>
+          {canSendCampaigns && (
+            <button
+              type="button"
+              onClick={() => handleDeleteSingle(c)}
+              disabled={isDeleting}
+              title="Delete campaign"
+              className="p-1 rounded-md text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors ml-1"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       ),
     },
@@ -279,13 +293,27 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
             Single sends and bulk campaigns with real-time delivery and engagement analytics.
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Link href="/crm/campaigns/new" className={crmPrimaryBtnClass}>
-            <Plus size={15} />
-            <span>New Campaign</span>
-          </Link>
-          <CrmTooltip text="Draft or schedule an email broadcast to a targeted audience of clients or leads." />
-        </div>
+        {canSendCampaigns ? (
+          <div className="flex items-center gap-1.5">
+            <Link href="/crm/campaigns/new" className={crmPrimaryBtnClass}>
+              <Plus size={15} />
+              <span>New Campaign</span>
+            </Link>
+            <CrmTooltip text="Draft or schedule an email broadcast to a targeted audience of clients or leads." />
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <button
+              disabled
+              title="You do not have permission to send campaigns"
+              className={`${crmPrimaryBtnClass} opacity-40 cursor-not-allowed`}
+            >
+              <Plus size={15} />
+              <span>New Campaign</span>
+            </button>
+            <CrmTooltip text="Permission required to create and launch campaigns." />
+          </div>
+        )}
       </div>
 
       <CrmPageGuide

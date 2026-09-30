@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Send, Users, Shuffle, Sparkles, ShieldCheck, Tag, X, Search, Check } from "lucide-react";
+import { Loader2, Send, Users, Shuffle, Sparkles, ShieldCheck, ShieldAlert, Tag, X, Search, Check } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
@@ -27,7 +27,7 @@ export function WhatsAppForm({
   initialMode?: "single" | "bulk" | null;
 }) {
   const router = useRouter();
-  const { toast } = useCrmFeedback();
+  const { toast, canPerform } = useCrmFeedback();
   const [mode, setMode] = useState<"single" | "bulk">(
     initialMode || (prefillRecipient ? "single" : "bulk")
   );
@@ -465,7 +465,18 @@ export function WhatsAppForm({
         </div>
       )}
 
-      <button type="submit" disabled={loading || disabled} className={`${crmPrimaryBtnClass} self-start mt-1`}>
+      {!canPerform("whatsapp_send") && (
+        <div className="p-3 bg-header/40 border border-border/80 rounded-xl text-xs text-muted flex items-center gap-2">
+          <ShieldAlert size={14} className="text-yellow-400 shrink-0" />
+          <span>Your team account does not have permission to send WhatsApp messages.</span>
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading || disabled || !canPerform("whatsapp_send")}
+        className={`${crmPrimaryBtnClass} self-start mt-1 disabled:opacity-50 disabled:cursor-not-allowed`}
+      >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
         {mode === "single" ? "Send" : "Send batch"}
       </button>
