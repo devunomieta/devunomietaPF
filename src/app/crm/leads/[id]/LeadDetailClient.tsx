@@ -17,9 +17,11 @@ import { CrmActivityTimeline } from "@/components/crm/CrmActivityTimeline";
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-1.5 text-sm border-b border-border/50 last:border-0">
-      <span className="text-muted">{label}</span>
-      <span className="text-foreground text-right">{value || "—"}</span>
+    <div className="flex flex-col gap-1 py-2 px-1 text-sm border-b border-border/40 min-w-0">
+      <span className="text-[11px] font-medium text-muted uppercase tracking-wider">{label}</span>
+      <div className="text-foreground text-sm font-medium break-all whitespace-normal">
+        {value || <span className="text-muted/60 font-normal">—</span>}
+      </div>
     </div>
   );
 }
