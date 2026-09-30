@@ -185,6 +185,7 @@ export type CrmPagesPermission = {
   monitoring: boolean;
   settings: boolean;
   users: boolean;
+  mailbox: boolean;
 };
 
 export type CrmActionsPermission = {
@@ -196,11 +197,53 @@ export type CrmActionsPermission = {
   invoices_delete: boolean;
   campaigns_send: boolean;
   whatsapp_send: boolean;
+  mailbox_send: boolean;
 };
 
 export type CrmPermissionsConfig = {
   pages: CrmPagesPermission;
   actions: CrmActionsPermission;
+};
+
+export type CrmThread = {
+  id: string;
+  subject: string;
+  normalized_subject: string;
+  recipient_email: string;
+  recipient_name: string | null;
+  last_message_preview: string | null;
+  last_message_at: string;
+  unread_count: number;
+  is_starred: boolean;
+  is_archived: boolean;
+  folder: "inbox" | "sent" | "archive" | "trash";
+  client_id: string | null;
+  lead_id: string | null;
+  created_at: string;
+  updated_at: string;
+  client?: { id: string; name: string } | null;
+  lead?: { id: string; name: string } | null;
+};
+
+export type CrmMessage = {
+  id: string;
+  thread_id: string;
+  direction: "inbound" | "outbound";
+  from_email: string;
+  from_name: string | null;
+  reply_to?: string | null;
+  to_recipients: Array<{ email: string; name?: string }>;
+  cc_recipients: Array<{ email: string; name?: string }>;
+  subject: string;
+  body_text: string | null;
+  body_html: string | null;
+  message_id: string | null;
+  in_reply_to: string | null;
+  references_header: string | null;
+  attachments: Array<{ name: string; url?: string; size?: number; contentType?: string }>;
+  security_status?: "verified" | "unverified" | "suspicious";
+  sent_at: string;
+  created_at: string;
 };
 
 export type CrmTeamAgreement = {
@@ -260,6 +303,7 @@ export const SUPER_ADMIN_PERMISSIONS: CrmPermissionsConfig = {
     journeys: true,
     campaigns: true,
     whatsapp: true,
+    mailbox: true,
     invoices: true,
     finance: true,
     import: true,
@@ -276,13 +320,14 @@ export const SUPER_ADMIN_PERMISSIONS: CrmPermissionsConfig = {
     invoices_delete: true,
     campaigns_send: true,
     whatsapp_send: true,
+    mailbox_send: true,
   },
 };
 
 export const ROLE_PRESETS: Record<string, { label: string; description: string; permissions: CrmPermissionsConfig }> = {
   assistant: {
     label: "Personal Assistant",
-    description: "Full management of leads, clients, campaigns and WhatsApp. Blocked from billing, finance, settings, and deleting records.",
+    description: "Full management of leads, clients, campaigns, WhatsApp and Mailbox. Blocked from billing, finance, settings, and deleting records.",
     permissions: {
       pages: {
         dashboard: true,
@@ -291,6 +336,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         journeys: true,
         campaigns: true,
         whatsapp: true,
+        mailbox: true,
         invoices: false,
         finance: false,
         import: false,
@@ -307,12 +353,13 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         invoices_delete: false,
         campaigns_send: true,
         whatsapp_send: true,
+        mailbox_send: true,
       },
     },
   },
   sales: {
     label: "Sales & Outreach",
-    description: "Focuses on pipeline and outreach: Leads, WhatsApp, and Campaigns. No access to clients or financial data.",
+    description: "Focuses on pipeline, mailbox, and outreach: Leads, WhatsApp, and Campaigns. No access to clients or financial data.",
     permissions: {
       pages: {
         dashboard: true,
@@ -321,6 +368,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         journeys: true,
         campaigns: true,
         whatsapp: true,
+        mailbox: true,
         invoices: false,
         finance: false,
         import: false,
@@ -337,6 +385,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         invoices_delete: false,
         campaigns_send: true,
         whatsapp_send: true,
+        mailbox_send: true,
       },
     },
   },
@@ -351,6 +400,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         journeys: false,
         campaigns: false,
         whatsapp: false,
+        mailbox: false,
         invoices: true,
         finance: true,
         import: false,
@@ -367,6 +417,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         invoices_delete: false,
         campaigns_send: false,
         whatsapp_send: false,
+        mailbox_send: false,
       },
     },
   },

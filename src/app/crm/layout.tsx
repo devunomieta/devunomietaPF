@@ -32,14 +32,17 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     { count: openLeads },
     { count: overdueInvoices },
     { count: pendingJobs },
+    { count: unreadThreads },
   ] = await Promise.all([
     supabase.from("crm_leads").select("*", { count: "exact", head: true }).eq("status", "open"),
     supabase.from("crm_invoices").select("*", { count: "exact", head: true }).eq("status", "overdue"),
     supabase.from("crm_jobs").select("*", { count: "exact", head: true }).in("status", ["queued", "processing"]),
+    supabase.from("crm_threads").select("*", { count: "exact", head: true }).gt("unread_count", 0).eq("folder", "inbox"),
   ]);
 
   const allNavLinks: (CrmNavLinkInput & { permissionKey: keyof typeof authUser.permissions.pages })[] = [
     { name: "Dashboard", href: "/crm", icon: "LayoutDashboard", permissionKey: "dashboard" },
+    { name: "Mailbox", href: "/crm/mailbox", icon: "Inbox", count: unreadThreads, permissionKey: "mailbox" },
     { name: "Clients", href: "/crm/clients", icon: "Users", permissionKey: "clients" },
     { name: "Leads", href: "/crm/leads", icon: "UserPlus", count: openLeads, permissionKey: "leads" },
     { name: "Journeys", href: "/crm/journeys", icon: "GitBranch", permissionKey: "journeys" },

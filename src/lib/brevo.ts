@@ -1,44 +1,57 @@
-export async function sendEmail({ to, subject, htmlContent, attachments }: {
-  to: { email: string, name?: string }[],
-  subject: string,
-  htmlContent: string,
-  attachments?: { name: string, content: string }[], // content = base64
+export async function sendEmail({
+  to,
+  subject,
+  htmlContent,
+  attachments,
+  replyTo,
+  headers: customHeaders,
+}: {
+  to: { email: string; name?: string }[];
+  subject: string;
+  htmlContent: string;
+  attachments?: { name: string; content: string }[]; // content = base64
+  replyTo?: { email: string; name?: string };
+  headers?: Record<string, string>;
 }) {
-  const apiKey = process.env.BREVO_API_KEY
-  const senderEmail = process.env.BREVO_SENDER_EMAIL
-  const senderName = process.env.BREVO_SENDER_NAME || 'Portfolio Admin'
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  const senderName = process.env.BREVO_SENDER_NAME || "Portfolio Admin";
 
   if (!apiKey || !senderEmail) {
-    console.error('Brevo API key or sender email missing')
-    return { error: 'Email service not configured' }
+    console.error("Brevo API key or sender email missing");
+    return { error: "Email service not configured" };
   }
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': apiKey,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        sender: { name: senderName, email: senderEmail },
-        to: to,
-        subject: subject,
-        htmlContent: htmlContent,
-        ...(attachments && attachments.length > 0 ? { attachment: attachments } : {}),
-      }),
-    })
+    const payload: Record<string, unknown> = {
+      sender: { name: senderName, email: senderEmail },
+      to,
+      subject,
+      htmlContent,
+      ...(attachments && attachments.length > 0 ? { attachment: attachments } : {}),
+      ...(replyTo ? { replyTo } : {}),
+      ...(customHeaders && Object.keys(customHeaders).length > 0 ? { headers: customHeaders } : {}),
+    };
 
-    const data = await response.json()
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
     if (!response.ok) {
-      console.error('Brevo error:', data)
-      return { error: data.message || 'Failed to send email' }
+      console.error("Brevo error:", data);
+      return { error: data.message || "Failed to send email" };
     }
 
-    return { success: true, messageId: data.messageId }
+    return { success: true, messageId: data.messageId };
   } catch (error) {
-    console.error('Email send error:', error)
-    return { error: error instanceof Error ? error.message : 'Unknown error occurred' }
+    console.error("Email send error:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error occurred" };
   }
 }

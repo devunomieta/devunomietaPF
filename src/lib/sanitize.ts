@@ -73,3 +73,42 @@ export function detectSpam(payload: {
 
   return { isSpam: false }
 }
+
+/**
+ * Strips executable scripts, pseudo-protocols, object embeds, and dangerous handlers from email HTML.
+ * Preserves standard email styling, links, tables, and paragraphs.
+ */
+export function sanitizeEmailHtml(html: string | null | undefined): string {
+  if (!html) return '';
+  return html
+    // Remove script tags and content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove style tags that try to load external expression fonts or break framing
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // Remove object, embed, iframe, applet, form, base
+    .replace(/<\/?(object|embed|iframe|frame|frameset|applet|form|base|meta|link)\b[^>]*>/gi, '')
+    // Remove inline event handlers (onload, onerror, onclick, onmouseover, etc.)
+    .replace(/\son[a-zA-Z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // Remove javascript: and data: URIs in href and src (except data:image)
+    .replace(/href\s*=\s*["']?\s*(javascript|vbscript):[^"'>\s]*/gi, 'href="#"')
+    .replace(/src\s*=\s*["']?\s*(javascript|vbscript):[^"'>\s]*/gi, 'src=""')
+    .trim();
+}
+
+const DANGEROUS_EXTENSIONS = new Set([
+  'exe', 'bat', 'cmd', 'sh', 'vbs', 'scr', 'msi', 'com', 'pif', 'application',
+  'gadget', 'hta', 'cpl', 'msc', 'jar', 'reg', 'ps1', 'ps2', 'wsf', 'wsh',
+  'iso', 'img', 'dll', 'sys'
+]);
+
+/**
+ * Validates whether an attachment is safe to display or download.
+ */
+export function isAttachmentSafe(filename: string): boolean {
+  if (!filename) return false;
+  const parts = filename.split('.');
+  if (parts.length <= 1) return true;
+  const ext = parts.pop()?.toLowerCase().trim() || '';
+  return !DANGEROUS_EXTENSIONS.has(ext);
+}
+

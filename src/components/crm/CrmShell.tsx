@@ -21,6 +21,7 @@ import {
   ArrowLeftCircle,
   UserCheck,
   Shield,
+  Inbox,
 } from "lucide-react";
 import { CrmFeedbackProvider } from "./CrmFeedbackProvider";
 import { CrmProfileModal } from "./CrmProfileModal";
@@ -39,6 +40,7 @@ const ICONS = {
   GitBranch,
   UploadCloud,
   Mail,
+  Inbox,
   MessageCircle,
   Activity,
   Receipt,

@@ -42,6 +42,7 @@ const PAGE_KEYS: Array<{ key: keyof CrmPermissionsConfig["pages"]; label: string
   { key: "leads", label: "Leads", desc: "View leads and pipeline stage progression" },
   { key: "journeys", label: "Journeys", desc: "Configure sales stages and journey pipelines" },
   { key: "campaigns", label: "Campaigns", desc: "Email marketing, newsletters, and analytics" },
+  { key: "mailbox", label: "Mailbox", desc: "Gmail-like unified email inbox and reply threads" },
   { key: "whatsapp", label: "WhatsApp", desc: "Direct messaging, chat logs, and template outreach" },
   { key: "invoices", label: "Invoices", desc: "View billing, invoices, and payments" },
   { key: "finance", label: "Finance", desc: "Revenue metrics, cash flow, and financial health" },
@@ -60,6 +61,7 @@ const ACTION_KEYS: Array<{ key: keyof CrmPermissionsConfig["actions"]; label: st
   { key: "invoices_delete", label: "Delete / Void Invoices", desc: "Allow deleting or voiding billing invoices" },
   { key: "campaigns_send", label: "Send Campaigns", desc: "Allow initiating email campaigns to audiences" },
   { key: "whatsapp_send", label: "Send WhatsApp", desc: "Allow sending WhatsApp direct messages to contacts" },
+  { key: "mailbox_send", label: "Send & Reply Emails", desc: "Allow replying to threads and composing emails in Mailbox" },
 ];
 
 export function UsersManager({

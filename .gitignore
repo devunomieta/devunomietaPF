@@ -100,3 +100,11 @@ task.md
 walkthrough.md
 responsiveness_verification_1777317465114.webp
 docs/CRM_SETUP.md
+
+# Cloudflare & Deployment Worker Scripts with internal endpoints
+cloudflare-email-worker.js
+wrangler.toml
+.wrangler/
+*.pem
+*.key
+*.cert
