@@ -18,6 +18,7 @@ import {
   Mail,
   MailOpen,
   Sparkles,
+  Shield,
 } from "lucide-react";
 import type { CrmThread, CrmMessage } from "@/lib/crm/types";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
@@ -38,6 +39,7 @@ interface MailboxClientProps {
   initialThreadId: string | null;
   searchQuery: string;
   canSend: boolean;
+  canViewContent?: boolean;
   isSuperAdmin: boolean;
   senderEmail: string;
 }
@@ -48,6 +50,7 @@ export function MailboxClient({
   initialThreadId,
   searchQuery,
   canSend,
+  canViewContent = true,
   isSuperAdmin,
   senderEmail,
 }: MailboxClientProps) {
@@ -582,7 +585,15 @@ export function MailboxClient({
 
               {/* Message Timeline */}
               <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                {loadingMessages ? (
+                {!canViewContent ? (
+                  <div className="p-8 text-center flex flex-col items-center justify-center gap-2 text-muted">
+                    <Shield className="w-8 h-8 text-muted/60" />
+                    <span className="text-sm font-semibold text-foreground">Content Restricted</span>
+                    <span className="text-xs text-muted max-w-xs">
+                      Your team role does not have permission to view full email contents. Contact your CRM administrator to request &ldquo;View Mailbox Contents&rdquo; access.
+                    </span>
+                  </div>
+                ) : loadingMessages ? (
                   <div className="flex items-center justify-center p-12 text-muted">
                     <RefreshCw className="w-6 h-6 animate-spin text-accent-blue" />
                   </div>

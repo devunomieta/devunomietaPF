@@ -79,15 +79,21 @@ export function LeadDetailClient({
   stages: CrmJourneyStage[];
 }) {
   const router = useRouter();
-  const { toast, confirm } = useCrmFeedback();
+  const { toast, confirm, canPerform } = useCrmFeedback();
   const [editOpen, setEditOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [movingStage, setMovingStage] = useState(false);
   const [converting, setConverting] = useState(false);
 
+  const canEditLead = canPerform("leads_edit");
+
   const sortedStages = [...stages].sort((a, b) => a.position - b.position);
 
   async function handleMoveStage(stageKey: string) {
+    if (!canEditLead) {
+      toast("You don't have permission to move or edit leads.");
+      return;
+    }
     setMovingStage(true);
     const result = await moveLeadStage(lead.id, stageKey);
     setMovingStage(false);
@@ -103,6 +109,10 @@ export function LeadDetailClient({
   }
 
   async function handleConvert() {
+    if (!canEditLead) {
+      toast("You don't have permission to convert leads.");
+      return;
+    }
     if (!(await confirm("Convert this lead into a client now?", { confirmLabel: "Convert" }))) return;
     setConverting(true);
     const result = await convertLeadToClient(lead.id);
@@ -115,6 +125,10 @@ export function LeadDetailClient({
   }
 
   async function handleDeleteContact(id: string) {
+    if (!canEditLead) {
+      toast("You don't have permission to modify lead contacts.");
+      return;
+    }
     if (!(await confirm("Remove this contact?", { danger: true, confirmLabel: "Remove" }))) return;
     const result = await deleteContact(id, { leadId: lead.id });
     if ("success" in result) window.location.reload();
@@ -140,7 +154,7 @@ export function LeadDetailClient({
           <MessageCircle size={14} /> WhatsApp
         </Link>
 
-        {lead.status === "open" && !lead.converted_to_client_id && (
+        {canEditLead && lead.status === "open" && !lead.converted_to_client_id && (
           <div className="inline-flex items-center gap-1.5">
             <button onClick={handleConvert} disabled={converting} className={crmPrimaryBtnClass}>
               {converting ? <Loader2 size={15} className="animate-spin" /> : <ArrowRightCircle size={15} />}
@@ -156,11 +170,13 @@ export function LeadDetailClient({
           {sortedStages.map((s) => (
             <button
               key={s.key}
-              disabled={movingStage || s.key === lead.current_stage_key}
+              disabled={movingStage || s.key === lead.current_stage_key || !canEditLead}
               onClick={() => handleMoveStage(s.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:cursor-default ${
                 s.key === lead.current_stage_key
                   ? "bg-accent-blue text-white border-accent-blue"
+                  : !canEditLead
+                  ? "border-border/40 text-muted/50 cursor-not-allowed"
                   : "border-border text-muted hover:text-foreground hover:border-accent-blue"
               }`}
             >
@@ -203,14 +219,16 @@ export function LeadDetailClient({
           <div className="bg-header/20 border border-border rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
               <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Lead Profile & Contact Info</h2>
-              <button
-                onClick={() => setEditOpen(true)}
-                className="text-muted hover:text-accent-blue inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
-                aria-label="Edit lead"
-              >
-                <Pencil size={13} />
-                Edit
-              </button>
+              {canEditLead && (
+                <button
+                  onClick={() => setEditOpen(true)}
+                  className="text-muted hover:text-accent-blue inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
+                  aria-label="Edit lead"
+                >
+                  <Pencil size={13} />
+                  Edit
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
@@ -293,14 +311,16 @@ export function LeadDetailClient({
           <div className="bg-header/20 border border-border rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-border/60">
               <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Contacts</h2>
-              <button
-                onClick={() => setContactOpen(true)}
-                className="text-muted hover:text-accent-blue inline-flex items-center gap-1 text-xs transition-colors"
-                aria-label="Add contact"
-              >
-                <Plus size={14} />
-                Add
-              </button>
+              {canEditLead && (
+                <button
+                  onClick={() => setContactOpen(true)}
+                  className="text-muted hover:text-accent-blue inline-flex items-center gap-1 text-xs transition-colors"
+                  aria-label="Add contact"
+                >
+                  <Plus size={14} />
+                  Add
+                </button>
+              )}
             </div>
             {contacts.length === 0 ? (
               <p className="text-xs text-muted py-1">No additional contacts yet.</p>
@@ -317,13 +337,15 @@ export function LeadDetailClient({
                         {[c.email, c.phone].filter(Boolean).join(" · ") || "—"}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleDeleteContact(c.id)}
-                      className="text-muted hover:text-red-400 p-1 transition-colors"
-                      aria-label="Remove contact"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    {canEditLead && (
+                      <button
+                        onClick={() => handleDeleteContact(c.id)}
+                        className="text-muted hover:text-red-400 p-1 transition-colors"
+                        aria-label="Remove contact"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

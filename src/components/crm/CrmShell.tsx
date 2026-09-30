@@ -231,6 +231,7 @@ export function CrmShell({
   navLinks,
   adminEmail,
   isSuperAdmin = true,
+  permissions,
   displayName = "Team Member",
   roleTitle = "Assistant",
   activeAgreementId = null,
@@ -241,6 +242,7 @@ export function CrmShell({
   navLinks: CrmNavLinkInput[];
   adminEmail: string;
   isSuperAdmin?: boolean;
+  permissions?: import("@/lib/crm/types").CrmPermissionsConfig;
   displayName?: string;
   roleTitle?: string;
   activeAgreementId?: string | null;
@@ -255,7 +257,7 @@ export function CrmShell({
   const links: NavLink[] = navLinks.map((l) => ({ ...l, icon: ICONS[l.icon] }));
 
   return (
-    <CrmFeedbackProvider>
+    <CrmFeedbackProvider permissions={permissions} isSuperAdmin={isSuperAdmin}>
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Mobile top bar */}
       <div className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-header/50 sticky top-0 z-40">

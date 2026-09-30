@@ -61,6 +61,7 @@ const ACTION_KEYS: Array<{ key: keyof CrmPermissionsConfig["actions"]; label: st
   { key: "invoices_delete", label: "Delete / Void Invoices", desc: "Allow deleting or voiding billing invoices" },
   { key: "campaigns_send", label: "Send Campaigns", desc: "Allow initiating email campaigns to audiences" },
   { key: "whatsapp_send", label: "Send WhatsApp", desc: "Allow sending WhatsApp direct messages to contacts" },
+  { key: "mailbox_view", label: "View Mailbox Contents", desc: "Allow reading thread contents and message bodies in Mailbox" },
   { key: "mailbox_send", label: "Send & Reply Emails", desc: "Allow replying to threads and composing emails in Mailbox" },
 ];
 

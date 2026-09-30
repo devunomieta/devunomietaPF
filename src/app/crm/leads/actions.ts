@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { requireCrmUser } from "@/lib/crm/auth";
 import type { ActionResult, CrmJourneyStage } from "@/lib/crm/types";
 
 function parseTags(raw: FormDataEntryValue | null): string[] {
@@ -12,13 +13,14 @@ function parseTags(raw: FormDataEntryValue | null): string[] {
     .filter(Boolean);
 }
 
-async function getDefaultJourney(supabase: Awaited<ReturnType<typeof requireAdmin>>) {
+async function getDefaultJourney(supabase: ReturnType<typeof createAdminClient>) {
   const { data } = await supabase.from("crm_journeys").select("*").eq("is_default", true).maybeSingle();
   return data as { id: string; stages: CrmJourneyStage[] } | null;
 }
 
 export async function saveLead(formData: FormData, id?: string): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "leads", action: "leads_edit" });
+  const supabase = createAdminClient();
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) return { error: "Name is required." };
@@ -60,7 +62,8 @@ export async function saveLead(formData: FormData, id?: string): Promise<ActionR
 }
 
 export async function deleteLead(id: string): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "leads", action: "leads_delete" });
+  const supabase = createAdminClient();
   const { error } = await supabase.from("crm_leads").delete().eq("id", id);
   if (error) {
     if (error.code === "23503") {
@@ -75,7 +78,7 @@ export async function deleteLead(id: string): Promise<ActionResult> {
 }
 
 async function promoteLeadToClient(
-  supabase: Awaited<ReturnType<typeof requireAdmin>>,
+  supabase: ReturnType<typeof createAdminClient>,
   lead: { id: string; name: string; email: string | null; phone: string | null; company: string | null; location?: string | null; website?: string | null; pain_points?: string | null; proposed_solution?: string | null; tags: string[]; notes: string | null }
 ) {
   const { data: client, error: clientError } = await supabase
@@ -110,7 +113,8 @@ async function promoteLeadToClient(
 }
 
 export async function moveLeadStage(leadId: string, stageKey: string, note?: string): Promise<ActionResult & { clientId?: string }> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "leads", action: "leads_edit" });
+  const supabase = createAdminClient();
 
   const { data: lead, error: leadFetchError } = await supabase.from("crm_leads").select("*").eq("id", leadId).maybeSingle();
   if (leadFetchError || !lead) return { error: leadFetchError?.message || "Lead not found." };
@@ -163,7 +167,8 @@ export async function moveLeadStage(leadId: string, stageKey: string, note?: str
 }
 
 export async function convertLeadToClient(leadId: string): Promise<ActionResult & { clientId?: string }> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "leads", action: "leads_edit" });
+  const supabase = createAdminClient();
   const { data: lead, error } = await supabase.from("crm_leads").select("*").eq("id", leadId).maybeSingle();
   if (error || !lead) return { error: error?.message || "Lead not found." };
   if (lead.converted_to_client_id) return { success: true, clientId: lead.converted_to_client_id };

@@ -61,7 +61,17 @@ export async function getCrmAuthUser(): Promise<AuthenticatedCrmUser | null> {
     .eq("user_id", crmUser.id)
     .maybeSingle();
 
-  const permissions: CrmPermissionsConfig = permRow?.permissions || ROLE_PRESETS.assistant.permissions;
+  const rawPerms = permRow?.permissions || {};
+  const permissions: CrmPermissionsConfig = {
+    pages: {
+      ...ROLE_PRESETS.assistant.permissions.pages,
+      ...(rawPerms.pages || {}),
+    },
+    actions: {
+      ...ROLE_PRESETS.assistant.permissions.actions,
+      ...(rawPerms.actions || {}),
+    },
+  };
 
   return {
     email,

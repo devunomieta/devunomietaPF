@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { requireCrmUser } from "@/lib/crm/auth";
 import type { ActionResult } from "@/lib/crm/types";
 
 function parseTags(raw: FormDataEntryValue | null): string[] {
@@ -13,7 +14,8 @@ function parseTags(raw: FormDataEntryValue | null): string[] {
 }
 
 export async function saveClient(formData: FormData, id?: string): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "clients", action: "clients_edit" });
+  const supabase = createAdminClient();
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) return { error: "Name is required." };
@@ -49,7 +51,8 @@ export async function saveClient(formData: FormData, id?: string): Promise<Actio
 }
 
 export async function deleteClient(id: string): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  await requireCrmUser({ page: "clients", action: "clients_delete" });
+  const supabase = createAdminClient();
   const { error } = await supabase.from("crm_clients").delete().eq("id", id);
   if (error) {
     if (error.code === "23503" || error.message?.includes("crm_invoices_client_id_fkey")) {
@@ -72,7 +75,14 @@ export async function addContact(
   formData: FormData,
   owner: { clientId?: string; leadId?: string }
 ): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  if (owner.clientId) {
+    await requireCrmUser({ page: "clients", action: "clients_edit" });
+  } else if (owner.leadId) {
+    await requireCrmUser({ page: "leads", action: "leads_edit" });
+  } else {
+    await requireCrmUser();
+  }
+  const supabase = createAdminClient();
 
   const name = (formData.get("name") as string)?.trim();
   if (!name) return { error: "Name is required." };
@@ -96,7 +106,14 @@ export async function addContact(
 }
 
 export async function deleteContact(id: string, owner: { clientId?: string; leadId?: string }): Promise<ActionResult> {
-  const supabase = await requireAdmin();
+  if (owner.clientId) {
+    await requireCrmUser({ page: "clients", action: "clients_edit" });
+  } else if (owner.leadId) {
+    await requireCrmUser({ page: "leads", action: "leads_edit" });
+  } else {
+    await requireCrmUser();
+  }
+  const supabase = createAdminClient();
   const { error } = await supabase.from("crm_contacts").delete().eq("id", id);
   if (error) return { error: error.message };
   if (owner.clientId) revalidatePath(`/crm/clients/${owner.clientId}`);

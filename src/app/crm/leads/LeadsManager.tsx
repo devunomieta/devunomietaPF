@@ -19,7 +19,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
-  const { toast, confirm } = useCrmFeedback();
+  const { toast, confirm, canPerform } = useCrmFeedback();
   const [leads] = useState(initialLeads);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -85,18 +85,21 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
     },
     {
       header: "",
-      cell: (l) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete(l.id);
-          }}
-          className="text-muted hover:text-red-400 p-1 rounded hover:bg-red-400/10 transition-colors"
-          aria-label="Delete lead"
-        >
-          <Trash2 size={15} />
-        </button>
-      ),
+      cell: (l) => {
+        if (!canPerform("leads_delete")) return null;
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(l.id);
+            }}
+            className="text-muted hover:text-red-400 p-1 rounded hover:bg-red-400/10 transition-colors"
+            aria-label="Delete lead"
+          >
+            <Trash2 size={15} />
+          </button>
+        );
+      },
     },
   ];
 
@@ -108,17 +111,21 @@ export function LeadsManager({ initialLeads }: { initialLeads: CrmLead[] }) {
           <p className="text-sm text-muted">{leads.length} total</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/crm/import" className={crmSecondaryBtnClass}>
-            <UploadCloud size={15} className="inline mr-1.5 -mt-0.5" />
-            Import
-          </Link>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/80 transition-all text-sm flex items-center gap-2">
-              <Plus size={15} />
-              Add lead
-            </button>
-            <CrmTooltip text="Add a new prospective client to track in your sales journey." />
-          </div>
+          {canPerform("leads_edit") && (
+            <Link href="/crm/import" className={crmSecondaryBtnClass}>
+              <UploadCloud size={15} className="inline mr-1.5 -mt-0.5" />
+              Import
+            </Link>
+          )}
+          {canPerform("leads_edit") && (
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/80 transition-all text-sm flex items-center gap-2">
+                <Plus size={15} />
+                Add lead
+              </button>
+              <CrmTooltip text="Add a new prospective client to track in your sales journey." />
+            </div>
+          )}
         </div>
       </div>
 

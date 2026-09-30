@@ -198,6 +198,7 @@ export type CrmActionsPermission = {
   campaigns_send: boolean;
   whatsapp_send: boolean;
   mailbox_send: boolean;
+  mailbox_view: boolean;
 };
 
 export type CrmPermissionsConfig = {
@@ -321,6 +322,7 @@ export const SUPER_ADMIN_PERMISSIONS: CrmPermissionsConfig = {
     campaigns_send: true,
     whatsapp_send: true,
     mailbox_send: true,
+    mailbox_view: true,
   },
 };
 
@@ -354,6 +356,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         campaigns_send: true,
         whatsapp_send: true,
         mailbox_send: true,
+        mailbox_view: true,
       },
     },
   },
@@ -386,6 +389,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         campaigns_send: true,
         whatsapp_send: true,
         mailbox_send: true,
+        mailbox_view: true,
       },
     },
   },
@@ -418,6 +422,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         campaigns_send: false,
         whatsapp_send: false,
         mailbox_send: false,
+        mailbox_view: false,
       },
     },
   },

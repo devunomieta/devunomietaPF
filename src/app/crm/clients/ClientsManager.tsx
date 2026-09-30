@@ -13,7 +13,7 @@ import { deleteClient } from "./actions";
 import { ClientForm } from "./ClientForm";
 
 export function ClientsManager({ initialClients }: { initialClients: CrmClient[] }) {
-  const { toast, confirm } = useCrmFeedback();
+  const { toast, confirm, canPerform } = useCrmFeedback();
   const [clients] = useState(initialClients);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -34,11 +34,19 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
   }, [query]);
 
   function openCreate() {
+    if (!canPerform("clients_edit")) {
+      toast("You don't have permission to create clients.");
+      return;
+    }
     setEditing(null);
     setIsModalOpen(true);
   }
 
   async function handleDelete(id: string) {
+    if (!canPerform("clients_delete")) {
+      toast("You don't have permission to delete clients.");
+      return;
+    }
     if (!(await confirm("Delete this client? This cannot be undone.", { danger: true, confirmLabel: "Delete" }))) return;
     const result = await deleteClient(id);
     if ("success" in result) window.location.reload();
@@ -90,18 +98,21 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
     { header: "Source", cell: (c) => <span className="text-muted text-xs">{c.source || "—"}</span> },
     {
       header: "",
-      cell: (c) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete(c.id);
-          }}
-          className="text-muted hover:text-red-400"
-          aria-label="Delete client"
-        >
-          <Trash2 size={15} />
-        </button>
-      ),
+      cell: (c) => {
+        if (!canPerform("clients_delete")) return null;
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(c.id);
+            }}
+            className="text-muted hover:text-red-400"
+            aria-label="Delete client"
+          >
+            <Trash2 size={15} />
+          </button>
+        );
+      },
     },
   ];
 
@@ -113,17 +124,21 @@ export function ClientsManager({ initialClients }: { initialClients: CrmClient[]
           <p className="text-sm text-muted">{clients.length} total</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/crm/import" className={crmSecondaryBtnClass}>
-            <UploadCloud size={15} className="inline mr-1.5 -mt-0.5" />
-            Import
-          </Link>
-          <div className="flex items-center gap-1.5">
-            <button onClick={openCreate} className={crmPrimaryBtnClass}>
-              <Plus size={15} />
-              Add client
-            </button>
-            <CrmTooltip text="Add an active client profile for billing, contacts, and contract management." />
-          </div>
+          {canPerform("clients_edit") && (
+            <Link href="/crm/import" className={crmSecondaryBtnClass}>
+              <UploadCloud size={15} className="inline mr-1.5 -mt-0.5" />
+              Import
+            </Link>
+          )}
+          {canPerform("clients_edit") && (
+            <div className="flex items-center gap-1.5">
+              <button onClick={openCreate} className={crmPrimaryBtnClass}>
+                <Plus size={15} />
+                Add client
+              </button>
+              <CrmTooltip text="Add an active client profile for billing, contacts, and contract management." />
+            </div>
+          )}
         </div>
       </div>
 

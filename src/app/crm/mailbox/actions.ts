@@ -83,7 +83,12 @@ export async function getThreads({
 export async function getThreadMessages(threadId: string) {
   const authUser = await getCrmAuthUser();
   if (!authUser || !authUser.permissions.pages.mailbox) {
-    throw new Error("Unauthorized");
+    throw new Error("Unauthorized to access mailbox");
+  }
+
+  // If the user is restricted from viewing full email contents, return empty
+  if (!authUser.permissions.actions.mailbox_view) {
+    return [];
   }
 
   const adminDb = createAdminClient();

@@ -3,6 +3,8 @@
 import { createContext, useCallback, useContext, useState } from "react";
 import { AlertTriangle, CheckCircle2, X, Loader2 } from "lucide-react";
 
+import type { CrmPermissionsConfig } from "@/lib/crm/types";
+
 type ToastItem = { id: number; message: string; type: "error" | "success" };
 type ConfirmOptions = { title?: string; confirmLabel?: string; danger?: boolean };
 type ConfirmState = (ConfirmOptions & { message: string; resolve: (value: boolean) => void }) | null;
@@ -10,11 +12,22 @@ type ConfirmState = (ConfirmOptions & { message: string; resolve: (value: boolea
 type CrmFeedbackContextValue = {
   toast: (message: string, type?: "error" | "success") => void;
   confirm: (message: string, opts?: ConfirmOptions) => Promise<boolean>;
+  permissions?: CrmPermissionsConfig;
+  isSuperAdmin?: boolean;
+  canPerform: (action: keyof CrmPermissionsConfig["actions"]) => boolean;
 };
 
 const CrmFeedbackContext = createContext<CrmFeedbackContextValue | null>(null);
 
-export function CrmFeedbackProvider({ children }: { children: React.ReactNode }) {
+export function CrmFeedbackProvider({
+  children,
+  permissions,
+  isSuperAdmin = true,
+}: {
+  children: React.ReactNode;
+  permissions?: CrmPermissionsConfig;
+  isSuperAdmin?: boolean;
+}) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
 
@@ -35,8 +48,17 @@ export function CrmFeedbackProvider({ children }: { children: React.ReactNode })
     setConfirmState(null);
   }
 
+  const canPerform = useCallback(
+    (action: keyof CrmPermissionsConfig["actions"]): boolean => {
+      if (isSuperAdmin) return true;
+      if (!permissions) return false;
+      return !!permissions.actions?.[action];
+    },
+    [isSuperAdmin, permissions]
+  );
+
   return (
-    <CrmFeedbackContext.Provider value={{ toast, confirm }}>
+    <CrmFeedbackContext.Provider value={{ toast, confirm, permissions, isSuperAdmin, canPerform }}>
       {children}
 
       <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-[calc(100%-2rem)] sm:w-96">

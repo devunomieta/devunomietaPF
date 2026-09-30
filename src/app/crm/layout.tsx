@@ -86,6 +86,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
         navLinks={filteredNavLinks}
         adminEmail={userEmail}
         isSuperAdmin={authUser.isSuperAdmin}
+        permissions={authUser.permissions}
         displayName={authUser.displayName}
         roleTitle={authUser.roleTitle}
         agreementStatus={authUser.agreementStatus}

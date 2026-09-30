@@ -76,11 +76,17 @@ export function ClientDetailClient({
   stageEvents: CrmStageEvent[];
   invoices: CrmInvoice[];
 }) {
-  const { toast, confirm } = useCrmFeedback();
+  const { toast, confirm, canPerform } = useCrmFeedback();
   const [editOpen, setEditOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
 
+  const canEditClient = canPerform("clients_edit");
+
   async function handleDeleteContact(id: string) {
+    if (!canEditClient) {
+      toast("You don't have permission to modify client contacts.");
+      return;
+    }
     if (!(await confirm("Remove this contact?", { danger: true, confirmLabel: "Remove" }))) return;
     const result = await deleteContact(id, { clientId: client.id });
     if ("success" in result) window.location.reload();
@@ -120,14 +126,16 @@ export function ClientDetailClient({
         <div className="bg-header/20 border border-border rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
             <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Client Profile & Details</h2>
-            <button
-              onClick={() => setEditOpen(true)}
-              className="text-muted hover:text-accent-blue inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
-              aria-label="Edit client"
-            >
-              <Pencil size={13} />
-              Edit
-            </button>
+            {canEditClient && (
+              <button
+                onClick={() => setEditOpen(true)}
+                className="text-muted hover:text-accent-blue inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
+                aria-label="Edit client"
+              >
+                <Pencil size={13} />
+                Edit
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
@@ -247,14 +255,16 @@ export function ClientDetailClient({
         <div className="bg-header/20 border border-border rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-border/60">
             <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">Contacts</h2>
-            <button
-              onClick={() => setContactOpen(true)}
-              className="text-muted hover:text-accent-blue inline-flex items-center gap-1 text-xs transition-colors"
-              aria-label="Add contact"
-            >
-              <Plus size={14} />
-              Add
-            </button>
+            {canEditClient && (
+              <button
+                onClick={() => setContactOpen(true)}
+                className="text-muted hover:text-accent-blue inline-flex items-center gap-1 text-xs transition-colors"
+                aria-label="Add contact"
+              >
+                <Plus size={14} />
+                Add
+              </button>
+            )}
           </div>
           {contacts.length === 0 ? (
             <p className="text-xs text-muted py-1">No additional contacts yet.</p>
@@ -271,13 +281,15 @@ export function ClientDetailClient({
                       {[c.email, c.phone].filter(Boolean).join(" · ") || "—"}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDeleteContact(c.id)}
-                    className="text-muted hover:text-red-400 p-1 transition-colors"
-                    aria-label="Remove contact"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {canEditClient && (
+                    <button
+                      onClick={() => handleDeleteContact(c.id)}
+                      className="text-muted hover:text-red-400 p-1 transition-colors"
+                      aria-label="Remove contact"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

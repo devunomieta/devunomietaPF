@@ -41,6 +41,7 @@ export default async function CrmMailboxPage({
         initialThreadId={threadId || null}
         searchQuery={q}
         canSend={authUser.permissions.actions.mailbox_send}
+        canViewContent={authUser.permissions.actions.mailbox_view}
         isSuperAdmin={authUser.isSuperAdmin}
         senderEmail={process.env.BREVO_SENDER_EMAIL || ""}
       />
