@@ -21,6 +21,8 @@ import {
 import type { CrmThread, CrmMessage } from "@/lib/crm/types";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
+import { MailboxRichEditor } from "@/components/crm/mailbox/MailboxRichEditor";
+import ReactMarkdown from "react-markdown";
 import {
   getThreadMessages,
   replyToThread,
@@ -127,19 +129,31 @@ export function MailboxClient({
     });
   };
 
+  // Helper to extract clean plain text from HTML
+  const stripHtmlToText = (html: string): string => {
+    return html
+      .replace(/<br\s*[\/]?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .trim();
+  };
+
   // Send Reply
   const handleSendReply = async () => {
-    if (!selectedThreadId || !replyText.trim()) return;
+    const cleanText = stripHtmlToText(replyText);
+    if (!selectedThreadId || (!cleanText && !replyText.includes("<img"))) return;
     setIsSendingReply(true);
     setReplyError(null);
 
-    const htmlContent = `<div style="font-family: sans-serif; line-height: 1.6; color: #111;">
-      ${replyText.replace(/\n/g, "<br/>")}
-    </div>`;
+    // If already wrapped in HTML or formatted, preserve, otherwise wrap cleanly
+    const htmlContent = replyText.includes("<")
+      ? `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827;">${replyText}</div>`
+      : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827;">${replyText.replace(/\n/g, "<br/>")}</div>`;
 
     const res = await replyToThread({
       threadId: selectedThreadId,
-      messageText: replyText,
+      messageText: cleanText || replyText,
       messageHtml: htmlContent,
     });
 
@@ -157,19 +171,20 @@ export function MailboxClient({
   // Send Compose
   const handleSendCompose = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!composeTo || !composeSubject || !composeBody) return;
+    const cleanText = stripHtmlToText(composeBody);
+    if (!composeTo || !composeSubject || (!cleanText && !composeBody.includes("<img"))) return;
     setIsComposing(true);
     setComposeError(null);
 
-    const htmlContent = `<div style="font-family: sans-serif; line-height: 1.6; color: #111;">
-      ${composeBody.replace(/\n/g, "<br/>")}
-    </div>`;
+    const htmlContent = composeBody.includes("<")
+      ? `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827;">${composeBody}</div>`
+      : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827;">${composeBody.replace(/\n/g, "<br/>")}</div>`;
 
     const res = await composeNewEmail({
       toEmail: composeTo,
       toName: composeName || undefined,
       subject: composeSubject,
-      messageText: composeBody,
+      messageText: cleanText || composeBody,
       messageHtml: htmlContent,
     });
 
@@ -540,12 +555,30 @@ export function MailboxClient({
                         )}
 
                         {/* Message Content */}
-                        <div className="text-xs text-foreground/90 leading-relaxed font-normal whitespace-pre-wrap break-words">
-                          {msg.body_text || (msg.body_html ? (
-                            <div dangerouslySetInnerHTML={{ __html: msg.body_html }} />
+                        <div className="text-xs text-foreground/90 leading-relaxed font-normal break-words overflow-x-auto">
+                          {msg.body_html ? (
+                            <div
+                              className="prose prose-invert max-w-none text-xs text-foreground/90 leading-relaxed [&_a]:text-accent-blue [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2.5 [&_blockquote]:border-l-2 [&_blockquote]:border-accent-blue [&_blockquote]:pl-3 [&_blockquote]:text-muted"
+                              dangerouslySetInnerHTML={{ __html: msg.body_html }}
+                            />
+                          ) : msg.body_text ? (
+                            <div className="prose prose-invert max-w-none text-xs text-foreground/90 leading-relaxed [&_a]:text-accent-blue [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2.5 [&_blockquote]:border-l-2 [&_blockquote]:border-accent-blue [&_blockquote]:pl-3 [&_blockquote]:text-muted">
+                              <ReactMarkdown
+                                components={{
+                                  a: ({ ...props }) => <a target="_blank" rel="noopener noreferrer" className="text-accent-blue underline hover:text-accent-blue/80" {...props} />,
+                                  p: ({ ...props }) => <p className="mb-2 leading-relaxed" {...props} />,
+                                  ul: ({ ...props }) => <ul className="list-disc pl-5 mb-2 space-y-0.5" {...props} />,
+                                  ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-2 space-y-0.5" {...props} />,
+                                  strong: ({ ...props }) => <strong className="font-semibold text-foreground" {...props} />,
+                                  code: ({ ...props }) => <code className="bg-header/60 px-1 py-0.5 rounded text-[11px] font-mono text-accent-blue" {...props} />,
+                                }}
+                              >
+                                {msg.body_text}
+                              </ReactMarkdown>
+                            </div>
                           ) : (
-                            "(Empty message body)"
-                          ))}
+                            <span className="text-muted italic">(Empty message body)</span>
+                          )}
                         </div>
 
                         {/* Attachments */}
@@ -579,24 +612,23 @@ export function MailboxClient({
                   )}
 
                   <div className="space-y-2">
-                    <textarea
+                    <MailboxRichEditor
                       value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
+                      onChange={setReplyText}
                       placeholder={`Reply directly to ${
                         selectedThread.recipient_name || selectedThread.recipient_email
                       }...`}
-                      rows={3}
-                      className={`${crmInputClass} text-xs resize-none`}
+                      minHeight="100px"
                     />
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between pt-1">
                       <span className="text-[11px] text-muted">
                         Sending as: <strong className="text-foreground">{senderEmail || "Portfolio Admin"}</strong>
                       </span>
 
                       <button
                         onClick={handleSendReply}
-                        disabled={isSendingReply || !replyText.trim()}
+                        disabled={isSendingReply || (!stripHtmlToText(replyText) && !replyText.includes("<img"))}
                         className={crmPrimaryBtnClass}
                       >
                         {isSendingReply ? (
@@ -679,13 +711,11 @@ export function MailboxClient({
 
           <div>
             <label className={crmLabelClass}>Message *</label>
-            <textarea
-              required
-              rows={6}
+            <MailboxRichEditor
               value={composeBody}
-              onChange={(e) => setComposeBody(e.target.value)}
+              onChange={setComposeBody}
               placeholder="Write your email here..."
-              className={`${crmInputClass} resize-none`}
+              minHeight="180px"
             />
           </div>
 
