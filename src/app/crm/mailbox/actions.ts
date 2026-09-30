@@ -32,8 +32,8 @@ export async function getThreads({
     throw new Error("Unauthorized to access mailbox");
   }
 
-  const supabase = await createClient();
-  let query = supabase
+  const adminDb = createAdminClient();
+  let query = adminDb
     .from("crm_threads")
     .select(`
       id,
@@ -86,8 +86,8 @@ export async function getThreadMessages(threadId: string) {
     throw new Error("Unauthorized");
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const adminDb = createAdminClient();
+  const { data, error } = await adminDb
     .from("crm_messages")
     .select("*")
     .eq("thread_id", threadId)
@@ -99,7 +99,7 @@ export async function getThreadMessages(threadId: string) {
   }
 
   // Mark thread as read
-  await supabase
+  await adminDb
     .from("crm_threads")
     .update({ unread_count: 0, updated_at: new Date().toISOString() })
     .eq("id", threadId);
@@ -124,10 +124,10 @@ export async function replyToThread({
     return { error: "You don't have permission to send emails from mailbox" };
   }
 
-  const supabase = await createClient();
+  const adminDb = createAdminClient();
 
   // Load thread
-  const { data: thread } = await supabase
+  const { data: thread } = await adminDb
     .from("crm_threads")
     .select("*")
     .eq("id", threadId)
@@ -136,7 +136,7 @@ export async function replyToThread({
   if (!thread) return { error: "Thread not found" };
 
   // Load latest message in thread to extract in-reply-to headers
-  const { data: lastMsg } = await supabase
+  const { data: lastMsg } = await adminDb
     .from("crm_messages")
     .select("message_id, references_header")
     .eq("thread_id", threadId)
@@ -171,7 +171,7 @@ export async function replyToThread({
   const preview = messageText.slice(0, 140).trim();
 
   // Insert message row
-  await supabase.from("crm_messages").insert([
+  await adminDb.from("crm_messages").insert([
     {
       thread_id: threadId,
       direction: "outbound",
@@ -189,7 +189,7 @@ export async function replyToThread({
   ]);
 
   // Update thread
-  await supabase
+  await adminDb
     .from("crm_threads")
     .update({
       last_message_preview: `You: ${preview}`,
@@ -244,12 +244,12 @@ export async function composeNewEmail({
     return { error: sendRes.error };
   }
 
-  const supabase = await createClient();
+  const adminDb = createAdminClient();
   const sentAt = new Date().toISOString();
   const preview = messageText.slice(0, 140).trim();
 
   // Create thread
-  const { data: newThread, error: threadErr } = await supabase
+  const { data: newThread, error: threadErr } = await adminDb
     .from("crm_threads")
     .insert([
       {
@@ -273,7 +273,7 @@ export async function composeNewEmail({
   }
 
   // Insert message
-  await supabase.from("crm_messages").insert([
+  await adminDb.from("crm_messages").insert([
     {
       thread_id: newThread.id,
       direction: "outbound",
