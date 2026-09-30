@@ -81,7 +81,7 @@ function NavList({ links, pathname, onNavigate }: { links: NavLink[]; pathname: 
   }[] = [
     {
       id: "contacts",
-      title: "Contacts & Leads",
+      title: "Contacts",
       icon: Users,
       links: links.filter((l) => ["/crm/leads", "/crm/clients", "/crm/journeys", "/crm/import"].includes(l.href)),
     },
@@ -93,7 +93,7 @@ function NavList({ links, pathname, onNavigate }: { links: NavLink[]; pathname: 
     },
     {
       id: "finance",
-      title: "Invoices & Finance",
+      title: "Finance",
       icon: Receipt,
       links: links.filter((l) => ["/crm/invoices", "/crm/finance"].includes(l.href)),
     },
@@ -282,42 +282,12 @@ export function CrmShell({
       <div className="flex flex-1 w-full">
         {/* Desktop sidebar */}
         <aside className="hidden md:flex md:flex-col md:w-60 shrink-0 border-r border-border bg-header/30 min-h-screen sticky top-0 self-start">
-          <div className="p-4">
-            <Link href="/crm" className="font-semibold text-base tracking-wide px-3 block mb-4">
-              CRM
+          <div className="p-4 flex-1">
+            <Link href="/crm" className="font-semibold text-base tracking-wide px-3 block mb-4 flex items-center gap-2 text-foreground hover:text-accent-blue transition-colors">
+              <span className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
+              <span>CRM</span>
             </Link>
             <NavList links={links} pathname={pathname} />
-          </div>
-          <div className="mt-auto p-4 border-t border-border">
-            {isSuperAdmin && (
-              <Link
-                href="/manage"
-                className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors mb-1"
-              >
-                <ArrowLeftCircle size={16} />
-                Back to /manage
-              </Link>
-            )}
-            <button
-              onClick={() => setProfileOpen(true)}
-              className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-header/50 transition-colors mb-2 mt-1 group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground group-hover:text-accent-blue transition-colors truncate">
-                  {displayName}
-                </span>
-                <span className="text-[10px] text-accent-blue bg-accent-blue/15 px-1.5 py-0.5 rounded capitalize">
-                  {roleTitle}
-                </span>
-              </div>
-              <p className="text-[11px] text-muted truncate">{adminEmail}</p>
-            </button>
-            <form action={logoutAction}>
-              <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">
-                <LogOut size={16} />
-                Sign out
-              </button>
-            </form>
           </div>
         </aside>
 
@@ -352,19 +322,35 @@ export function CrmShell({
               </div>
               <NavList links={links} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
               <div className="mt-auto pt-4 border-t border-border">
-                <Link
-                  href="/manage"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-accent-blue/10 rounded-md transition-colors mb-1"
+                {isSuperAdmin && (
+                  <Link
+                    href="/manage"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs text-muted hover:text-foreground hover:bg-header/60 rounded-lg transition-colors mb-1"
+                  >
+                    <ArrowLeftCircle size={15} />
+                    <span>Back to /manage</span>
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setProfileOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-header/50 transition-colors my-1 flex items-center justify-between"
                 >
-                  <ArrowLeftCircle size={16} />
-                  Back to /manage
-                </Link>
-                <p className="px-3 text-xs text-muted truncate mb-2 mt-2">{adminEmail}</p>
+                  <div className="truncate">
+                    <span className="text-xs font-semibold text-foreground block truncate">{displayName}</span>
+                    <span className="text-[10px] text-muted truncate block">{adminEmail}</span>
+                  </div>
+                  <span className="text-[9px] text-accent-blue bg-accent-blue/15 px-1.5 py-0.5 rounded capitalize">
+                    {roleTitle}
+                  </span>
+                </button>
                 <form action={logoutAction}>
-                  <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-md transition-colors text-left">
-                    <LogOut size={16} />
-                    Sign out
+                  <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors text-left mt-1">
+                    <LogOut size={15} />
+                    <span>Sign out</span>
                   </button>
                 </form>
               </div>
@@ -372,8 +358,78 @@ export function CrmShell({
           </div>
         )}
 
-        {/* Content */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
+        {/* Main Content Area with Desktop Top Header */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Desktop Top Header Bar */}
+          <header className="hidden md:flex items-center justify-between px-6 py-2.5 border-b border-border bg-header/20 sticky top-0 z-30 backdrop-blur-md">
+            {/* Breadcrumb / Current Path Indicator */}
+            <div className="flex items-center gap-2 text-xs text-muted">
+              <Link href="/crm" className="hover:text-foreground transition-colors font-medium">
+                CRM
+              </Link>
+              {pathname !== "/crm" && (
+                <>
+                  <span>/</span>
+                  <span className="text-foreground font-semibold capitalize">
+                    {pathname.replace("/crm/", "").split("/")[0]}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Right Top Header Actions */}
+            <div className="flex items-center gap-2.5">
+              {isSuperAdmin && (
+                <Link
+                  href="/manage"
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-muted hover:text-foreground hover:bg-header/60 border border-border/70 rounded-lg transition-colors"
+                  title="Switch to website content management"
+                >
+                  <ArrowLeftCircle size={14} className="text-accent-blue" />
+                  <span>Back to /manage</span>
+                </Link>
+              )}
+
+              {/* User Profile Pill */}
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-border/70 hover:border-accent-blue/50 bg-header/40 hover:bg-header/60 transition-all group text-left"
+                title="View team profile and agreements"
+              >
+                <div className="w-6 h-6 rounded-full bg-accent-blue/20 text-accent-blue border border-accent-blue/30 flex items-center justify-center text-xs font-bold shrink-0">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col text-left leading-tight">
+                  <span className="text-xs font-semibold text-foreground group-hover:text-accent-blue transition-colors max-w-[130px] truncate">
+                    {displayName}
+                  </span>
+                  <span className="text-[10px] text-muted truncate max-w-[130px]">
+                    {adminEmail}
+                  </span>
+                </div>
+                <span className="text-[9px] text-accent-blue bg-accent-blue/15 px-1.5 py-0.5 rounded font-medium capitalize ml-0.5">
+                  {roleTitle}
+                </span>
+              </button>
+
+              {/* Sign Out Action Button */}
+              <form action={logoutAction} className="inline-flex">
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 border border-red-500/20 rounded-lg transition-colors"
+                  title="Sign out of CRM"
+                >
+                  <LogOut size={13} />
+                  <span className="hidden lg:inline">Sign out</span>
+                </button>
+              </form>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
+        </div>
       </div>
     </div>
     </CrmFeedbackProvider>
