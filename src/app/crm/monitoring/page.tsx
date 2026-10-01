@@ -10,7 +10,21 @@ export const metadata = { title: "Monitoring · CRM" };
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-type JobRow = { id: string; type: string; status: string; progress: number; total: number; error: string | null; created_at: string };
+import { JobDetailsModal } from "./JobDetailsModal";
+
+type JobRow = {
+  id: string;
+  type: string;
+  status: string;
+  progress: number;
+  total: number;
+  error: string | null;
+  payload?: {
+    recipients?: Array<{ phone?: string; email?: string; name?: string }>;
+    recipientResults?: Array<{ phone: string; name?: string; status: "sent" | "failed"; error?: string; sentAt: string }>;
+  };
+  created_at: string;
+};
 
 function pct(n: number, total: number) {
   if (total === 0) return 0;
@@ -32,7 +46,7 @@ export default async function CrmMonitoringPage({
 
   const [{ data: events }, { data: jobs }, { data: settings }] = await Promise.all([
     supabase.from("crm_email_events").select("id, type, message_id, recipient_email, occurred_at, meta").gte("occurred_at", since.toISOString()),
-    supabase.from("crm_jobs").select("id, type, status, progress, total, error, created_at").order("created_at", { ascending: false }).limit(200),
+    supabase.from("crm_jobs").select("id, type, status, progress, total, error, payload, created_at").order("created_at", { ascending: false }).limit(200),
     supabase.from("crm_settings").select("*").eq("id", "default").maybeSingle(),
   ]);
 
@@ -108,6 +122,20 @@ export default async function CrmMonitoringPage({
     },
     { header: "Progress", cell: (j) => `${j.progress} / ${j.total}` },
     { header: "Created", cell: (j) => new Date(j.created_at).toLocaleString() },
+    {
+      header: "Actions",
+      cell: (j) => (
+        <JobDetailsModal
+          jobId={j.id}
+          jobType={j.type}
+          total={j.total}
+          progress={j.progress}
+          status={j.status}
+          results={j.payload?.recipientResults as never}
+          recipients={j.payload?.recipients}
+        />
+      ),
+    },
   ];
 
   return (

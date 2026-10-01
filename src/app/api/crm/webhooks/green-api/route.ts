@@ -29,6 +29,37 @@ export async function POST(request: Request) {
     const phone = body.senderData?.sender?.replace("@c.us", "") || null;
     const message = body.messageData?.textMessageData?.textMessage || null;
     if (phone) {
+      const cleanPhone = phone.replace(/[^\d+]/g, "").trim();
+      const cleanMsg = (message || "").trim().toLowerCase();
+
+      // Check for opt-out / STOP keywords
+      const OPT_OUT_KEYWORDS = ["stop", "unsubscribe", "cancel", "opt out", "optout", "remove me", "quit"];
+      const isOptOut = OPT_OUT_KEYWORDS.some((kw) => cleanMsg === kw || cleanMsg.startsWith(`${kw} `) || cleanMsg.endsWith(` ${kw}`));
+
+      if (isOptOut) {
+        try {
+          await supabase.from("crm_suppressions").upsert([
+            {
+              email: cleanPhone, // using suppression table with phone number key
+              reason: "unsubscribed",
+            },
+          ]);
+
+          const { createCrmNotification } = await import("@/lib/crm/notifications");
+          await createCrmNotification({
+            title: `WhatsApp Opt-Out Received (${cleanPhone})`,
+            message: `Contact with phone ${cleanPhone} replied "${message}" and has been automatically added to suppressions.`,
+            category: "whatsapp",
+            severity: "warning",
+            required_page_permission: "whatsapp",
+            link_url: "/crm/whatsapp",
+            group_key: `optout_${cleanPhone}`,
+          });
+        } catch (suppErr) {
+          console.error("Failed to record WhatsApp suppression:", suppErr);
+        }
+      }
+
       const { data: client } = await supabase.from("crm_clients").select("id").eq("phone", phone).maybeSingle();
       const { data: lead } = !client ? await supabase.from("crm_leads").select("id").eq("phone", phone).maybeSingle() : { data: null };
 
@@ -37,7 +68,7 @@ export async function POST(request: Request) {
           client_id: client?.id || null,
           lead_id: lead?.id || null,
           direction: "inbound",
-          phone,
+          phone: cleanPhone,
           message,
           status: "delivered",
         },

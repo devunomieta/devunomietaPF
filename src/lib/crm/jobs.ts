@@ -288,38 +288,79 @@ export async function processBulkSendJobBatch(
   return { processed: sentCount, done };
 }
 
+export type RecipientResult = {
+  phone: string;
+  name?: string;
+  status: "sent" | "failed";
+  error?: string;
+  sentAt: string;
+  providerMessageId?: string | null;
+};
+
 type BulkWhatsAppPayload = {
   recipients: { phone: string; name?: string; clientId?: string; leadId?: string }[];
   message: string;
+  recipientResults?: RecipientResult[];
+  lastBatchAt?: string;
 };
+
+export async function getTodaysSentWhatsAppCount(supabase: SupabaseClient): Promise<number> {
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const { count } = await supabase
+    .from("crm_whatsapp_events")
+    .select("*", { count: "exact", head: true })
+    .eq("direction", "outbound")
+    .eq("status", "sent")
+    .gte("occurred_at", startOfDay.toISOString());
+  return count || 0;
+}
 
 export async function processBulkWhatsAppJobBatch(
   supabase: SupabaseClient,
-  job: { id: string; payload: BulkWhatsAppPayload; progress: number; total: number }
+  job: { id: string; payload: BulkWhatsAppPayload; progress: number; total: number },
+  remainingDailyCap = 100
 ): Promise<{ processed: number; done: boolean }> {
   const { recipients, message } = job.payload;
-  const batch = recipients.slice(job.progress, job.progress + BULK_WHATSAPP_BATCH_SIZE);
+  const recipientResults: RecipientResult[] = job.payload.recipientResults ? [...job.payload.recipientResults] : [];
 
-  if (batch.length === 0) {
+  if (job.progress >= recipients.length) {
     await supabase.from("crm_jobs").update({ status: "done", progress: job.total, updated_at: new Date().toISOString() }).eq("id", job.id);
     return { processed: 0, done: true };
   }
 
-  // Intermittent pause configuration: pause every 5 to 10 messages
-  // We randomly pick a threshold between 5 and 10 messages for a block
-  let messagesUntilPause = Math.floor(Math.random() * (10 - 5 + 1)) + 5; // 5 - 10
-  let sentInSession = 0;
+  if (remainingDailyCap <= 0) {
+    console.warn(`[WhatsApp Batch] Daily sending quota reached for job ${job.id}. Will wait for next day.`);
+    return { processed: 0, done: false };
+  }
+
+  // Slice at most 1 to 2 messages per serverless execution step or up to remainingDailyCap
+  // Standard serverless timeout is 60s. 1 msg with 30s-45s jitter safely completes within budget.
+  const sliceSize = Math.max(1, Math.min(2, remainingDailyCap));
+  const batch = recipients.slice(job.progress, job.progress + sliceSize);
+
+  let sentCount = 0;
+  let currentProgress = job.progress;
 
   for (let i = 0; i < batch.length; i++) {
+    // Check if the job was canceled by the user
+    const { data: currentJob } = await supabase.from("crm_jobs").select("status").eq("id", job.id).maybeSingle();
+    if (currentJob?.status === "canceled") {
+      console.log(`[WhatsApp Batch] Job ${job.id} was canceled by user. Stopping processing.`);
+      return { processed: sentCount, done: true };
+    }
+
     const recipient = batch[i];
-    
+
     // 1. Spintax: Each recipient gets a uniquely spun copy of the message template
     const spunMessage = spinText(message);
-    
+
     // 2. Personalize with {{first_name}}, {{company}}, etc.
     const personalized = personalizeText(spunMessage, recipient);
 
     const result = await sendWhatsAppMessage({ phone: recipient.phone, message: personalized });
+    const isSuccess = !("error" in result);
+
     const { error: logError } = await supabase.from("crm_whatsapp_events").insert([
       {
         client_id: recipient.clientId || null,
@@ -327,47 +368,65 @@ export async function processBulkWhatsAppJobBatch(
         direction: "outbound",
         phone: recipient.phone,
         message: personalized,
-        status: "error" in result ? "failed" : "sent",
+        status: isSuccess ? "sent" : "failed",
         provider_message_id: "messageId" in result ? result.messageId : null,
       },
     ]);
-    if (!("error" in result) && recipient.leadId) {
-      const { autoPromoteLeadToContacted } = await import("@/lib/crm/communicationResolver");
-      await autoPromoteLeadToContacted(recipient.leadId);
+    if (logError) {
+      console.error(`[WhatsApp Batch] Failed to log event for ${recipient.phone}:`, logError.message);
     }
 
-    sentInSession++;
-
-    // Only apply delay if there are more messages to send in this batch
-    if (i < batch.length - 1) {
-      // Check if we hit the intermittent pause threshold (every 5-10 messages)
-      if (sentInSession >= messagesUntilPause) {
-        // Intermittent pause: 5 to 10 minutes (in ms)
-        const pauseMinutes = Math.floor(Math.random() * (10 - 5 + 1)) + 5; // 5 to 10 mins
-        const pauseMs = pauseMinutes * 60 * 1000;
-        console.log(`[WhatsApp Batch] Intermittent protective pause for ${pauseMinutes} minutes (${pauseMs}ms) after ${sentInSession} messages.`);
-        await new Promise((r) => setTimeout(r, pauseMs));
-        
-        // Reset counter and pick next random threshold (5-10)
-        sentInSession = 0;
-        messagesUntilPause = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
-      } else {
-        // Standard Randomized Delay: 40s to 70s jitter
-        const jitterMs = Math.floor(Math.random() * (70000 - 40000 + 1)) + 40000;
-        console.log(`[WhatsApp Batch] Jitter delay: ${(jitterMs / 1000).toFixed(1)}s before next message.`);
-        await new Promise((r) => setTimeout(r, jitterMs));
+    if (isSuccess) {
+      sentCount++;
+      if (recipient.leadId) {
+        const { autoPromoteLeadToContacted } = await import("@/lib/crm/communicationResolver");
+        await autoPromoteLeadToContacted(recipient.leadId);
       }
+    }
+
+    // Record recipient status into ledger
+    recipientResults.push({
+      phone: recipient.phone,
+      name: recipient.name,
+      status: isSuccess ? "sent" : "failed",
+      error: !isSuccess ? result.error : undefined,
+      sentAt: new Date().toISOString(),
+      providerMessageId: "messageId" in result ? result.messageId : null,
+    });
+
+    currentProgress++;
+    const isDone = currentProgress >= job.total;
+
+    // ATOMIC PROGRESS UPDATE: Immediately commit progress after EACH message
+    // If the serverless process dies or is killed, it will NEVER resend to this recipient
+    await supabase
+      .from("crm_jobs")
+      .update({
+        progress: currentProgress,
+        status: isDone ? "done" : "queued",
+        payload: {
+          ...job.payload,
+          recipientResults,
+          lastBatchAt: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+
+    if (isDone) {
+      return { processed: sentCount, done: true };
+    }
+
+    // Apply safe randomized jitter before sending the second message in this slice
+    if (i < batch.length - 1) {
+      const jitterMs = Math.floor(Math.random() * (25000 - 15000 + 1)) + 15000; // 15s to 25s safe within slice
+      console.log(`[WhatsApp Batch] In-slice jitter delay: ${(jitterMs / 1000).toFixed(1)}s`);
+      await new Promise((r) => setTimeout(r, jitterMs));
     }
   }
 
-  const newProgress = job.progress + batch.length;
-  const done = newProgress >= job.total;
-  await supabase
-    .from("crm_jobs")
-    .update({ progress: newProgress, status: done ? "done" : "queued", updated_at: new Date().toISOString() })
-    .eq("id", job.id);
-
-  return { processed: batch.length, done };
+  const done = currentProgress >= job.total;
+  return { processed: sentCount, done };
 }
 
 export async function getTodaysSentEmailCount(supabase: SupabaseClient): Promise<number> {
@@ -392,22 +451,45 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
 
   if (!jobs || jobs.length === 0) return { jobsTouched: 0 };
 
-  const { data: settings } = await supabase.from("crm_settings").select("brevo_daily_cap").eq("id", "default").maybeSingle();
-  const dailyCap = settings?.brevo_daily_cap ?? 300;
-  const sentToday = await getTodaysSentEmailCount(supabase);
-  let remainingCap = Math.max(0, dailyCap - sentToday);
+  const { data: settings } = await supabase
+    .from("crm_settings")
+    .select("brevo_daily_cap, whatsapp_daily_cap, whatsapp_warmup_mode")
+    .eq("id", "default")
+    .maybeSingle();
+
+  const dailyEmailCap = settings?.brevo_daily_cap ?? 300;
+  const sentEmailsToday = await getTodaysSentEmailCount(supabase);
+  let remainingEmailCap = Math.max(0, dailyEmailCap - sentEmailsToday);
+
+  // WhatsApp daily cap & warm-up logic
+  const defaultWhatsAppCap = settings?.whatsapp_daily_cap ?? 60;
+  const sentWhatsAppToday = await getTodaysSentWhatsAppCount(supabase);
+  let remainingWhatsAppCap = Math.max(0, defaultWhatsAppCap - sentWhatsAppToday);
 
   for (const job of jobs) {
+    // Check batch wait cooldown for WhatsApp (e.g. 5 minutes between bursts if specified)
+    if (job.type === "bulk_whatsapp") {
+      const lastBatchAt = job.payload?.lastBatchAt;
+      if (lastBatchAt) {
+        const elapsedMs = Date.now() - new Date(lastBatchAt).getTime();
+        // If less than 20 seconds have elapsed since last send, skip this iteration to allow safe pacing
+        if (elapsedMs < 20000) {
+          continue;
+        }
+      }
+    }
+
     if (job.status === "queued") {
       await supabase.from("crm_jobs").update({ status: "processing", updated_at: new Date().toISOString() }).eq("id", job.id);
     }
     if (job.type === "import") {
       await processImportJobBatch(supabase, job as never);
     } else if (job.type === "bulk_send") {
-      const result = await processBulkSendJobBatch(supabase, job as never, remainingCap);
-      remainingCap -= result.processed;
+      const result = await processBulkSendJobBatch(supabase, job as never, remainingEmailCap);
+      remainingEmailCap -= result.processed;
     } else if (job.type === "bulk_whatsapp") {
-      await processBulkWhatsAppJobBatch(supabase, job as never);
+      const result = await processBulkWhatsAppJobBatch(supabase, job as never, remainingWhatsAppCap);
+      remainingWhatsAppCap -= result.processed;
     }
   }
 

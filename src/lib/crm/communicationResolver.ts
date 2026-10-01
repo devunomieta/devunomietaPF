@@ -652,3 +652,89 @@ export async function resolveEntityFromPhone(rawPhone: string): Promise<Resolved
   return { clientId: null, leadId: null, contactId: null, matchedVia: "none" };
 }
 
+/**
+ * Batch resolve entities for an array of phone numbers.
+ * Matches across contacts, clients, and leads.
+ */
+export async function batchResolveEntitiesFromPhones(
+  phones: string[]
+): Promise<Map<string, ResolvedEntityIdentity>> {
+  const map = new Map<string, ResolvedEntityIdentity>();
+  if (!phones || phones.length === 0) return map;
+
+  const supabase = createAdminClient();
+
+  // Fetch candidate records
+  const [{ data: contacts }, { data: clients }, { data: leads }] = await Promise.all([
+    supabase.from("crm_contacts").select("id, name, role, phone, client_id, lead_id").not("phone", "is", null),
+    supabase.from("crm_clients").select("id, name, phone").not("phone", "is", null),
+    supabase.from("crm_leads").select("id, name, phone").not("phone", "is", null),
+  ]);
+
+  const cleanDigits = (p: string | null | undefined) => (p ? p.replace(/\D/g, "") : "");
+
+  for (const rawPhone of phones) {
+    const digits = cleanDigits(rawPhone);
+    if (!digits || digits.length < 6) continue;
+
+    // Check contact
+    const contact = (contacts || []).find((c) => {
+      const cDig = cleanDigits(c.phone);
+      return cDig && (cDig.endsWith(digits) || digits.endsWith(cDig));
+    });
+    if (contact) {
+      map.set(rawPhone, {
+        clientId: contact.client_id,
+        leadId: contact.lead_id,
+        contactId: contact.id,
+        matchedVia: "contact_exact",
+        contactName: contact.name,
+        contactRole: contact.role || undefined,
+      });
+      continue;
+    }
+
+    // Check client
+    const client = (clients || []).find((cl) => {
+      const clDig = cleanDigits(cl.phone);
+      return clDig && (clDig.endsWith(digits) || digits.endsWith(clDig));
+    });
+    if (client) {
+      map.set(rawPhone, {
+        clientId: client.id,
+        leadId: null,
+        contactId: null,
+        matchedVia: "client_exact",
+        entityName: client.name,
+      });
+      continue;
+    }
+
+    // Check lead
+    const lead = (leads || []).find((ld) => {
+      const ldDig = cleanDigits(ld.phone);
+      return ldDig && (ldDig.endsWith(digits) || digits.endsWith(ldDig));
+    });
+    if (lead) {
+      map.set(rawPhone, {
+        clientId: null,
+        leadId: lead.id,
+        contactId: null,
+        matchedVia: "lead_exact",
+        entityName: lead.name,
+      });
+      continue;
+    }
+
+    map.set(rawPhone, {
+      clientId: null,
+      leadId: null,
+      contactId: null,
+      matchedVia: "none",
+    });
+  }
+
+  return map;
+}
+
+

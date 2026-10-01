@@ -119,6 +119,41 @@ export function SettingsForm({ settings, whatsappConfigured }: { settings: CrmSe
           </div>
         </div>
 
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mt-2">WhatsApp Safety &amp; Quotas</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-header/10 border border-border/80 rounded-xl p-4">
+          <div>
+            <label className={crmLabelClass} htmlFor="whatsapp_daily_cap">WhatsApp Daily Send Cap</label>
+            <input
+              id="whatsapp_daily_cap"
+              name="whatsapp_daily_cap"
+              type="number"
+              min="10"
+              max="1000"
+              defaultValue={settings?.whatsapp_daily_cap ?? 60}
+              className={crmInputClass}
+            />
+            <p className="text-xs text-muted mt-1">
+              Limits total outgoing bulk WhatsApp messages per day to prevent provider bans.
+            </p>
+          </div>
+          <div className="flex flex-col justify-center">
+            <label className="flex items-center gap-2 cursor-pointer mt-4 sm:mt-2">
+              <input
+                type="checkbox"
+                name="whatsapp_warmup_mode"
+                defaultChecked={settings?.whatsapp_warmup_mode ?? true}
+                className="rounded border-border text-accent-blue focus:ring-accent-blue h-4 w-4 bg-header"
+              />
+              <span className="text-sm font-medium text-foreground">
+                Gradual Warm-Up Mode
+              </span>
+            </label>
+            <p className="text-xs text-muted ml-6 mt-1">
+              Paces batches conservatively with protective anti-ban pauses between contacts.
+            </p>
+          </div>
+        </div>
+
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mt-2">Automated Monthly Reports</h2>
         <div className="flex flex-col gap-3">
           <div>

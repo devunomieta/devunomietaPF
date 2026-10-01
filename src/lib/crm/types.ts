@@ -108,6 +108,8 @@ export type CrmSettings = {
   default_tax_rate: number;
   brevo_daily_cap: number;
   whatsapp_enabled: boolean;
+  whatsapp_daily_cap?: number;
+  whatsapp_warmup_mode?: boolean;
   bounce_alert_threshold: number;
   complaint_alert_threshold: number;
   report_notification_emails?: string[];

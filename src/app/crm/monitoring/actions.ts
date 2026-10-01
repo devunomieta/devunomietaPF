@@ -21,6 +21,19 @@ export async function processJobsNow(): Promise<{ jobsTouched: number }> {
   return result;
 }
 
+export async function cancelJobAction(jobId: string): Promise<ActionResult> {
+  const supabase = await requireAdmin();
+  const { error } = await supabase
+    .from("crm_jobs")
+    .update({ status: "canceled", updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/crm/monitoring");
+  return { success: true };
+}
+
 export async function sendTestReportAction(params: {
   cadence: ReportCadence;
   year: number;

@@ -6,7 +6,7 @@ import { Loader2, Send, Users, Shuffle, Sparkles, ShieldCheck, ShieldAlert, Tag,
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
-import { sendSingleWhatsApp, createBulkWhatsApp, previewWhatsAppAudienceCount } from "./actions";
+import { sendSingleWhatsApp, createBulkWhatsApp, previewWhatsAppAudienceCount, previewCustomWhatsAppAudience } from "./actions";
 import { hasSpintax, generateVariations } from "@/lib/crm/spintax";
 import {
   createShortLink,
@@ -29,11 +29,11 @@ export function WhatsAppForm({
   disabled: boolean;
   prefillRecipient: PrefillRecipient | null;
   prefillMessage?: string | null;
-  initialMode?: "single" | "bulk" | null;
+  initialMode?: "single" | "bulk" | "custom" | null;
 }) {
   const router = useRouter();
   const { toast, canPerform } = useCrmFeedback();
-  const [mode, setMode] = useState<"single" | "bulk">(
+  const [mode, setMode] = useState<"single" | "bulk" | "custom">(
     initialMode || (prefillRecipient ? "single" : "bulk")
   );
   const [segment, setSegment] = useState<"clients" | "leads" | "all">("leads");
@@ -41,6 +41,16 @@ export function WhatsAppForm({
   const [stageKey, setStageKey] = useState("");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Custom Batch Paste State
+  const [customPhonesRaw, setCustomPhonesRaw] = useState<string>("");
+  const [customAnalysis, setCustomAnalysis] = useState<{
+    validCount: number;
+    matchedCount: number;
+    suppressedCount: number;
+    samples: Array<{ phone: string; name?: string; matched: boolean; type?: string; error?: string }>;
+  } | null>(null);
+  const [checkingCustom, setCheckingCustom] = useState(false);
 
   // Link Shortener Modal State
   const [showShortenModal, setShowShortenModal] = useState(false);
@@ -157,6 +167,7 @@ export function WhatsAppForm({
       )
     : availableTags.slice(0, 6);
 
+  // Recalculate audience on changes for bulk mode
   useEffect(() => {
     if (mode !== "bulk") return;
     const timeout = setTimeout(async () => {
@@ -169,6 +180,27 @@ export function WhatsAppForm({
     }, 250);
     return () => clearTimeout(timeout);
   }, [mode, segment, selectedTags, stageKey]);
+
+  // Recalculate custom audience validation & CRM match preview on paste/edit
+  useEffect(() => {
+    if (mode !== "custom") return;
+    if (!customPhonesRaw.trim()) {
+      setCustomAnalysis(null);
+      return;
+    }
+    setCheckingCustom(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const details = await previewCustomWhatsAppAudience(customPhonesRaw);
+        setCustomAnalysis(details);
+      } catch (err) {
+        console.error("Failed to preview custom WhatsApp audience:", err);
+      } finally {
+        setCheckingCustom(false);
+      }
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [mode, customPhonesRaw]);
 
   function handleShufflePreview() {
     if (!message.trim()) {
@@ -190,16 +222,20 @@ export function WhatsAppForm({
     e.preventDefault();
     setLoading(true);
     const formData = new FormData(e.currentTarget);
+    formData.set("sendMode", mode);
     formData.set("segment", segment);
     formData.set("tags", selectedTags.join(","));
     formData.set("stageKey", stageKey);
     formData.set("message", message);
+    if (mode === "custom") {
+      formData.set("customPhones", customPhonesRaw);
+    }
 
     const result = mode === "single" ? await sendSingleWhatsApp(formData) : await createBulkWhatsApp(formData);
     setLoading(false);
     if ("success" in result) {
       const warning = (result as { warning?: string }).warning;
-      toast(warning || "Sent.", warning ? "error" : "success");
+      toast(warning || "WhatsApp queued for processing.", warning ? "error" : "success");
       router.refresh();
     } else {
       toast(result.error);
@@ -227,7 +263,16 @@ export function WhatsAppForm({
             mode === "bulk" ? "bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/30" : "border-border text-muted hover:text-foreground"
           }`}
         >
-          Small batch
+          Audience Filter
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("custom")}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+            mode === "custom" ? "bg-accent-blue text-white border-accent-blue shadow-sm shadow-accent-blue/30" : "border-border text-muted hover:text-foreground"
+          }`}
+        >
+          Custom Batch (Paste)
         </button>
       </div>
 
@@ -247,6 +292,108 @@ export function WhatsAppForm({
             />
           </div>
         </>
+      ) : mode === "custom" ? (
+        /* Custom Batch Paste UI */
+        <div className="flex flex-col gap-4 bg-background/50 border border-border/80 rounded-xl p-4 animate-in fade-in duration-200">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={crmLabelClass} htmlFor="customPhones" style={{ marginBottom: 0 }}>
+                Batch Paste WhatsApp Numbers *
+              </label>
+              <span className="text-[11px] text-muted">
+                Separated by newlines, commas, or semicolons (supports &quot;Name &lt;Phone&gt;&quot; or plain numbers)
+              </span>
+            </div>
+            <textarea
+              id="customPhones"
+              name="customPhones"
+              rows={4}
+              value={customPhonesRaw}
+              onChange={(e) => setCustomPhonesRaw(e.target.value)}
+              placeholder="e.g. 0803 306 1252, John Doe&#10;+234 816 739 6380&#10;Dr. Prestige <08033467911>"
+              className={`${crmInputClass} font-mono text-xs leading-relaxed resize-y`}
+            />
+          </div>
+
+          {/* Real-time Validation & CRM Match Breakdown */}
+          <div className="bg-header/40 border border-border rounded-lg p-3.5 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+              <div className="flex items-center gap-2 text-foreground">
+                <Users size={15} className="text-accent-blue" />
+                <span>
+                  {checkingCustom ? (
+                    <span className="flex items-center gap-1.5 text-muted">
+                      <Loader2 size={12} className="animate-spin" /> Resolving numbers & CRM contacts…
+                    </span>
+                  ) : !customAnalysis ? (
+                    <span className="text-muted">Paste phone numbers above to calculate audience and match CRM records.</span>
+                  ) : (
+                    <>
+                      <strong className="text-accent-blue text-sm font-semibold">{customAnalysis.validCount - customAnalysis.suppressedCount}</strong> contact(s) ready to message.
+                    </>
+                  )}
+                </span>
+              </div>
+
+              {customAnalysis && customAnalysis.validCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Check size={11} />
+                    {customAnalysis.matchedCount} matched in CRM
+                  </span>
+                  {customAnalysis.suppressedCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                      <ShieldAlert size={11} />
+                      {customAnalysis.suppressedCount} opted-out (suppressed)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Note & Sample Resolved Entities Chips */}
+            {customAnalysis && customAnalysis.samples.length > 0 && (
+              <div className="pt-2 border-t border-border/50 text-[11px] text-muted flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground/80">Recipients Preview & CRM Linking:</span>
+                  <span className="text-[10px] text-muted/80">Showing first {customAnalysis.samples.length}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {customAnalysis.samples.map((s, idx) => (
+                    <span
+                      key={idx}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] border ${
+                        s.error
+                          ? "bg-red-500/10 border-red-500/30 text-red-400"
+                          : s.matched
+                            ? "bg-accent-blue/10 border-accent-blue/30 text-accent-blue font-medium"
+                            : "bg-header/60 border-border text-foreground/75"
+                      }`}
+                      title={s.error || (s.matched ? `Linked to ${s.type}: ${s.name || s.phone}` : "External number")}
+                    >
+                      {s.matched && <Check size={10} className="text-accent-blue" />}
+                      <span>{s.name ? `${s.name} (${s.phone})` : s.phone}</span>
+                      {s.type && (
+                        <span className="text-[9px] uppercase px-1 rounded bg-accent-blue/20 text-accent-blue font-semibold">
+                          {s.type}
+                        </span>
+                      )}
+                      {s.error && <span className="text-[9px] text-red-400 font-semibold">({s.error})</span>}
+                    </span>
+                  ))}
+                  {customAnalysis.validCount > customAnalysis.samples.length && (
+                    <span className="text-[11px] text-muted self-center ml-1">
+                      +{customAnalysis.validCount - customAnalysis.samples.length} more
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-emerald-400/90 mt-1">
+                  ✓ Numbers are automatically formatted to international E.164 (e.g. 0803... → 234803...). Matching Leads/Clients will show messages in their activity timeline.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col gap-4 bg-background/50 border border-border/80 rounded-xl p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -551,7 +698,7 @@ export function WhatsAppForm({
         className={`${crmPrimaryBtnClass} self-start mt-1 disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-        {mode === "single" ? "Send" : "Send batch"}
+        {mode === "single" ? "Send single message" : mode === "custom" ? "Send custom batch" : "Send audience batch"}
       </button>
 
       {/* Branded Link Shortener Modal */}

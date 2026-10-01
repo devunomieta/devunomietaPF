@@ -4,14 +4,14 @@ const idInstance = process.env.GREEN_API_ID_INSTANCE;
 const apiTokenInstance = process.env.GREEN_API_API_TOKEN_INSTANCE;
 const baseUrl = process.env.GREEN_API_BASE_URL || "https://api.green-api.com";
 
+import { normalizeE164Phone } from "@/lib/crm/phone";
+
 export function isGreenApiConfigured() {
   return Boolean(idInstance && apiTokenInstance);
 }
 
 function normalizePhone(phone: string): string | null {
-  const digits = phone.replace(/[^\d]/g, "");
-  if (digits.length < 8) return null;
-  return digits;
+  return normalizeE164Phone(phone);
 }
 
 export async function sendWhatsAppMessage({

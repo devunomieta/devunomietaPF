@@ -37,6 +37,8 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
       default_currency: (formData.get("default_currency") as string)?.trim() || "NGN",
       default_tax_rate: parseFloat(formData.get("default_tax_rate") as string) || 0,
       brevo_daily_cap: parseInt(formData.get("brevo_daily_cap") as string) || 300,
+      whatsapp_daily_cap: parseInt(formData.get("whatsapp_daily_cap") as string) || 60,
+      whatsapp_warmup_mode: formData.get("whatsapp_warmup_mode") === "on" || formData.get("whatsapp_warmup_mode") === "true",
       bounce_alert_threshold: parseFloat(formData.get("bounce_alert_threshold") as string) || 5,
       complaint_alert_threshold: parseFloat(formData.get("complaint_alert_threshold") as string) || 0.1,
       report_notification_emails: (formData.get("report_notification_emails") as string)
