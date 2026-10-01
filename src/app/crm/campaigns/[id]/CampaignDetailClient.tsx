@@ -175,8 +175,9 @@ export function CampaignDetailClient({
   const columns: CrmColumn<EventRecord>[] = [
     {
       header: "Recipient",
+      mobileStacked: true,
       cell: (e) => (
-        <span className="font-medium text-foreground">{e.recipient_email}</span>
+        <span className="font-semibold text-foreground text-sm block break-all">{e.recipient_email}</span>
       ),
     },
     {
@@ -248,7 +249,12 @@ export function CampaignDetailClient({
   const recipientColumns: CrmColumn<typeof recipientsList[0]>[] = [
     {
       header: "Recipient Email",
-      cell: (r) => <span className="font-semibold text-foreground">{r.email}</span>,
+      mobileStacked: true,
+      cell: (r) => (
+        <span className="font-semibold text-foreground text-sm block break-all">
+          {r.email}
+        </span>
+      ),
     },
     {
       header: "Delivery",
@@ -329,12 +335,12 @@ export function CampaignDetailClient({
           Back to Campaigns
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-lg sm:text-2xl font-bold text-foreground tracking-tight break-words">
                 {campaign.subject || "(Untitled Campaign)"}
               </h1>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/20 capitalize">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/20 capitalize shrink-0">
                 {campaign.status}
               </span>
             </div>
@@ -349,7 +355,7 @@ export function CampaignDetailClient({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => {
                 setRefreshing(true);

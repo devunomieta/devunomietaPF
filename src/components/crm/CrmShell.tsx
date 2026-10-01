@@ -263,24 +263,33 @@ export function CrmShell({
     <CrmFeedbackProvider permissions={permissions} isSuperAdmin={isSuperAdmin}>
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Mobile top bar */}
-      <div className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-header/50 sticky top-0 z-40">
-        <Link href="/crm" className="font-semibold text-sm tracking-wide">
-          CRM
-        </Link>
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-          <button
-            onClick={() => setProfileOpen(true)}
-            className="p-1.5 text-xs text-muted hover:text-foreground flex items-center gap-1"
-          >
-            <UserCheck size={16} />
-          </button>
+      <div className="md:hidden flex items-center justify-between px-3 h-14 border-b border-border bg-header/95 backdrop-blur-md sticky top-0 z-40">
+        {/* Left: Hamburger menu */}
+        <div className="flex items-center">
           <button
             aria-label="Open menu"
             onClick={() => setMobileOpen(true)}
-            className="p-2 -mr-2 text-muted hover:text-foreground"
+            className="p-2 -ml-1 text-muted hover:text-foreground active:text-foreground rounded-lg transition-colors"
           >
             <Menu size={22} />
+          </button>
+        </div>
+
+        {/* Center: CRM title */}
+        <Link href="/crm" className="font-bold text-sm tracking-wider uppercase text-foreground hover:text-accent-blue transition-colors">
+          CRM
+        </Link>
+
+        {/* Right: Notifications bell & User profile */}
+        <div className="flex items-center gap-1.5">
+          <NotificationBell />
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="p-1.5 text-xs text-muted hover:text-foreground rounded-lg transition-colors flex items-center justify-center"
+            title="User Profile"
+            aria-label="User Profile"
+          >
+            <UserCheck size={18} />
           </button>
         </div>
       </div>
@@ -437,7 +446,7 @@ export function CrmShell({
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
+          <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">{children}</main>
         </div>
       </div>
     </div>

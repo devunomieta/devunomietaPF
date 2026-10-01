@@ -203,7 +203,7 @@ export function NotificationBell({ initialCount = 0 }: { initialCount?: number }
 
       {/* Flyout Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-border/80 bg-background/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed sm:absolute right-3 sm:right-0 top-16 sm:top-auto sm:mt-2 w-[calc(100vw-24px)] sm:w-96 max-w-sm rounded-xl border border-border/80 bg-background/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
           {/* Dropdown Header */}
           <div className="px-4 py-3 border-b border-border/70 flex items-center justify-between bg-header/40">
             <div className="flex items-center gap-2">

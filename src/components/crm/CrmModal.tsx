@@ -18,14 +18,18 @@ export function CrmModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div
-        className={`relative w-full ${widthClassName || "max-w-lg"} max-h-[90vh] overflow-y-auto bg-background border border-border rounded-xl p-5 sm:p-6`}
+        className={`relative w-full ${widthClassName || "max-w-lg"} max-h-[92vh] overflow-y-auto bg-background border border-border rounded-xl p-4 sm:p-6 shadow-2xl`}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-foreground">{title}</h2>
-          <button aria-label="Close" onClick={onClose} className="text-muted hover:text-foreground">
+          <h2 className="text-sm sm:text-base font-semibold text-foreground pr-2 truncate">{title}</h2>
+          <button
+            aria-label="Close"
+            onClick={onClose}
+            className="p-1 rounded-md text-muted hover:text-foreground hover:bg-header/50 transition-colors shrink-0"
+          >
             <X size={18} />
           </button>
         </div>

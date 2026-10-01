@@ -24,6 +24,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { CrmModal, crmInputClass, crmLabelClass, crmPrimaryBtnClass, crmSecondaryBtnClass } from "@/components/crm/CrmModal";
+import { ResponsiveTable } from "@/components/crm/ResponsiveTable";
 import { CrmTooltip } from "@/components/crm/CrmTooltip";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import { ROLE_PRESETS } from "@/lib/crm/types";
@@ -193,7 +194,7 @@ export function UsersManager({
     <div className="flex flex-col gap-6">
       {/* Top Action & Navigation Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 border-b border-border sm:border-0 pb-2 sm:pb-0">
+        <div className="flex items-center gap-2 border-b border-border sm:border-0 pb-2 sm:pb-0 overflow-x-auto max-w-full scrollbar-none">
           <button
             onClick={() => setActiveTab("users")}
             className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors ${
@@ -233,196 +234,203 @@ export function UsersManager({
 
       {/* Tab 1: User Accounts Table */}
       {activeTab === "users" && (
-        <div className="bg-header/20 border border-border rounded-xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-header/40 text-muted uppercase tracking-wider font-semibold border-b border-border/80">
-                <tr>
-                  <th className="py-3 px-4">Member</th>
-                  <th className="py-3 px-4">Role Title</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Agreement &amp; NDA</th>
-                  <th className="py-3 px-4">Permissions</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50 text-foreground/90">
-                {users.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-muted">
-                      No assistant or team accounts added yet. Click &quot;Add Team Member&quot; to onboard someone.
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((u) => {
-                    const pageCount = u.permissions 
-                      ? Object.values(u.permissions.pages).filter(Boolean).length 
-                      : 0;
-                    const canDeleteRecs = u.permissions?.actions.clients_delete || u.permissions?.actions.leads_delete;
-                    const agreementSigned = u.agreement_status === "signed" || u.agreement?.status === "signed";
-                    const agreementId = u.agreement?.id;
+        <div className="bg-header/20 border border-border rounded-xl p-3 sm:p-4 shadow-xs">
+          <ResponsiveTable<CrmUser>
+            rows={users}
+            emptyLabel="No assistant or team accounts added yet. Click &quot;Add Team Member&quot; to onboard someone."
+            onRowClick={(u) => setSelectedUserDetail(u)}
+            columns={[
+              {
+                header: "Member",
+                mobileStacked: true,
+                cell: (u) => (
+                  <div className="flex flex-col min-w-0">
+                    <div className="font-semibold text-foreground group-hover:text-accent-blue transition-colors flex items-center gap-1.5 flex-wrap">
+                      <span>{u.display_name}</span>
+                      {u.email === currentUserEmail && (
+                        <span className="text-[10px] bg-accent-blue/15 text-accent-blue px-1.5 py-0.5 rounded font-medium">You</span>
+                      )}
+                    </div>
+                    <span className="text-muted text-[11px] truncate">{u.email}</span>
+                  </div>
+                ),
+              },
+              {
+                header: "Role Title",
+                cell: (u) => (
+                  <span className="font-medium text-foreground/80 text-xs">
+                    {u.role_title}
+                  </span>
+                ),
+              },
+              {
+                header: "Status",
+                cell: (u) => (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                      u.is_active
+                        ? "bg-accent-green/15 text-accent-green border-accent-green/30"
+                        : "bg-red-400/15 text-red-400 border-red-400/30"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-accent-green" : "bg-red-400"}`} />
+                    {u.is_active ? "Active" : "Suspended"}
+                  </span>
+                ),
+              },
+              {
+                header: "Agreement & NDA",
+                mobileStacked: true,
+                cell: (u) => {
+                  const agreementSigned = u.agreement_status === "signed" || u.agreement?.status === "signed";
+                  const agreementId = u.agreement?.id;
 
-                    return (
-                      <tr 
-                        key={u.id} 
-                        onClick={() => setSelectedUserDetail(u)}
-                        className="hover:bg-header/40 cursor-pointer transition-colors group"
-                        title="Click to view complete member profile, agreements & telemetry"
-                      >
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-foreground group-hover:text-accent-blue transition-colors flex items-center gap-1.5">
-                            {u.display_name}
-                            {u.email === currentUserEmail && (
-                              <span className="text-[10px] bg-accent-blue/15 text-accent-blue px-1.5 py-0.5 rounded">You</span>
-                            )}
-                          </div>
-                          <div className="text-muted text-[11px]">{u.email}</div>
-                        </td>
-                        <td className="py-3 px-4 font-medium text-foreground/80">
-                          {u.role_title}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-                              u.is_active
-                                ? "bg-accent-green/15 text-accent-green border-accent-green/30"
-                                : "bg-red-400/15 text-red-400 border-red-400/30"
-                            }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-accent-green" : "bg-red-400"}`} />
-                            {u.is_active ? "Active" : "Suspended"}
+                  return (
+                    <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            agreementSigned
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                          }`}
+                        >
+                          {agreementSigned ? "✓ Signed & Sealed" : "⏳ Pending Consent"}
+                        </span>
+                        {agreementSigned && u.agreement?.signed_at && (
+                          <span className="text-[10px] text-muted">
+                            {new Date(u.agreement.signed_at).toLocaleDateString()}
                           </span>
-                        </td>
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                                  agreementSigned
-                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
-                                }`}
-                              >
-                                {agreementSigned ? "✓ Signed & Sealed" : "⏳ Pending Consent"}
-                              </span>
-                              {agreementSigned && u.agreement?.signed_at && (
-                                <span className="text-[10px] text-muted">
-                                  {new Date(u.agreement.signed_at).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                            {agreementId && (
-                              <div className="flex items-center gap-1.5">
-                                <a
-                                  href={`/api/crm/agreements/${agreementId}/download?preview=true`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="px-2 py-0.5 rounded text-[11px] font-medium border border-border/80 hover:bg-header/50 text-foreground/90 flex items-center gap-1 transition-colors"
-                                  title="Preview Agreement Document"
-                                >
-                                  <ExternalLink size={11} className="text-accent-blue" />
-                                  <span>Preview</span>
-                                </a>
-                                <a
-                                  href={`/api/crm/agreements/${agreementId}/download`}
-                                  download
-                                  className="px-2 py-0.5 rounded text-[11px] font-medium bg-accent-blue/15 hover:bg-accent-blue/25 text-accent-blue border border-accent-blue/30 flex items-center gap-1 transition-colors"
-                                  title="Download Signed Agreement PDF"
-                                >
-                                  <Download size={11} />
-                                  <span>Download PDF</span>
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-header/50 border border-border/80 px-2 py-0.5 rounded text-[11px]">
-                              {pageCount} of {PAGE_KEYS.length} pages
-                            </span>
-                            {canDeleteRecs ? (
-                              <span className="text-red-400 text-[10px] bg-red-400/10 px-1.5 py-0.5 rounded border border-red-400/20">
-                                Can Delete
-                              </span>
-                            ) : (
-                              <span className="text-muted text-[10px] bg-header/40 px-1.5 py-0.5 rounded">
-                                No Delete
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              onClick={() => setSelectedUserDetail(u)}
-                              className="p-1.5 text-muted hover:text-foreground rounded transition-colors"
-                              title="View details"
-                              aria-label="View details"
-                            >
-                              <Info size={15} />
-                            </button>
-                            {isSuperAdmin && agreementSigned && (
-                              <button
-                                onClick={async () => {
-                                  if (
-                                    !(await confirm(
-                                      `Revoke existing agreement and require ${u.display_name} to re-sign on their next login?`,
-                                      { danger: true, confirmLabel: "Request Re-Signature" }
-                                    ))
-                                  )
-                                    return;
-                                  const res = await requestReSignatureAction(u.id);
-                                  if ("success" in res) {
-                                    toast("Re-signature requested. User must sign on next login.", "success");
-                                  } else {
-                                    toast(res.error);
-                                  }
-                                }}
-                                className="p-1.5 text-muted hover:text-amber-500 rounded transition-colors"
-                                title="Request contract re-signature"
-                                aria-label="Request contract re-signature"
-                              >
-                                <RefreshCw size={14} />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => openEditModal(u)}
-                              className="p-1.5 text-muted hover:text-accent-blue rounded transition-colors"
-                              title="Edit permissions"
-                              aria-label="Edit permissions"
-                            >
-                              <Settings2 size={15} />
-                            </button>
-                            <button
-                              onClick={() => handleToggleStatus(u)}
-                              className={`p-1.5 rounded transition-colors ${
-                                u.is_active ? "text-muted hover:text-yellow-400" : "text-muted hover:text-accent-green"
-                              }`}
-                              title={u.is_active ? "Suspend access" : "Reactivate access"}
-                              aria-label={u.is_active ? "Suspend access" : "Reactivate access"}
-                            >
-                              <Power size={15} />
-                            </button>
-                            {isSuperAdmin && (
-                              <button
-                                onClick={() => handleDeleteUser(u)}
-                                className="p-1.5 text-muted hover:text-red-400 rounded transition-colors"
-                                title="Delete user"
-                                aria-label="Delete user"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                        )}
+                      </div>
+                      {agreementId && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <a
+                            href={`/api/crm/agreements/${agreementId}/download?preview=true`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-0.5 rounded text-[11px] font-medium border border-border/80 hover:bg-header/50 text-foreground/90 flex items-center gap-1 transition-colors"
+                            title="Preview Agreement Document"
+                          >
+                            <ExternalLink size={11} className="text-accent-blue" />
+                            <span>Preview</span>
+                          </a>
+                          <a
+                            href={`/api/crm/agreements/${agreementId}/download`}
+                            download
+                            className="px-2 py-0.5 rounded text-[11px] font-medium bg-accent-blue/15 hover:bg-accent-blue/25 text-accent-blue border border-accent-blue/30 flex items-center gap-1 transition-colors"
+                            title="Download Signed Agreement PDF"
+                          >
+                            <Download size={11} />
+                            <span>Download PDF</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                },
+              },
+              {
+                header: "Permissions",
+                cell: (u) => {
+                  const pageCount = u.permissions 
+                    ? Object.values(u.permissions.pages).filter(Boolean).length 
+                    : 0;
+                  const canDeleteRecs = u.permissions?.actions.clients_delete || u.permissions?.actions.leads_delete;
+
+                  return (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="bg-header/50 border border-border/80 px-2 py-0.5 rounded text-[11px]">
+                        {pageCount} of {PAGE_KEYS.length} pages
+                      </span>
+                      {canDeleteRecs ? (
+                        <span className="text-red-400 text-[10px] bg-red-400/10 px-1.5 py-0.5 rounded border border-red-400/20">
+                          Can Delete
+                        </span>
+                      ) : (
+                        <span className="text-muted text-[10px] bg-header/40 px-1.5 py-0.5 rounded">
+                          No Delete
+                        </span>
+                      )}
+                    </div>
+                  );
+                },
+              },
+              {
+                header: "Actions",
+                headerKey: "actions",
+                className: "text-right",
+                cell: (u) => {
+                  const agreementSigned = u.agreement_status === "signed" || u.agreement?.status === "signed";
+
+                  return (
+                    <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setSelectedUserDetail(u)}
+                        className="p-1.5 text-muted hover:text-foreground rounded transition-colors"
+                        title="View details"
+                        aria-label="View details"
+                      >
+                        <Info size={15} />
+                      </button>
+                      {isSuperAdmin && agreementSigned && (
+                        <button
+                          onClick={async () => {
+                            if (
+                              !(await confirm(
+                                `Revoke existing agreement and require ${u.display_name} to re-sign on their next login?`,
+                                { danger: true, confirmLabel: "Request Re-Signature" }
+                              ))
+                            )
+                              return;
+                            const res = await requestReSignatureAction(u.id);
+                            if ("success" in res) {
+                              toast("Re-signature requested. User must sign on next login.", "success");
+                            } else {
+                              toast(res.error);
+                            }
+                          }}
+                          className="p-1.5 text-muted hover:text-amber-500 rounded transition-colors"
+                          title="Request contract re-signature"
+                          aria-label="Request contract re-signature"
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => openEditModal(u)}
+                        className="p-1.5 text-muted hover:text-accent-blue rounded transition-colors"
+                        title="Edit permissions"
+                        aria-label="Edit permissions"
+                      >
+                        <Settings2 size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleToggleStatus(u)}
+                        className={`p-1.5 rounded transition-colors ${
+                          u.is_active ? "text-muted hover:text-yellow-400" : "text-muted hover:text-accent-green"
+                        }`}
+                        title={u.is_active ? "Suspend access" : "Reactivate access"}
+                        aria-label={u.is_active ? "Suspend access" : "Reactivate access"}
+                      >
+                        <Power size={15} />
+                      </button>
+                      {isSuperAdmin && (
+                        <button
+                          onClick={() => handleDeleteUser(u)}
+                          className="p-1.5 text-muted hover:text-red-400 rounded transition-colors"
+                          title="Delete user"
+                          aria-label="Delete user"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                },
+              },
+            ]}
+          />
         </div>
       )}
 
@@ -439,18 +447,18 @@ export function UsersManager({
           ) : (
             <div className="divide-y divide-border/40">
               {auditLogs.map((log) => (
-                <div key={log.id} className="py-2.5 flex items-start justify-between gap-4 text-xs">
-                  <div>
-                    <div className="flex items-center gap-2">
+                <div key={log.id} className="py-2.5 flex flex-col sm:flex-row sm:items-start justify-between gap-1.5 sm:gap-4 text-xs">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-semibold text-foreground">{log.actor_name}</span>
-                      <span className="text-[10px] text-muted">({log.actor_email})</span>
+                      <span className="text-[10px] text-muted truncate">({log.actor_email})</span>
                       <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-header/60 border border-border/60 text-muted">
                         {log.action} • {log.entity_type}
                       </span>
                     </div>
-                    <p className="text-foreground/80 mt-0.5">{log.summary}</p>
+                    <p className="text-foreground/80 mt-1 break-words">{log.summary}</p>
                   </div>
-                  <span className="text-[11px] text-muted shrink-0">
+                  <span className="text-[10px] sm:text-[11px] text-muted shrink-0 self-start sm:self-auto">
                     {new Date(log.created_at).toLocaleString(undefined, {
                       dateStyle: "short",
                       timeStyle: "short",

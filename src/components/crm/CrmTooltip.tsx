@@ -13,44 +13,72 @@ export function CrmTooltip({
   position?: "top" | "bottom" | "left" | "right";
 }) {
   const [visible, setVisible] = useState(false);
-  const [actualPosition, setActualPosition] = useState<"top" | "bottom" | "left" | "right">(position);
-  const [alignRight, setAlignRight] = useState(false);
+  const [actualPosition, setActualPosition] = useState<"top" | "bottom">(
+    position === "bottom" ? "bottom" : "top"
+  );
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({
+    width: "max-content",
+    maxWidth: "240px",
+  });
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-detect if tooltip will be cut off by top, bottom, or right edge of viewport
-  useEffect(() => {
-    if (visible && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      
-      // If trigger is within 85px of top viewport edge, flip to bottom
-      if (position === "top" && rect.top < 85) {
-        setActualPosition("bottom");
-      } else if (position === "bottom" && window.innerHeight - rect.bottom < 85) {
-        setActualPosition("top");
-      } else {
-        setActualPosition(position);
-      }
+  // Position calculation to strictly keep tooltip within viewport
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-      // If trigger is within 250px of the right window edge, anchor right edge to prevent cut-off
-      if (viewportWidth - rect.right < 240) {
-        setAlignRight(true);
-      } else {
-        setAlignRight(false);
-      }
+    // Decide vertical orientation:
+    let isBottom = position === "bottom";
+    if (rect.top < 90) {
+      isBottom = true;
+    } else if (viewportHeight - rect.bottom < 90) {
+      isBottom = false;
+    }
+    setActualPosition(isBottom ? "bottom" : "top");
+
+    // Standard comfortable tooltip width (between 200px and 260px)
+    const targetWidth = Math.min(240, viewportWidth - 32);
+    const triggerCenter = rect.left + rect.width / 2;
+
+    let left = "50%";
+    let transform = "translateX(-50%)";
+
+    // If trigger is very close to left screen edge:
+    // Left edge of tooltip should be at least 16px from left screen edge
+    const offsetFromTriggerLeft = 16 - rect.left;
+    const offsetFromTriggerRight = (viewportWidth - 16) - rect.right;
+
+    if (triggerCenter - targetWidth / 2 < 16) {
+      // Pin to 16px from screen left
+      left = `${offsetFromTriggerLeft}px`;
+      transform = "none";
+    } else if (triggerCenter + targetWidth / 2 > viewportWidth - 16) {
+      // Pin to 16px from screen right
+      left = `calc(100% - ${targetWidth}px + ${offsetFromTriggerRight}px)`;
+      transform = "none";
+    }
+
+    setTooltipStyle({
+      width: `${targetWidth}px`,
+      maxWidth: `${targetWidth}px`,
+      left,
+      transform,
+    });
+  };
+
+  useEffect(() => {
+    if (visible) {
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, { passive: true });
+      window.addEventListener("resize", updatePosition);
+      return () => {
+        window.removeEventListener("scroll", updatePosition);
+        window.removeEventListener("resize", updatePosition);
+      };
     }
   }, [visible, position]);
-
-  const horizontalAlignClass = alignRight 
-    ? "right-0" 
-    : "left-1/2 -translate-x-1/2";
-
-  const positionClasses = {
-    top: `bottom-full ${horizontalAlignClass} mb-2`,
-    bottom: `top-full ${horizontalAlignClass} mt-2`,
-    left: "right-full top-1/2 -translate-y-1/2 mr-2",
-    right: "left-full top-1/2 -translate-y-1/2 ml-2",
-  }[actualPosition];
 
   return (
     <div
@@ -75,7 +103,10 @@ export function CrmTooltip({
       {visible && (
         <div
           role="tooltip"
-          className={`absolute ${positionClasses} z-50 px-2.5 py-1.5 text-xs text-foreground bg-popover/95 border border-border rounded-lg shadow-xl backdrop-blur-md w-max max-w-[220px] sm:max-w-xs whitespace-normal pointer-events-none transition-all animate-in fade-in-0 zoom-in-95`}
+          style={tooltipStyle}
+          className={`absolute ${
+            actualPosition === "bottom" ? "top-full mt-2" : "bottom-full mb-2"
+          } z-50 p-2.5 text-xs text-foreground bg-popover border border-border rounded-xl shadow-2xl backdrop-blur-md whitespace-normal pointer-events-none transition-all animate-in fade-in-0 zoom-in-95 leading-relaxed`}
         >
           {text}
         </div>

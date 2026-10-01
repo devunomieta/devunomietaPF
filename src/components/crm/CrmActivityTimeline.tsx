@@ -176,7 +176,7 @@ export function CrmActivityTimeline({
               }`}
             >
               <History size={13} />
-              <span>Communication History</span>
+              <span>Messages</span>
               <span
                 className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                   activeSection === "comms" ? "bg-white/20 text-white" : "bg-border/60 text-muted"
@@ -200,7 +200,7 @@ export function CrmActivityTimeline({
                 }`}
               >
                 <GitCommit size={13} />
-                <span>Stage Transitions</span>
+                <span>Stages</span>
                 <span
                   className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                     activeSection === "stages" ? "bg-white/20 text-white" : "bg-border/60 text-muted"

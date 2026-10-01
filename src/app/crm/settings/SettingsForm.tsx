@@ -44,7 +44,7 @@ export function SettingsForm({ settings, whatsappConfigured }: { settings: CrmSe
         {whatsappConfigured && (
           <button type="button" onClick={handleCheckConnection} disabled={checking} className={crmPrimaryBtnClass}>
             {checking && <Loader2 size={14} className="animate-spin" />}
-            Check connection
+            Check
           </button>
         )}
       </div>

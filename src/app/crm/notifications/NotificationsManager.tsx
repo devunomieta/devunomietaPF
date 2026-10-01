@@ -335,11 +335,10 @@ export function NotificationsManager({
       </div>
 
       {/* Main Filter Toolbar */}
-      <div className="rounded-xl border border-border/80 bg-header/20 p-4 space-y-4">
-        {/* Row 1: Search + Status Tabs + Refresh */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Search Box */}
-          <div className="relative flex-1 max-w-md">
+      <div className="rounded-xl border border-border/80 bg-header/20 p-3 sm:p-4 space-y-3">
+        {/* Row 1: Search Box & Actions */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <Search
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
@@ -348,84 +347,81 @@ export function NotificationsManager({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search notifications, messages, actors, or IDs..."
+              placeholder="Search notifications, actors, or IDs..."
               className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-border bg-background focus:outline-none focus:border-accent-blue text-foreground placeholder:text-muted/60"
             />
           </div>
 
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 bg-header/40 p-1 rounded-lg border border-border/60 shrink-0">
-            {(["all", "unread", "read", "snoozed"] as const).map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setSelectedStatus(st)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md capitalize transition-colors ${
-                  selectedStatus === st
-                    ? "bg-accent-blue text-white shadow-sm"
-                    : "text-muted hover:text-foreground hover:bg-header/60"
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={reloadData}
+            disabled={refreshing}
+            className="p-2 rounded-lg border border-border hover:border-accent-blue/50 bg-background text-muted hover:text-foreground text-xs flex items-center justify-center shrink-0 transition-colors h-9 w-9"
+            title="Refresh notifications"
+          >
+            <RefreshCw size={14} className={refreshing ? "animate-spin text-accent-blue" : ""} />
+          </button>
 
-          {/* Quick Actions */}
-          <div className="flex items-center gap-2">
+          {stats.unread > 0 && (
             <button
               type="button"
-              onClick={reloadData}
-              disabled={refreshing}
-              className="p-2 rounded-lg border border-border hover:border-accent-blue/50 bg-background text-muted hover:text-foreground text-xs flex items-center gap-1.5 transition-colors"
-              title="Refresh notifications"
+              onClick={handleMarkAllRead}
+              disabled={isPending}
+              className="px-2.5 sm:px-3 py-2 rounded-lg border border-accent-blue/40 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue font-semibold text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
+              title="Mark all as read"
             >
-              <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+              <CheckCheck size={14} />
+              <span className="hidden sm:inline">Mark All Read</span>
             </button>
-
-            {stats.unread > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                disabled={isPending}
-                className="px-3 py-2 rounded-lg border border-accent-blue/40 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue font-semibold text-xs flex items-center gap-1.5 transition-colors whitespace-nowrap"
-              >
-                <CheckCheck size={14} />
-                <span>Mark All Read</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Row 2: Category & Severity Filters + Sort Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/50 text-xs">
+        {/* Row 2: Status Tabs (Horizontally scrollable on mobile) */}
+        <div className="flex items-center gap-1 bg-header/40 p-1 rounded-lg border border-border/60 overflow-x-auto max-w-full scrollbar-none">
+          {(["all", "unread", "read", "snoozed"] as const).map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setSelectedStatus(st)}
+              className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-md capitalize transition-colors text-center whitespace-nowrap ${
+                selectedStatus === st
+                  ? "bg-accent-blue text-white shadow-sm"
+                  : "text-muted hover:text-foreground hover:bg-header/60"
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 3: Dropdown Filters in Responsive 3-Column / 2-Column Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/40 text-xs">
           {/* Category Dropdown */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted text-[11px] font-medium flex items-center gap-1">
-              <Filter size={12} />
-              <span>Category:</span>
-            </span>
+          <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg px-2.5 py-1.5">
+            <Filter size={13} className="text-muted shrink-0" />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="py-1.5 px-2.5 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:border-accent-blue"
+              className="w-full bg-transparent text-foreground text-xs focus:outline-none cursor-pointer"
             >
               {CATEGORIES.map((c) => (
-                <option key={c.key} value={c.key}>
+                <option key={c.key} value={c.key} className="bg-header text-foreground">
                   {c.label}
                 </option>
               ))}
             </select>
+          </div>
 
-            {/* Severity Dropdown */}
-            <span className="text-muted text-[11px] font-medium ml-2">Severity:</span>
+          {/* Severity Dropdown */}
+          <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg px-2.5 py-1.5">
+            <AlertCircle size={13} className="text-muted shrink-0" />
             <select
               value={selectedSeverity}
               onChange={(e) => setSelectedSeverity(e.target.value)}
-              className="py-1.5 px-2.5 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:border-accent-blue"
+              className="w-full bg-transparent text-foreground text-xs focus:outline-none cursor-pointer"
             >
               {SEVERITIES.map((s) => (
-                <option key={s.key} value={s.key}>
+                <option key={s.key} value={s.key} className="bg-header text-foreground">
                   {s.label}
                 </option>
               ))}
@@ -433,20 +429,17 @@ export function NotificationsManager({
           </div>
 
           {/* Sort By Dropdown */}
-          <div className="flex items-center gap-2">
-            <span className="text-muted text-[11px] font-medium flex items-center gap-1">
-              <ArrowUpDown size={12} />
-              <span>Sort:</span>
-            </span>
+          <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg px-2.5 py-1.5">
+            <ArrowUpDown size={13} className="text-muted shrink-0" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="py-1.5 px-2.5 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:border-accent-blue"
+              className="w-full bg-transparent text-foreground text-xs focus:outline-none cursor-pointer"
             >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="severity">Highest Severity</option>
-              <option value="category">Category (A-Z)</option>
+              <option value="newest" className="bg-header text-foreground">Newest First</option>
+              <option value="oldest" className="bg-header text-foreground">Oldest First</option>
+              <option value="severity" className="bg-header text-foreground">Highest Severity</option>
+              <option value="category" className="bg-header text-foreground">Category (A-Z)</option>
             </select>
           </div>
         </div>

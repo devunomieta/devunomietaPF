@@ -226,7 +226,7 @@ export function CrmQuickActionDock({
                 : "text-muted hover:text-foreground hover:bg-header/40"
             }`}
           >
-            <Mail size={13} /> Send Email
+            <Mail size={13} /> Email
           </button>
           <button
             type="button"
@@ -350,7 +350,7 @@ export function CrmQuickActionDock({
                 className={crmPrimaryBtnClass}
               >
                 {loading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                Send Email
+                Send
               </button>
             </div>
           </form>

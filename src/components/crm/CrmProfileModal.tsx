@@ -74,9 +74,9 @@ export function CrmProfileModal({
 
         {/* Signed Agreement Section */}
         {agreementId && (
-          <div className="p-3.5 bg-muted/30 border border-border rounded-xl flex items-center justify-between">
+          <div className="p-3.5 bg-muted/30 border border-border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 shrink-0">
                 <FileText size={16} />
               </div>
               <div>
@@ -86,7 +86,7 @@ export function CrmProfileModal({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 self-end sm:self-auto">
               <a
                 href={`/api/crm/agreements/${agreementId}/download?preview=true`}
                 target="_blank"

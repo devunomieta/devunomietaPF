@@ -134,10 +134,11 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
                 )}
               </button>
             ),
+            headerKey: "select",
             cell: (c: CampaignWithMetrics) => {
               const isChecked = selectedIds.includes(c.id);
               return (
-                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => toggleSelectOne(c.id)}
@@ -150,6 +151,7 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
                       <Square size={16} />
                     )}
                   </button>
+                  <span className="md:hidden text-[11px] text-muted">Select campaign</span>
                 </div>
               );
             },
@@ -158,14 +160,15 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
       : []),
     {
       header: "Campaign / Subject",
+      mobileStacked: true,
       cell: (c) => (
-        <div className="flex flex-col gap-1 min-w-[200px]">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-foreground group-hover:text-accent-blue transition-colors">
+        <div className="flex flex-col gap-1 w-full min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-semibold text-foreground group-hover:text-accent-blue transition-colors text-sm sm:text-base leading-snug break-words">
               {c.subject || "(Untitled Draft)"}
             </span>
             {c.status === "draft" && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-blue/15 text-accent-blue font-semibold">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-blue/15 text-accent-blue font-semibold shrink-0">
                 Draft
               </span>
             )}

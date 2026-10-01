@@ -138,9 +138,14 @@ export default async function CrmMonitoringPage({
           { label: "Bounce rate", value: `${bounceRate}%`, warn: bounceRate > bounceThreshold },
           { label: "Complaint rate", value: `${complaintRate}%`, warn: complaintRate > complaintThreshold },
           { label: "Open rate", value: `${openRate}%` },
-          { label: "Click rate", value: `${clickRate}%` },
+          { label: "Click rate", value: `${clickRate}%`, isFifth: true },
         ].map((m) => (
-          <div key={m.label} className="bg-header/20 border border-border rounded-xl p-3 text-center">
+          <div
+            key={m.label}
+            className={`bg-header/20 border border-border rounded-xl p-3 text-center ${
+              m.isFifth ? "col-span-2 sm:col-span-1" : ""
+            }`}
+          >
             <p className={`text-lg font-bold ${m.warn ? "text-red-400" : "text-foreground"}`}>{m.value}</p>
             <p className="text-xs text-muted">{m.label}</p>
           </div>
@@ -163,39 +168,45 @@ export default async function CrmMonitoringPage({
       </div>
 
       {bouncedEvents.length > 0 && (
-        <div className="bg-header/20 border border-border rounded-xl p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+        <div className="bg-header/20 border border-border rounded-xl p-3 sm:p-4 flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              Bounced Emails & Delivery Failures ({bouncedEvents.length})
+              Bounced Emails &amp; Delivery Failures ({bouncedEvents.length})
             </h2>
             <span className="text-xs text-muted">Tracked via Brevo delivery webhooks</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-border/80 text-muted">
-                  <th className="py-2 px-3">Recipient Email</th>
-                  <th className="py-2 px-3">Bounce Type</th>
-                  <th className="py-2 px-3">Diagnostic Reason</th>
-                  <th className="py-2 px-3 text-right">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {bouncedEvents.map((b) => (
-                  <tr key={b.id} className="hover:bg-white/5 transition-colors">
-                    <td className="py-2.5 px-3 font-semibold text-foreground font-mono">{b.email}</td>
-                    <td className="py-2.5 px-3">
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-400/15 text-red-400 border border-red-400/25">
-                        {b.type}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-muted">{b.reason}</td>
-                    <td className="py-2.5 px-3 text-right text-muted">{b.date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+          <ResponsiveTable
+            columns={[
+              {
+                header: "Recipient Email",
+                mobileStacked: true,
+                cell: (b) => (
+                  <span className="font-semibold text-foreground font-mono text-xs sm:text-sm block break-all">
+                    {b.email}
+                  </span>
+                ),
+              },
+              {
+                header: "Bounce Type",
+                cell: (b) => (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-400/15 text-red-400 border border-red-400/25 whitespace-nowrap">
+                    {b.type}
+                  </span>
+                ),
+              },
+              {
+                header: "Reason",
+                cell: (b) => <span className="text-muted text-xs break-words">{b.reason}</span>,
+              },
+              {
+                header: "Timestamp",
+                cell: (b) => <span className="text-muted text-xs whitespace-nowrap">{b.date}</span>,
+              },
+            ]}
+            rows={bouncedEvents}
+            emptyLabel="No bounce events recorded."
+          />
         </div>
       )}
 

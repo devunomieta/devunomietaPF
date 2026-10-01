@@ -5,6 +5,8 @@ export type CrmColumn<T> = {
   headerKey?: string;
   cell: (row: T) => React.ReactNode;
   className?: string;
+  mobileStacked?: boolean;
+  hideOnMobile?: boolean;
 };
 
 /**
@@ -82,12 +84,46 @@ export function ResponsiveTable<T extends { id: string }>({
             onClick={onRowClick ? () => onRowClick(row) : undefined}
             className={`p-3 rounded-lg border border-border bg-header/20 ${onRowClick ? "cursor-pointer active:bg-accent-blue/5" : ""}`}
           >
-            {columns.map((c, idx) => (
-              <div key={c.headerKey || (typeof c.header === "string" ? c.header : idx)} className="flex items-start justify-between gap-3 py-1 text-sm">
-                <span className="text-muted text-xs uppercase tracking-wide shrink-0 pt-0.5">{c.header}</span>
-                <span className="text-right min-w-0">{c.cell(row)}</span>
-              </div>
-            ))}
+            {columns
+              .filter((c) => !c.hideOnMobile)
+              .map((c, idx) => {
+                const headerText = typeof c.header === "string" ? c.header : null;
+                const hasHeader = Boolean(c.header && (headerText ? headerText.trim().length > 0 : true));
+                
+                if (c.mobileStacked) {
+                  return (
+                    <div
+                      key={c.headerKey || (headerText || idx)}
+                      className="flex flex-col gap-1 py-1.5 border-b border-border/20 last:border-0"
+                    >
+                      {hasHeader && (
+                        <span className="text-muted text-[10px] uppercase font-semibold tracking-wider">
+                          {c.header}
+                        </span>
+                      )}
+                      <div className="w-full text-left break-words">
+                        {c.cell(row)}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={c.headerKey || (headerText || idx)}
+                    className={`flex ${hasHeader ? "items-start justify-between" : "justify-end pt-1"} gap-3 py-1 text-sm border-b border-border/20 last:border-0`}
+                  >
+                    {hasHeader && (
+                      <span className="text-muted text-xs uppercase tracking-wide shrink-0 pt-0.5">
+                        {c.header}
+                      </span>
+                    )}
+                    <div className={`${hasHeader ? "text-right" : "w-full flex justify-end"} min-w-0 break-words`}>
+                      {c.cell(row)}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         ))}
       </div>
