@@ -15,10 +15,19 @@ export async function sendSingleWhatsApp(formData: FormData): Promise<SendResult
 
   const phone = (formData.get("phone") as string)?.trim();
   const message = (formData.get("message") as string)?.trim();
-  const clientId = (formData.get("clientId") as string) || null;
-  const leadId = (formData.get("leadId") as string) || null;
+  let clientId = (formData.get("clientId") as string) || null;
+  let leadId = (formData.get("leadId") as string) || null;
 
   if (!phone || !message) return { error: "Phone number and message are required." };
+
+  const { resolveEntityFromPhone, autoPromoteLeadToContacted } = await import("@/lib/crm/communicationResolver");
+
+  // If clientId or leadId were not prefilled, auto-resolve them from the phone number
+  if (!clientId && !leadId) {
+    const resolved = await resolveEntityFromPhone(phone);
+    clientId = resolved.clientId;
+    leadId = resolved.leadId;
+  }
 
   const result = await sendWhatsAppMessage({ phone, message });
 
@@ -36,7 +45,13 @@ export async function sendSingleWhatsApp(formData: FormData): Promise<SendResult
 
   if ("error" in result) return { error: result.error };
 
+  // If a lead received this WhatsApp message, automatically promote to 'contacted' if currently in 'lead' stage
+  if (leadId) {
+    await autoPromoteLeadToContacted(leadId);
+  }
+
   revalidatePath("/crm/whatsapp");
+  revalidatePath("/crm/leads");
   if (clientId) revalidatePath(`/crm/clients/${clientId}`);
   if (leadId) revalidatePath(`/crm/leads/${leadId}`);
 

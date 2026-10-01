@@ -104,7 +104,10 @@ export async function sendSingleEmail(formData: FormData): Promise<SendResult> {
 
   revalidatePath("/crm/campaigns");
   if (resolvedClientId) revalidatePath(`/crm/clients/${resolvedClientId}`);
-  if (resolvedLeadId) revalidatePath(`/crm/leads/${resolvedLeadId}`);
+  if (resolvedLeadId) {
+    revalidatePath("/crm/leads");
+    revalidatePath(`/crm/leads/${resolvedLeadId}`);
+  }
 
   if (logError) {
     return { success: true, warning: `Sent, but couldn't save it to the activity log: ${logError.message}` };
@@ -295,6 +298,75 @@ export async function uploadCampaignImage(formData: FormData): Promise<{ success
 
   const { data: { publicUrl } } = adminDb.storage.from("assets").getPublicUrl(path);
   return { success: true, url: publicUrl };
+}
+
+export async function uploadCampaignDocument(formData: FormData): Promise<
+  | { success: true; url: string; fileName: string; fileSizeFormatted: string; extension: string }
+  | { error: string }
+> {
+  await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
+  const adminDb = createAdminClient();
+
+  const file = formData.get("file") as File;
+  if (!file || file.size === 0) return { error: "No document file provided." };
+
+  const fileName = file.name || "document";
+  const ext = fileName.split(".").pop()?.toLowerCase() || "pdf";
+
+  const allowedExtensions = new Set([
+    "pdf",
+    "doc",
+    "docx",
+    "txt",
+    "rtf",
+    "odt",
+    "xlsx",
+    "xls",
+    "csv",
+    "pptx",
+    "ppt",
+  ]);
+
+  if (!allowedExtensions.has(ext)) {
+    return {
+      error: `Invalid file type (.${ext}). Supported document types: PDF, DOC, DOCX, TXT, RTF, XLSX, PPTX.`,
+    };
+  }
+
+  // Max 20MB document size
+  if (file.size > 20 * 1024 * 1024) {
+    return { error: "Document file size must be less than 20MB." };
+  }
+
+  const cleanBaseName = fileName
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, 40);
+
+  const path = `campaigns/docs/${Date.now()}-${cleanBaseName}.${ext}`;
+  const bytes = await file.arrayBuffer();
+
+  const { error: uploadError } = await adminDb.storage
+    .from("assets")
+    .upload(path, bytes, { contentType: file.type || "application/octet-stream", upsert: true });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: { publicUrl } } = adminDb.storage.from("assets").getPublicUrl(path);
+
+  // Format file size
+  let fileSizeFormatted = `${(file.size / 1024).toFixed(0)} KB`;
+  if (file.size >= 1024 * 1024) {
+    fileSizeFormatted = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  return {
+    success: true,
+    url: publicUrl,
+    fileName,
+    fileSizeFormatted,
+    extension: ext.toUpperCase(),
+  };
 }
 
 export async function sendTestCampaignEmail({

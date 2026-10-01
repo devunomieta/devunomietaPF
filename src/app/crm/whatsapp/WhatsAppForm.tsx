@@ -2,12 +2,17 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Send, Users, Shuffle, Sparkles, ShieldCheck, ShieldAlert, Tag, X, Search, Check } from "lucide-react";
+import { Loader2, Send, Users, Shuffle, Sparkles, ShieldCheck, ShieldAlert, Tag, X, Search, Check, Scissors, Link as LinkIcon, ExternalLink, AlertCircle } from "lucide-react";
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { sendSingleWhatsApp, createBulkWhatsApp, previewWhatsAppAudienceCount } from "./actions";
 import { hasSpintax, generateVariations } from "@/lib/crm/spintax";
+import {
+  createShortLink,
+  checkSlugAvailability,
+  generateSuggestedSlug,
+} from "@/lib/crm/shortLinkActions";
 
 type PrefillRecipient = { id: string; name: string; phone: string | null; clientId: string | null; leadId: string | null };
 
@@ -36,6 +41,64 @@ export function WhatsAppForm({
   const [stageKey, setStageKey] = useState("");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Link Shortener Modal State
+  const [showShortenModal, setShowShortenModal] = useState(false);
+  const [shortenUrl, setShortenUrl] = useState("https://");
+  const [shortenSlug, setShortenSlug] = useState("");
+  const [shortenTitle, setShortenTitle] = useState("");
+  const [shortenChecking, setShortenChecking] = useState(false);
+  const [shortenSlugStatus, setShortenSlugStatus] = useState<{ available: boolean; error?: string } | null>(null);
+  const [creatingShortLink, setCreatingShortLink] = useState(false);
+
+  // Auto-generate suggested slug when opening modal
+  useEffect(() => {
+    if (showShortenModal && !shortenSlug) {
+      generateSuggestedSlug("wa").then((slug) => {
+        setShortenSlug(slug);
+        setShortenSlugStatus({ available: true });
+      });
+    }
+  }, [showShortenModal, shortenSlug]);
+
+  // Debounced check for shortenSlug
+  useEffect(() => {
+    if (!showShortenModal || !shortenSlug) {
+      setShortenSlugStatus(null);
+      return;
+    }
+    setShortenChecking(true);
+    const timer = setTimeout(async () => {
+      const res = await checkSlugAvailability(shortenSlug);
+      setShortenSlugStatus(res);
+      setShortenChecking(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [showShortenModal, shortenSlug]);
+
+  const handleInsertShortLinkIntoMessage = async () => {
+    if (!shortenUrl || shortenUrl === "https://") return;
+
+    setCreatingShortLink(true);
+    const res = await createShortLink({
+      originalUrl: shortenUrl,
+      customSlug: shortenSlug || undefined,
+      title: shortenTitle || undefined,
+      channel: "whatsapp",
+    });
+    setCreatingShortLink(false);
+
+    if ("shortUrl" in res) {
+      setMessage((prev) => `${prev.trim()} ${res.shortUrl} `);
+      setShowShortenModal(false);
+      setShortenUrl("https://");
+      setShortenSlug("");
+      setShortenTitle("");
+      toast("Short link inserted into message!", "success");
+    } else {
+      toast(res.error || "Failed to create short link.", "error");
+    }
+  };
 
   // Searchable tag selector state
   const [tagSearchInput, setTagSearchInput] = useState("");
@@ -374,16 +437,26 @@ export function WhatsAppForm({
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className={crmLabelClass} htmlFor="message">Message *</label>
-          {mode === "bulk" && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowSpintaxGuide(!showSpintaxGuide)}
-              className="text-[11px] text-accent-blue hover:underline inline-flex items-center gap-1 font-medium"
+              onClick={() => setShowShortenModal(true)}
+              className="text-[11px] text-accent-blue hover:bg-accent-blue/10 px-2 py-0.5 rounded border border-accent-blue/30 inline-flex items-center gap-1 font-semibold transition"
             >
-              <Sparkles size={12} />
-              Spintax guide {showSpintaxGuide ? "▲" : "▼"}
+              <Scissors size={11} />
+              Shorten link
             </button>
-          )}
+            {mode === "bulk" && (
+              <button
+                type="button"
+                onClick={() => setShowSpintaxGuide(!showSpintaxGuide)}
+                className="text-[11px] text-accent-blue hover:underline inline-flex items-center gap-1 font-medium"
+              >
+                <Sparkles size={12} />
+                Spintax guide {showSpintaxGuide ? "▲" : "▼"}
+              </button>
+            )}
+          </div>
         </div>
 
         {showSpintaxGuide && (
@@ -480,6 +553,106 @@ export function WhatsAppForm({
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
         {mode === "single" ? "Send" : "Send batch"}
       </button>
+
+      {/* Branded Link Shortener Modal */}
+      {showShortenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs">
+          <div className="bg-header border border-border rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2 font-semibold text-sm text-foreground">
+                <Scissors size={16} className="text-accent-blue" />
+                Branded Link Shortener
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShortenModal(false)}
+                className="text-muted hover:text-foreground text-xs p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className={crmLabelClass}>Destination / Target URL</label>
+                <input
+                  type="url"
+                  placeholder="https://drive.google.com/file/d/..."
+                  value={shortenUrl}
+                  onChange={(e) => setShortenUrl(e.target.value)}
+                  className={crmInputClass}
+                  autoFocus
+                />
+                <p className="text-[11px] text-muted mt-1">
+                  Google Drive, Calendly, PDF, presentation, or any target link.
+                </p>
+              </div>
+
+              <div>
+                <label className={crmLabelClass}>Custom Short URL (Editable Real-Time)</label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted font-mono bg-background/60 px-2 py-2 rounded-lg border border-border select-none">
+                    devunomieta.xyz/
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="doc002"
+                    value={shortenSlug}
+                    onChange={(e) => setShortenSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ""))}
+                    className={`${crmInputClass} font-mono`}
+                  />
+                </div>
+                {/* Real-time slug status indicator */}
+                <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+                  {shortenChecking ? (
+                    <span className="text-muted flex items-center gap-1">
+                      <Loader2 size={11} className="animate-spin" /> Checking availability...
+                    </span>
+                  ) : shortenSlugStatus?.available ? (
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <Check size={11} /> devunomieta.xyz/{shortenSlug} is available!
+                    </span>
+                  ) : shortenSlugStatus?.error ? (
+                    <span className="text-red-400 flex items-center gap-1">
+                      <AlertCircle size={11} /> {shortenSlugStatus.error}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div>
+                <label className={crmLabelClass}>Optional Title / Label</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Q4 Proposal Document"
+                  value={shortenTitle}
+                  onChange={(e) => setShortenTitle(e.target.value)}
+                  className={crmInputClass}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setShowShortenModal(false)}
+                className="px-3 py-1.5 text-xs text-muted hover:text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={creatingShortLink || !shortenUrl || shortenUrl === "https://" || !shortenSlugStatus?.available}
+                onClick={handleInsertShortLinkIntoMessage}
+                className={`${crmPrimaryBtnClass} disabled:opacity-50`}
+              >
+                {creatingShortLink ? <Loader2 size={13} className="animate-spin" /> : <LinkIcon size={13} />}
+                Insert Short Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

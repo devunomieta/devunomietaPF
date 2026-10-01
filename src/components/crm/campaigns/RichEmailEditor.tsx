@@ -21,9 +21,20 @@ import {
   Undo,
   Redo,
   Loader2,
+  Paperclip,
+  FileText,
+  Scissors,
+  Check,
+  AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import { SUPPORTED_PERSONALIZATION_VARIABLES } from "@/lib/crm/personalization";
-import { uploadCampaignImage } from "@/app/crm/campaigns/actions";
+import { uploadCampaignImage, uploadCampaignDocument } from "@/app/crm/campaigns/actions";
+import {
+  createShortLink,
+  checkSlugAvailability,
+  generateSuggestedSlug,
+} from "@/lib/crm/shortLinkActions";
 
 type RichEmailEditorProps = {
   value: string;
@@ -38,9 +49,11 @@ const COMMON_EMOJIS = [
 export function RichEmailEditor({ value, onChange, placeholder }: RichEmailEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const [isSourceMode, setIsSourceMode] = useState(false);
   const [rawHtml, setRawHtml] = useState(value);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   // Floating Selection Bubble Menu
   const [floatingMenu, setFloatingMenu] = useState<{
@@ -57,8 +70,18 @@ export function RichEmailEditor({ value, onChange, placeholder }: RichEmailEdito
 
   // Link & Button Modal States
   const [linkUrl, setLinkUrl] = useState("https://");
+  const [linkText, setLinkText] = useState("");
+  const [enableShortLink, setEnableShortLink] = useState(false);
+  const [customSlug, setCustomSlug] = useState("");
+  const [slugChecking, setSlugChecking] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<{ available: boolean; error?: string } | null>(null);
+  const [creatingLink, setCreatingLink] = useState(false);
+
   const [buttonText, setButtonText] = useState("Book Consultation");
   const [buttonUrl, setButtonUrl] = useState("https://");
+  const [buttonEnableShort, setButtonEnableShort] = useState(false);
+  const [buttonCustomSlug, setButtonCustomSlug] = useState("");
+  const [buttonSlugStatus, setButtonSlugStatus] = useState<{ available: boolean; error?: string } | null>(null);
 
   // Keep internal HTML updated when value changes externally (e.g. template or draft loading)
   useEffect(() => {
@@ -113,19 +136,89 @@ export function RichEmailEditor({ value, onChange, placeholder }: RichEmailEdito
     });
   };
 
+
+  // Auto-generate slug when toggling short link on in Link Modal
+  useEffect(() => {
+    if (enableShortLink && !customSlug) {
+      generateSuggestedSlug("doc").then((slug) => {
+        setCustomSlug(slug);
+        setSlugStatus({ available: true });
+      });
+    }
+  }, [enableShortLink, customSlug]);
+
+  // Debounced check for customSlug in Link Modal
+  useEffect(() => {
+    if (!enableShortLink || !customSlug) {
+      setSlugStatus(null);
+      return;
+    }
+    setSlugChecking(true);
+    const timer = setTimeout(async () => {
+      const res = await checkSlugAvailability(customSlug);
+      setSlugStatus(res);
+      setSlugChecking(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [enableShortLink, customSlug]);
+
+  // Auto-generate slug when toggling short link on in Button Modal
+  useEffect(() => {
+    if (buttonEnableShort && !buttonCustomSlug) {
+      generateSuggestedSlug("btn").then((slug) => {
+        setButtonCustomSlug(slug);
+        setButtonSlugStatus({ available: true });
+      });
+    }
+  }, [buttonEnableShort, buttonCustomSlug]);
+
+  // Debounced check for buttonCustomSlug in Button Modal
+  useEffect(() => {
+    if (!buttonEnableShort || !buttonCustomSlug) {
+      setButtonSlugStatus(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const res = await checkSlugAvailability(buttonCustomSlug);
+      setButtonSlugStatus(res);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [buttonEnableShort, buttonCustomSlug]);
+
   // Insert a Call-To-Action (CTA) email button block
-  const insertCtaButton = () => {
+  const insertCtaButton = async () => {
     if (!buttonText || !buttonUrl) return;
+
+    let targetUrl = buttonUrl;
+
+    if (buttonEnableShort) {
+      setCreatingLink(true);
+      const res = await createShortLink({
+        originalUrl: buttonUrl,
+        customSlug: buttonCustomSlug || undefined,
+        title: buttonText,
+        channel: "email",
+      });
+      setCreatingLink(false);
+
+      if ("shortUrl" in res) {
+        targetUrl = res.shortUrl;
+      } else {
+        alert(res.error || "Failed to create short link.");
+        return;
+      }
+    }
+
     const buttonHtml = `
       <div style="margin: 24px 0; text-align: center;">
         <!--[if mso]>
-        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${buttonUrl}" style="height:44px;v-text-anchor:middle;width:220px;" arcsize="18%" stroke="f" fillcolor="#2563eb">
+        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${targetUrl}" style="height:44px;v-text-anchor:middle;width:220px;" arcsize="18%" stroke="f" fillcolor="#2563eb">
           <w:anchorlock/>
           <center style="color:#ffffff;font-family:sans-serif;font-size:14px;font-weight:bold;">${buttonText}</center>
         </v:roundrect>
         <![endif]-->
         <!--[if !mso]><!-- -->
-        <a href="${buttonUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);">
+        <a href="${targetUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);">
           ${buttonText}
         </a>
         <!--<![endif]-->
@@ -161,6 +254,102 @@ export function RichEmailEditor({ value, onChange, placeholder }: RichEmailEdito
       setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  // Document Upload handler (DOC, DOCX, PDF, etc.)
+  const handleDocFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await uploadCampaignDocument(formData);
+      if ("url" in res) {
+        // Automatically create a short link for the document download so it is branded
+        const cleanName = res.fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase().slice(0, 20);
+        const shortRes = await createShortLink({
+          originalUrl: res.url,
+          customSlug: `doc-${cleanName}`,
+          title: res.fileName,
+          channel: "email",
+        });
+
+        const downloadUrl = "shortUrl" in shortRes ? shortRes.shortUrl : res.url;
+        const displaySlug = "slug" in shortRes ? `devunomieta.xyz/${shortRes.slug}` : downloadUrl;
+
+        // Render an elegant, email-client safe document download card
+        const docHtml = `
+          <div style="margin: 20px 0; padding: 14px 18px; border: 1px solid #334155; border-radius: 10px; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="36" valign="middle" style="padding-right: 12px;">
+                  <div style="width: 36px; height: 36px; border-radius: 8px; background-color: #1e293b; border: 1px solid #3b82f6; text-align: center; line-height: 36px; font-size: 18px;">
+                    📄
+                  </div>
+                </td>
+                <td valign="middle">
+                  <div style="font-weight: 600; font-size: 13px; color: #f8fafc; margin-bottom: 2px;">
+                    ${res.fileName}
+                  </div>
+                  <div style="font-size: 11px; color: #94a3b8;">
+                    ${res.fileSizeFormatted} · ${res.extension} File · <span style="color: #60a5fa;">${displaySlug}</span>
+                  </div>
+                </td>
+                <td align="right" valign="middle" style="padding-left: 12px;">
+                  <a href="${downloadUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                    Download ${res.extension}
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </div>
+        `;
+        exec("insertHTML", docHtml);
+      } else {
+        alert(res.error || "Document upload failed");
+      }
+    } catch {
+      alert("Failed to upload document. Please try again.");
+    } finally {
+      setUploadingDoc(false);
+      if (docInputRef.current) docInputRef.current.value = "";
+    }
+  };
+
+  // Submit Link Modal with optional shortening
+  const handleInsertLinkModal = async () => {
+    if (!linkUrl || linkUrl === "https://") return;
+
+    let targetUrl = linkUrl;
+
+    if (enableShortLink) {
+      setCreatingLink(true);
+      const res = await createShortLink({
+        originalUrl: linkUrl,
+        customSlug: customSlug || undefined,
+        title: linkText || undefined,
+        channel: "email",
+      });
+      setCreatingLink(false);
+
+      if ("shortUrl" in res) {
+        targetUrl = res.shortUrl;
+      } else {
+        alert(res.error || "Failed to create short link.");
+        return;
+      }
+    }
+
+    if (linkText) {
+      const linkHtml = `<a href="${targetUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">${linkText}</a>`;
+      exec("insertHTML", linkHtml);
+    } else {
+      exec("createLink", targetUrl);
+    }
+
+    setShowLinkModal(false);
   };
 
   return (
@@ -297,6 +486,24 @@ export function RichEmailEditor({ value, onChange, placeholder }: RichEmailEdito
             title="Upload Image"
           >
             {uploadingImage ? <Loader2 size={15} className="animate-spin" /> : <ImageIcon size={15} />}
+          </button>
+
+          {/* Document / PDF Upload */}
+          <input
+            type="file"
+            ref={docInputRef}
+            onChange={handleDocFileChange}
+            accept=".pdf,.doc,.docx,.txt,.rtf,.xlsx,.csv,.pptx"
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => docInputRef.current?.click()}
+            disabled={uploadingDoc}
+            className="p-1.5 rounded hover:bg-accent-blue/15 text-accent-blue hover:text-accent-blue transition flex items-center gap-1"
+            title="Attach Document (PDF, DOC, DOCX, etc.)"
+          >
+            {uploadingDoc ? <Loader2 size={15} className="animate-spin text-accent-blue" /> : <Paperclip size={15} />}
           </button>
 
           {/* Emojis */}
@@ -496,49 +703,132 @@ export function RichEmailEditor({ value, onChange, placeholder }: RichEmailEdito
         )}
       </div>
 
-      {/* Link Modal */}
+      {/* Link Modal with Real-time Shortener */}
       {showLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="bg-card border border-border rounded-xl p-4 w-full max-w-sm shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-150">
-            <h4 className="text-sm font-semibold text-foreground">Insert Hyperlink</h4>
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent-blue"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2 pt-1">
+          <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <LinkIcon size={15} className="text-accent-blue" /> Insert Hyperlink
+              </h4>
+              <button
+                type="button"
+                onClick={() => setEnableShortLink(!enableShortLink)}
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
+                  enableShortLink
+                    ? "bg-accent-blue/15 text-accent-blue border-accent-blue/30"
+                    : "bg-muted/10 text-muted border-border hover:text-foreground"
+                }`}
+              >
+                <Scissors size={11} /> {enableShortLink ? "Shortener Active" : "Shorten with devunomieta.xyz"}
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-[11px] text-muted mb-1">Display Text (Optional)</label>
+              <input
+                type="text"
+                value={linkText}
+                onChange={(e) => setLinkText(e.target.value)}
+                placeholder="e.g. View Project Proposal"
+                className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent-blue"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] text-muted mb-1">Target Destination URL *</label>
+              <input
+                type="url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://drive.google.com/file/d/..."
+                className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent-blue"
+                autoFocus
+              />
+            </div>
+
+            {enableShortLink && (
+              <div className="p-3 bg-header/40 border border-border/80 rounded-xl space-y-2 animate-in fade-in">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-accent-blue flex items-center gap-1">
+                    <ExternalLink size={11} /> Custom Branded URL:
+                  </span>
+                  <span className="text-[10px] text-muted">Editable in real-time</span>
+                </div>
+
+                <div className="flex items-center rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs">
+                  <span className="text-muted select-none font-mono">devunomieta.xyz/</span>
+                  <input
+                    type="text"
+                    value={customSlug}
+                    onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                    placeholder="doc002"
+                    className="flex-1 bg-transparent text-foreground font-mono font-semibold focus:outline-none ml-0.5"
+                  />
+                  {slugChecking ? (
+                    <Loader2 size={12} className="animate-spin text-muted" />
+                  ) : slugStatus?.available ? (
+                    <span className="inline-flex items-center text-[10px] text-emerald-400 font-bold gap-0.5">
+                      <Check size={11} /> Ready
+                    </span>
+                  ) : slugStatus?.error ? (
+                    <span className="inline-flex items-center text-[10px] text-rose-400 font-medium" title={slugStatus.error}>
+                      <AlertCircle size={11} /> Invalid
+                    </span>
+                  ) : null}
+                </div>
+
+                {slugStatus?.error && (
+                  <p className="text-[10px] text-rose-400">{slugStatus.error}</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
               <button
                 type="button"
                 onClick={() => setShowLinkModal(false)}
-                className="px-2.5 py-1 text-xs text-muted hover:text-foreground"
+                className="px-3 py-1.5 text-xs text-muted hover:text-foreground cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (linkUrl) exec("createLink", linkUrl);
-                  setShowLinkModal(false);
-                }}
-                className="px-3 py-1 rounded bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue/90"
+                disabled={creatingLink || (enableShortLink && !slugStatus?.available)}
+                onClick={handleInsertLinkModal}
+                className="px-4 py-1.5 rounded-lg bg-accent-blue text-white text-xs font-semibold hover:bg-accent-blue/90 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               >
-                Insert Link
+                {creatingLink && <Loader2 size={12} className="animate-spin" />}
+                {enableShortLink ? "Shorten & Insert" : "Insert Link"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* CTA Button Modal */}
+      {/* CTA Button Modal with Real-time Shortener */}
       {showButtonModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="bg-card border border-border rounded-xl p-4 w-full max-w-sm shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-150">
-            <h4 className="text-sm font-semibold text-foreground">Insert Call-To-Action Button</h4>
+          <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <MousePointerClick size={15} className="text-accent-blue" /> Insert CTA Button
+              </h4>
+              <button
+                type="button"
+                onClick={() => setButtonEnableShort(!buttonEnableShort)}
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 ${
+                  buttonEnableShort
+                    ? "bg-accent-blue/15 text-accent-blue border-accent-blue/30"
+                    : "bg-muted/10 text-muted border-border hover:text-foreground"
+                }`}
+              >
+                <Scissors size={11} /> {buttonEnableShort ? "Shortener Active" : "Shorten URL"}
+              </button>
+            </div>
+
             <div>
-              <label className="block text-[11px] text-muted mb-1">Button Label</label>
+              <label className="block text-[11px] text-muted mb-1">Button Label *</label>
               <input
                 type="text"
                 value={buttonText}
@@ -547,29 +837,64 @@ export function RichEmailEditor({ value, onChange, placeholder }: RichEmailEdito
                 className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent-blue"
               />
             </div>
+
             <div>
-              <label className="block text-[11px] text-muted mb-1">Target URL</label>
+              <label className="block text-[11px] text-muted mb-1">Target URL *</label>
               <input
                 type="url"
                 value={buttonUrl}
                 onChange={(e) => setButtonUrl(e.target.value)}
-                placeholder="https://yourlink.com"
+                placeholder="https://calendly.com/... or Google Drive"
                 className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent-blue"
               />
             </div>
-            <div className="flex justify-end gap-2 pt-1">
+
+            {buttonEnableShort && (
+              <div className="p-3 bg-header/40 border border-border/80 rounded-xl space-y-2 animate-in fade-in">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-accent-blue flex items-center gap-1">
+                    <ExternalLink size={11} /> Shortened Button URL:
+                  </span>
+                  <span className="text-[10px] text-muted">Editable in real-time</span>
+                </div>
+
+                <div className="flex items-center rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs">
+                  <span className="text-muted select-none font-mono">devunomieta.xyz/</span>
+                  <input
+                    type="text"
+                    value={buttonCustomSlug}
+                    onChange={(e) => setButtonCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                    placeholder="btn-call"
+                    className="flex-1 bg-transparent text-foreground font-mono font-semibold focus:outline-none ml-0.5"
+                  />
+                  {buttonSlugStatus?.available ? (
+                    <span className="inline-flex items-center text-[10px] text-emerald-400 font-bold gap-0.5">
+                      <Check size={11} /> Ready
+                    </span>
+                  ) : buttonSlugStatus?.error ? (
+                    <span className="inline-flex items-center text-[10px] text-rose-400 font-medium" title={buttonSlugStatus.error}>
+                      <AlertCircle size={11} /> Invalid
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
               <button
                 type="button"
                 onClick={() => setShowButtonModal(false)}
-                className="px-2.5 py-1 text-xs text-muted hover:text-foreground"
+                className="px-3 py-1.5 text-xs text-muted hover:text-foreground cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={creatingLink || (buttonEnableShort && !buttonSlugStatus?.available)}
                 onClick={insertCtaButton}
-                className="px-3 py-1 rounded bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue/90"
+                className="px-4 py-1.5 rounded-lg bg-accent-blue text-white text-xs font-semibold hover:bg-accent-blue/90 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               >
+                {creatingLink && <Loader2 size={12} className="animate-spin" />}
                 Insert Button
               </button>
             </div>

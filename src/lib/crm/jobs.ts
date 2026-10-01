@@ -314,7 +314,10 @@ export async function processBulkWhatsAppJobBatch(
         provider_message_id: "messageId" in result ? result.messageId : null,
       },
     ]);
-    if (logError) console.error(`crm_whatsapp_events insert failed for ${recipient.phone}:`, logError.message);
+    if (!("error" in result) && recipient.leadId) {
+      const { autoPromoteLeadToContacted } = await import("@/lib/crm/communicationResolver");
+      await autoPromoteLeadToContacted(recipient.leadId);
+    }
 
     sentInSession++;
 

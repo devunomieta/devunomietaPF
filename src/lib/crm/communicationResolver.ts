@@ -539,5 +539,116 @@ export async function recordCampaignEmailInEntityFeed({
       },
     ]);
   }
+
+  // Auto-promote lead to 'contacted' stage if currently in 'lead' stage
+  if (leadId) {
+    await autoPromoteLeadToContacted(leadId);
+  }
+}
+
+/**
+ * Automatically promotes a lead from 'lead' stage to 'contacted' stage.
+ * If the lead is already in 'contacted' or any higher stage (qualified, proposal, won, etc.),
+ * this function preserves their current stage and does not touch or demote them.
+ */
+export async function autoPromoteLeadToContacted(leadId: string): Promise<boolean> {
+  if (!leadId) return false;
+  const adminDb = createAdminClient();
+
+  const { data: lead } = await adminDb
+    .from("crm_leads")
+    .select("id, current_stage_key")
+    .eq("id", leadId)
+    .maybeSingle();
+
+  if (!lead) return false;
+
+  const currentStage = (lead.current_stage_key || "").trim().toLowerCase();
+  // Only promote if strictly in 'lead' stage (or empty initial stage)
+  if (currentStage === "lead" || !currentStage) {
+    const { error } = await adminDb
+      .from("crm_leads")
+      .update({
+        current_stage_key: "contacted",
+      })
+      .eq("id", leadId);
+
+    if (!error) {
+      console.log(`[Auto-Promote] Lead ${leadId} automatically promoted from '${currentStage}' to 'contacted' stage.`);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Resolves lead or client entity from a phone number
+ */
+export async function resolveEntityFromPhone(rawPhone: string): Promise<ResolvedEntityIdentity> {
+  const clean = rawPhone.replace(/[^\d+]/g, "").trim();
+  if (!clean || clean.length < 6) {
+    return { clientId: null, leadId: null, contactId: null, matchedVia: "none" };
+  }
+
+  const supabase = createAdminClient();
+  const digitsOnly = clean.replace(/^\+/, "");
+
+  // 1. Check crm_contacts by phone
+  const { data: contact } = await supabase
+    .from("crm_contacts")
+    .select("id, name, role, client_id, lead_id, phone")
+    .or(`phone.ilike.%${digitsOnly}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (contact) {
+    return {
+      clientId: contact.client_id,
+      leadId: contact.lead_id,
+      contactId: contact.id,
+      matchedVia: "contact_exact",
+      contactName: contact.name,
+      contactRole: contact.role || undefined,
+    };
+  }
+
+  // 2. Check crm_clients by phone
+  const { data: client } = await supabase
+    .from("crm_clients")
+    .select("id, name, phone")
+    .or(`phone.ilike.%${digitsOnly}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (client) {
+    return {
+      clientId: client.id,
+      leadId: null,
+      contactId: null,
+      matchedVia: "client_exact",
+      entityName: client.name,
+    };
+  }
+
+  // 3. Check crm_leads by phone
+  const { data: lead } = await supabase
+    .from("crm_leads")
+    .select("id, name, phone")
+    .or(`phone.ilike.%${digitsOnly}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (lead) {
+    return {
+      clientId: null,
+      leadId: lead.id,
+      contactId: null,
+      matchedVia: "lead_exact",
+      entityName: lead.name,
+    };
+  }
+
+  return { clientId: null, leadId: null, contactId: null, matchedVia: "none" };
 }
 
