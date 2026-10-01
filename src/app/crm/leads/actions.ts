@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { requireCrmUser } from "@/lib/crm/auth";
+import { createCrmNotification } from "@/lib/crm/notifications";
 import type { ActionResult, CrmJourneyStage } from "@/lib/crm/types";
 
 function parseTags(raw: FormDataEntryValue | null): string[] {
@@ -82,6 +83,23 @@ export async function saveLead(formData: FormData, id?: string): Promise<ActionR
   }
 
   if (error) return { error: error.message };
+
+  // Dispatch CRM Notification
+  try {
+    if (!id) {
+      await createCrmNotification({
+        title: "New Lead Created",
+        message: `${name} ${leadData.company ? `from ${leadData.company}` : ""} has been added to the lead pipeline.`,
+        category: "lead",
+        severity: "info",
+        required_page_permission: "leads",
+        link_url: `/crm/leads`,
+        entity_type: "lead",
+      });
+    }
+  } catch (notifErr) {
+    console.warn("Could not dispatch lead notification:", notifErr);
+  }
 
   revalidatePath("/crm/leads");
   return { success: true };
@@ -185,8 +203,40 @@ export async function moveLeadStage(leadId: string, stageKey: string, note?: str
   if (stage?.is_won && !lead.converted_to_client_id) {
     const result = await promoteLeadToClient(supabase, lead);
     if ("error" in result) return result;
+
+    try {
+      await createCrmNotification({
+        title: "Lead Converted to Client! 🎉",
+        message: `${lead.name} has reached a won stage and has been converted to an active client.`,
+        category: "client",
+        severity: "success",
+        required_page_permission: "clients",
+        link_url: `/crm/clients`,
+        entity_type: "client",
+        entity_id: result.clientId,
+      });
+    } catch (e) {
+      console.warn("Could not dispatch conversion notification:", e);
+    }
+
     revalidatePath("/crm/clients");
     return { success: true, clientId: result.clientId };
+  }
+
+  // General stage progress notification
+  try {
+    await createCrmNotification({
+      title: `Lead Stage: ${stage?.label || stageKey}`,
+      message: `${lead.name} was moved to ${stage?.label || stageKey}.`,
+      category: "lead",
+      severity: stage?.is_won ? "success" : stage?.is_lost ? "warning" : "info",
+      required_page_permission: "leads",
+      link_url: `/crm/leads`,
+      entity_type: "lead",
+      entity_id: leadId,
+    });
+  } catch (e) {
+    console.warn("Could not dispatch lead stage notification:", e);
   }
 
   return { success: true };

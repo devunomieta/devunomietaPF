@@ -109,6 +109,22 @@ export async function GET(request: Request) {
 
   const sentCount = results.filter((r) => r.status === "fulfilled").length;
 
+  // Dispatch CRM in-app notification
+  try {
+    const { createCrmNotification } = await import("@/lib/crm/notifications");
+    await createCrmNotification({
+      title: "Monthly Executive Report Generated 📊",
+      message: `The executive report for ${range.label} was compiled and sent to ${sentCount}/${recipients.length} recipients.`,
+      category: "monitoring",
+      severity: "info",
+      required_page_permission: "monitoring",
+      link_url: "/crm/monitoring",
+      entity_type: "report",
+    });
+  } catch (e) {
+    console.warn("Could not dispatch report notification:", e);
+  }
+
   return NextResponse.json({
     success: true,
     sentCount,

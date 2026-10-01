@@ -191,6 +191,59 @@ export type CrmPagesPermission = {
   settings: boolean;
   users: boolean;
   mailbox: boolean;
+  notifications: boolean;
+};
+
+export type CrmNotificationCategory =
+  | "lead"
+  | "client"
+  | "mailbox"
+  | "whatsapp"
+  | "campaign"
+  | "monitoring"
+  | "invoice"
+  | "finance"
+  | "system"
+  | "user";
+
+export type CrmNotificationSeverity = "info" | "success" | "warning" | "critical";
+
+export type CrmNotification = {
+  id: string;
+  user_id: string | null;
+  target_role: string | null;
+  required_page_permission: keyof CrmPagesPermission | null;
+  title: string;
+  message: string;
+  category: CrmNotificationCategory;
+  severity: CrmNotificationSeverity;
+  link_url: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata: Record<string, unknown>;
+  group_key: string | null;
+  group_count: number;
+  is_read: boolean;
+  read_at: string | null;
+  read_by: string | null;
+  is_archived: boolean;
+  snoozed_until: string | null;
+  reminder_count: number;
+  actor_email: string | null;
+  actor_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmNotificationPreferences = {
+  user_email: string;
+  sound_enabled: boolean;
+  browser_push_enabled: boolean;
+  push_subscription: Record<string, unknown> | null;
+  email_digest_enabled: boolean;
+  email_digest_frequency: "instant" | "daily" | "off";
+  category_toggles: Record<CrmNotificationCategory, boolean>;
+  updated_at: string;
 };
 
 export type CrmActionsPermission = {
@@ -341,6 +394,7 @@ export const SUPER_ADMIN_PERMISSIONS: CrmPermissionsConfig = {
     monitoring: true,
     settings: true,
     users: true,
+    notifications: true,
   },
   actions: {
     clients_edit: true,
@@ -375,6 +429,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         monitoring: false,
         settings: false,
         users: false,
+        notifications: true,
       },
       actions: {
         clients_edit: true,
@@ -408,6 +463,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         monitoring: false,
         settings: false,
         users: false,
+        notifications: true,
       },
       actions: {
         clients_edit: false,
@@ -441,6 +497,7 @@ export const ROLE_PRESETS: Record<string, { label: string; description: string; 
         monitoring: false,
         settings: false,
         users: false,
+        notifications: true,
       },
       actions: {
         clients_edit: true,

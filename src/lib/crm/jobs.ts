@@ -173,6 +173,23 @@ export async function processImportJobBatch(
     })
     .eq("id", job.id);
 
+  if (done) {
+    try {
+      const { createCrmNotification } = await import("@/lib/crm/notifications");
+      await createCrmNotification({
+        title: `Bulk ${targetType === "client" ? "Clients" : "Leads"} Import Complete`,
+        message: `Imported ${stats.imported}, updated ${stats.updated}, skipped ${stats.skipped} out of ${job.total} records.`,
+        category: "monitoring",
+        severity: "success",
+        required_page_permission: "import",
+        link_url: targetType === "client" ? "/crm/clients" : "/crm/leads",
+        group_key: `import_${job.id}`,
+      });
+    } catch (e) {
+      console.warn("Could not dispatch job notification:", e);
+    }
+  }
+
   return { processed: batch.length, done };
 }
 

@@ -6,6 +6,7 @@ import { requireCrmUser } from "@/lib/crm/auth";
 import { sendEmail } from "@/lib/brevo";
 import { renderInvoicePdf } from "@/lib/crm/invoice-pdf";
 import { formatMoney } from "@/lib/crm/currency";
+import { createCrmNotification } from "@/lib/crm/notifications";
 import type { ActionResult, CrmInvoiceLineItem, CrmInvoice, CrmSettings } from "@/lib/crm/types";
 
 async function recomputeInvoiceStatus(supabase: ReturnType<typeof createAdminClient>, invoiceId: string) {
@@ -180,6 +181,24 @@ export async function recordPayment(formData: FormData): Promise<ActionResult> {
   if (error) return { error: error.message };
 
   await recomputeInvoiceStatus(supabase, invoiceId);
+
+  // Dispatch CRM notification for recorded payment
+  try {
+    const { data: inv } = await supabase.from("crm_invoices").select("number, currency, client:crm_clients(name)").eq("id", invoiceId).maybeSingle();
+    const clientName = (inv?.client as any)?.name || "Client";
+    await createCrmNotification({
+      title: "Payment Received! 💳",
+      message: `Received ${formatMoney(amount, inv?.currency || "NGN")} for Invoice ${inv?.number || ""} from ${clientName}.`,
+      category: "finance",
+      severity: "success",
+      required_page_permission: "finance",
+      link_url: `/crm/invoices/${invoiceId}`,
+      entity_type: "invoice",
+      entity_id: invoiceId,
+    });
+  } catch (e) {
+    console.warn("Could not dispatch payment notification:", e);
+  }
 
   revalidatePath(`/crm/invoices/${invoiceId}`);
   revalidatePath("/crm/finance");

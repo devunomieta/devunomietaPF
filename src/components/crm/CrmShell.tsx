@@ -23,9 +23,11 @@ import {
   Shield,
   Inbox,
   ChevronDown,
+  Bell,
 } from "lucide-react";
 import { CrmFeedbackProvider } from "./CrmFeedbackProvider";
 import { CrmProfileModal } from "./CrmProfileModal";
+import { NotificationBell } from "./notifications/NotificationBell";
 
 type NavLink = {
   name: string;
@@ -49,6 +51,7 @@ const ICONS = {
   Settings,
   Shield,
   UserCheck,
+  Bell,
 } as const;
 
 export type CrmNavLinkInput = {
@@ -101,7 +104,7 @@ function NavList({ links, pathname, onNavigate }: { links: NavLink[]; pathname: 
       id: "system",
       title: "System",
       icon: Shield,
-      links: links.filter((l) => ["/crm/monitoring", "/crm/users", "/crm/settings"].includes(l.href)),
+      links: links.filter((l) => ["/crm/notifications", "/crm/monitoring", "/crm/users", "/crm/settings"].includes(l.href)),
     },
   ];
 
@@ -265,6 +268,7 @@ export function CrmShell({
           CRM
         </Link>
         <div className="flex items-center gap-2">
+          <NotificationBell />
           <button
             onClick={() => setProfileOpen(true)}
             className="p-1.5 text-xs text-muted hover:text-foreground flex items-center gap-1"
@@ -391,6 +395,9 @@ export function CrmShell({
                   <span>Back to /manage</span>
                 </Link>
               )}
+
+              {/* Notification Bell */}
+              <NotificationBell />
 
               {/* User Profile Pill */}
               <button

@@ -50,6 +50,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     { name: "Campaigns", href: "/crm/campaigns", icon: "Mail", permissionKey: "campaigns" },
     { name: "WhatsApp", href: "/crm/whatsapp", icon: "MessageCircle", permissionKey: "whatsapp" },
     { name: "Monitoring", href: "/crm/monitoring", icon: "Activity", count: pendingJobs, permissionKey: "monitoring" },
+    { name: "Notifications", href: "/crm/notifications", icon: "Bell", permissionKey: "notifications" },
     { name: "Invoices", href: "/crm/invoices", icon: "Receipt", count: overdueInvoices, permissionKey: "invoices" },
     { name: "Finance", href: "/crm/finance", icon: "Wallet", permissionKey: "finance" },
     { name: "Settings", href: "/crm/settings", icon: "Settings", permissionKey: "settings" },

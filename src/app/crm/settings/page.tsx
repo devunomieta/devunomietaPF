@@ -3,6 +3,7 @@ import { isGreenApiConfigured } from "@/lib/crm/green-api";
 import type { CrmSettings } from "@/lib/crm/types";
 import { SettingsForm } from "./SettingsForm";
 import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
+import { NotificationPreferencesSection } from "@/components/crm/notifications/NotificationPreferencesSection";
 
 export const metadata = { title: "Settings · CRM" };
 
@@ -29,6 +30,8 @@ export default async function CrmSettingsPage() {
       />
 
       <SettingsForm settings={settings as CrmSettings} whatsappConfigured={isGreenApiConfigured()} />
+
+      <NotificationPreferencesSection />
     </div>
   );
 }
