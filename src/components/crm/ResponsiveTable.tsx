@@ -53,7 +53,7 @@ export function ResponsiveTable<T extends { id: string }>({
           <thead>
             <tr className="text-left text-muted border-b border-border">
               {columns.map((c, idx) => (
-                <th key={c.headerKey || (typeof c.header === "string" ? c.header : idx)} className="py-2 px-3 font-medium whitespace-nowrap">
+                <th key={c.headerKey || (typeof c.header === "string" ? c.header : idx)} className={`py-2 px-3 font-medium whitespace-nowrap ${c.className || ""}`}>
                   {c.header}
                 </th>
               ))}

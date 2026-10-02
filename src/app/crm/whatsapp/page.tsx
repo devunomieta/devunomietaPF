@@ -110,21 +110,54 @@ export default async function CrmWhatsAppPage({
   const prefillMessage = sourceEvent?.message || duplicateMessage || null;
 
   const columns: CrmColumn<EventRow>[] = [
-    { header: "Phone", cell: (e) => <span className="font-mono text-xs">{e.phone}</span> },
-    { header: "Direction", cell: (e) => <span className="text-muted capitalize">{e.direction}</span> },
-    { header: "Message", cell: (e) => <span className="truncate block max-w-md lg:max-w-xl text-foreground/90">{e.message || "—"}</span> },
-    { header: "Status", cell: (e) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[e.status] || ""}`}>{e.status}</span> },
-    { header: "When", cell: (e) => new Date(e.occurred_at).toLocaleString() },
+    {
+      header: "Phone",
+      className: "w-36 shrink-0",
+      cell: (e) => <span className="font-mono text-xs font-semibold text-foreground/90 whitespace-nowrap">{e.phone}</span>,
+    },
+    {
+      header: "Direction",
+      className: "w-24 shrink-0",
+      cell: (e) => <span className="text-muted capitalize text-xs">{e.direction}</span>,
+    },
+    {
+      header: "Message",
+      className: "max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg",
+      mobileStacked: true,
+      cell: (e) => (
+        <span className="truncate block text-foreground/90 text-xs sm:text-sm" title={e.message || undefined}>
+          {e.message || "—"}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      className: "w-24 shrink-0 text-center",
+      cell: (e) => (
+        <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium inline-block capitalize ${STATUS_STYLES[e.status] || ""}`}>
+          {e.status}
+        </span>
+      ),
+    },
+    {
+      header: "When",
+      className: "w-40 shrink-0 text-xs text-muted whitespace-nowrap",
+      cell: (e) => new Date(e.occurred_at).toLocaleString(undefined, {
+        dateStyle: "short",
+        timeStyle: "short",
+      }),
+    },
     {
       header: "",
+      className: "w-36 shrink-0 text-right",
       cell: (e) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           {e.direction === "outbound" && (
             <>
               <Link
                 href={`/crm/whatsapp?resendEventId=${e.id}`}
                 title="Resend to this number"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-header/40 hover:bg-header/80 text-foreground border border-border/60 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-header/60 hover:bg-header text-foreground border border-border/80 transition-colors shadow-xs"
               >
                 <RotateCcw size={11} className="text-accent-blue" />
                 Resend
@@ -132,7 +165,7 @@ export default async function CrmWhatsAppPage({
               <Link
                 href={`/crm/whatsapp?duplicateMessage=${encodeURIComponent(e.message || "")}`}
                 title="Duplicate & Edit message"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-header/40 hover:bg-header/80 text-muted hover:text-foreground border border-border/60 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-header/60 hover:bg-header text-muted hover:text-foreground border border-border/80 transition-colors shadow-xs"
               >
                 <Copy size={11} />
                 Duplicate
