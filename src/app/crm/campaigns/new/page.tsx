@@ -21,8 +21,8 @@ export default async function NewCampaignPage({
       : leadId
         ? supabase.from("crm_leads").select("id, name, email").eq("id", leadId).maybeSingle()
         : Promise.resolve({ data: null }),
-    supabase.from("crm_leads").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
-    supabase.from("crm_clients").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
+    supabase.from("crm_leads").select("tags, created_at").not("tags", "is", null).order("created_at", { ascending: false }).limit(1000),
+    supabase.from("crm_clients").select("tags, created_at").not("tags", "is", null).order("created_at", { ascending: false }).limit(1000),
     sourceCampaignId
       ? supabase.from("crm_email_campaigns").select("*").eq("id", sourceCampaignId).maybeSingle()
       : Promise.resolve({ data: null }),

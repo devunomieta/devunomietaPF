@@ -187,7 +187,18 @@ export function NewCampaignForm({
     if (!selectedTags.includes(tag)) {
       setSelectedTags((prev) => [...prev, tag]);
     }
-    setTagSearchInput("");
+  }
+
+  function handleSelectAllTags() {
+    // Select all available tags that match the current search, or all available tags if search is empty
+    const tagsToAdd = tagSearchInput.trim()
+      ? availableTags.filter((t) => t.toLowerCase().includes(tagSearchInput.trim().toLowerCase()))
+      : availableTags;
+
+    setSelectedTags((prev) => {
+      const set = new Set([...prev, ...tagsToAdd]);
+      return Array.from(set);
+    });
   }
 
   function handleAddCustomTag() {
@@ -199,11 +210,12 @@ export function NewCampaignForm({
     setTagSearchInput("");
   }
 
-  const matchingTags = tagSearchInput.trim().length >= 3
+  // When input is typed, filter from all available tags; when empty, show all available tags for full multi-selection
+  const matchingTags = tagSearchInput.trim()
     ? availableTags.filter((t) =>
         t.toLowerCase().includes(tagSearchInput.trim().toLowerCase())
       )
-    : availableTags.slice(0, 5);
+    : availableTags;
 
   function insertEmojiIntoSubject(emoji: string) {
     setSubject((prev) => prev + emoji);
@@ -511,15 +523,27 @@ export function NewCampaignForm({
               <label className={crmLabelClass} style={{ marginBottom: 0 }}>
                 Filter by Tags (Optional)
               </label>
-              {selectedTags.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedTags([])}
-                  className="text-[10px] text-muted hover:text-red-400 underline"
-                >
-                  Clear all ({selectedTags.length})
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {availableTags.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSelectAllTags}
+                    className="text-[11px] font-semibold text-accent-blue hover:text-accent-blue/80 hover:underline px-1.5 py-0.5 rounded bg-accent-blue/10 border border-accent-blue/20"
+                    title="Select all tags matching current view"
+                  >
+                    Select ALL ({availableTags.length})
+                  </button>
+                )}
+                {selectedTags.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTags([])}
+                    className="text-[10px] text-muted hover:text-red-400 underline"
+                  >
+                    Clear all ({selectedTags.length})
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Selected Tags Chips (when any selected) */}
@@ -555,8 +579,8 @@ export function NewCampaignForm({
                 type="text"
                 placeholder={
                   selectedTags.length > 0
-                    ? "Add another tag or type to search..."
-                    : "Search tags (e.g. VIP, Medical, Lead) or type 3+ chars..."
+                    ? `Search across all ${availableTags.length} tags or type custom...`
+                    : `Search or browse all ${availableTags.length} tags (e.g. VIP, Medical, Lead)...`
                 }
                 value={tagSearchInput}
                 onFocus={() => setIsTagDropdownOpen(true)}
@@ -567,7 +591,7 @@ export function NewCampaignForm({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    if (matchingTags.length > 0 && tagSearchInput.trim().length >= 3) {
+                    if (matchingTags.length > 0 && tagSearchInput.trim().length >= 2) {
                       handleSelectTag(matchingTags[0]);
                     } else {
                       handleAddCustomTag();
@@ -583,28 +607,43 @@ export function NewCampaignForm({
                   onClick={handleAddCustomTag}
                   className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-accent-blue/20 text-accent-blue hover:bg-accent-blue hover:text-white rounded text-[11px] font-bold transition-colors"
                 >
-                  Add
+                  Add Custom
                 </button>
               )}
             </div>
 
-            {/* Smart Tag Recommendations Dropdown */}
+            {/* Smart Tag Multi-Select Dropdown with ALL button */}
             {isTagDropdownOpen && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#0f141c] border border-border shadow-2xl rounded-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#0f141c] border border-border shadow-2xl rounded-xl p-2 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted border-b border-border/40 mb-1">
                   <span>
-                    {tagSearchInput.trim().length >= 3
+                    {tagSearchInput.trim()
                       ? `Matching Tags (${matchingTags.length})`
-                      : "Recommended Tags (Recently Used)"}
+                      : `All Available Tags (${matchingTags.length})`}
                   </span>
-                  {tagSearchInput.trim().length < 3 && (
-                    <span className="text-muted/70 font-normal lowercase">Type 3+ chars to search</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllTags}
+                      className="text-accent-blue hover:underline lowercase font-semibold"
+                    >
+                      + select all ({matchingTags.length})
+                    </button>
+                    {selectedTags.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTags([])}
+                        className="text-red-400 hover:underline lowercase font-normal"
+                      >
+                        clear
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {matchingTags.length === 0 ? (
                   <div className="p-3 text-center text-xs text-muted">
-                    No matching tags found. Press <kbd className="bg-header px-1.5 py-0.5 rounded text-[10px]">Enter</kbd> to add &ldquo;{tagSearchInput}&rdquo; as a custom tag.
+                    No matching tags found. Press <kbd className="bg-header px-1.5 py-0.5 rounded text-[10px]">Enter</kbd> or click <strong>Add Custom</strong> to add &ldquo;{tagSearchInput}&rdquo;.
                   </div>
                 ) : (
                   <div className="space-y-0.5">
@@ -614,10 +653,7 @@ export function NewCampaignForm({
                         <button
                           key={tag}
                           type="button"
-                          onClick={() => {
-                            toggleTag(tag);
-                            setTagSearchInput("");
-                          }}
+                          onClick={() => toggleTag(tag)}
                           className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-colors text-left ${
                             isSelected
                               ? "bg-accent-blue/15 text-accent-blue font-semibold"
@@ -625,6 +661,12 @@ export function NewCampaignForm({
                           }`}
                         >
                           <span className="flex items-center gap-2 truncate">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="rounded border-border text-accent-blue focus:ring-0 cursor-pointer pointer-events-none"
+                            />
                             <Tag size={12} className={isSelected ? "text-accent-blue" : "text-muted"} />
                             <span className="truncate">{tag}</span>
                           </span>

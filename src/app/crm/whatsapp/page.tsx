@@ -57,8 +57,8 @@ export default async function CrmWhatsAppPage({
       : leadId
         ? supabase.from("crm_leads").select("id, name, phone").eq("id", leadId).maybeSingle()
         : Promise.resolve({ data: null }),
-    supabase.from("crm_leads").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
-    supabase.from("crm_clients").select("tags, created_at").order("created_at", { ascending: false }).limit(200),
+    supabase.from("crm_leads").select("tags, created_at").not("tags", "is", null).order("created_at", { ascending: false }).limit(1000),
+    supabase.from("crm_clients").select("tags, created_at").not("tags", "is", null).order("created_at", { ascending: false }).limit(1000),
     resendEventId
       ? supabase.from("crm_whatsapp_events").select("*").eq("id", resendEventId).maybeSingle()
       : Promise.resolve({ data: null }),
