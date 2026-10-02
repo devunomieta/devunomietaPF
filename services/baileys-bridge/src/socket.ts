@@ -1,4 +1,5 @@
 import makeWASocket, {
+  Browsers,
   DisconnectReason,
   WASocket,
   proto,
@@ -36,10 +37,12 @@ export class BaileysSocketManager {
     try {
       this.sock = makeWASocket({
         auth: state,
-        logger: pino({ level: "silent" }), // keep Baileys internal logs quiet
-        browser: ["Devunomieta CRM", "Chrome", "124.0.0"],
+        logger: this.logger.child({ module: "baileys" }),
+        browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
         markOnlineOnConnect: true,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
       });
 
       this.setupListeners(saveCreds);
