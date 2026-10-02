@@ -100,11 +100,11 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
 
   // Aggregate stats across all campaigns
   const totalCampaigns = campaigns.length;
-  const totalSent = campaigns.reduce((acc, c) => acc + (c.sent_count || 0), 0);
+  const totalDelivered = campaigns.reduce((acc, c) => acc + (c.delivered_count || c.sent_count || 0), 0);
   const totalOpens = campaigns.reduce((acc, c) => acc + (c.opened_count || 0), 0);
   const totalClicks = campaigns.reduce((acc, c) => acc + (c.clicked_count || 0), 0);
-  const avgOpenRate = totalSent > 0 ? Math.round((totalOpens / totalSent) * 100) : 0;
-  const avgClickRate = totalSent > 0 ? Math.round((totalClicks / totalSent) * 100) : 0;
+  const avgOpenRate = totalDelivered > 0 ? Math.round((totalOpens / totalDelivered) * 100) : 0;
+  const avgClickRate = totalDelivered > 0 ? Math.round((totalClicks / totalDelivered) * 100) : 0;
 
   const allSelected = campaigns.length > 0 && selectedIds.length === campaigns.length;
   const isIndeterminate = selectedIds.length > 0 && selectedIds.length < campaigns.length;
@@ -349,8 +349,8 @@ export function CampaignsListClient({ campaigns }: { campaigns: CampaignWithMetr
             <Send size={15} className="text-accent-green" />
           </div>
           <div>
-            <span className="text-2xl font-bold text-foreground">{totalSent}</span>
-            <span className="text-xs text-muted block mt-0.5">Total recipients reached</span>
+            <span className="text-2xl font-bold text-foreground">{totalDelivered}</span>
+            <span className="text-xs text-muted block mt-0.5">Campaign recipients reached</span>
           </div>
         </div>
 

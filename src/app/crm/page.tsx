@@ -59,7 +59,7 @@ export default async function CrmDashboardPage() {
     supabase.from("crm_journeys").select("stages").eq("is_default", true).maybeSingle(),
     supabase.from("crm_invoices").select("id, total, status, currency, created_at").neq("status", "void"),
     supabase.from("crm_invoice_payments").select("id, amount, channel, paid_at"),
-    supabase.from("crm_email_events").select("type, occurred_at"),
+    supabase.from("crm_email_events").select("id, type, message_id, recipient_email, occurred_at"),
     supabase.from("crm_email_campaigns").select("*", { count: "exact", head: true }),
     supabase.from("crm_whatsapp_events").select("*", { count: "exact", head: true }),
     supabase.from("crm_leads").select("id, name, company, current_stage_key, created_at").order("created_at", { ascending: false }).limit(5),
@@ -101,21 +101,38 @@ export default async function CrmDashboardPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
 
-  // --- Email Performance Metrics ---
-  const emailCounts = { sent: 0, delivered: 0, opened: 0, clicked: 0, bounce: 0 };
+  // --- Email Performance Metrics (Aligned with Live Monitoring) ---
+  const sentMessageIds = new Set<string>();
+  const deliveredMessageIds = new Set<string>();
+  const uniqueOpens = new Set<string>();
+  const uniqueClicks = new Set<string>();
+  let totalBounces = 0;
+  let totalRawOpens = 0;
+  let totalRawClicks = 0;
+
   for (const ev of emailEvents || []) {
-    if (ev.type === "sent") emailCounts.sent++;
-    else if (ev.type === "delivered") emailCounts.delivered++;
-    else if (ev.type === "opened") emailCounts.opened++;
-    else if (ev.type === "clicked") emailCounts.clicked++;
-    else if (ev.type === "soft_bounce" || ev.type === "hard_bounce") emailCounts.bounce++;
+    const msgKey = ev.message_id || ev.recipient_email || ev.id;
+    if (ev.type === "sent") {
+      sentMessageIds.add(msgKey);
+    } else if (ev.type === "delivered") {
+      deliveredMessageIds.add(msgKey);
+    } else if (ev.type === "opened") {
+      uniqueOpens.add(msgKey);
+      totalRawOpens++;
+    } else if (ev.type === "clicked") {
+      uniqueClicks.add(msgKey);
+      totalRawClicks++;
+    } else if (ev.type === "soft_bounce" || ev.type === "hard_bounce") {
+      totalBounces++;
+    }
   }
 
-  // Calculate rates
-  const baseDenominator = emailCounts.delivered || emailCounts.sent || 1;
-  const deliveryPct = emailCounts.sent > 0 ? Math.min(100, Math.round((emailCounts.delivered / emailCounts.sent) * 100)) : 100;
-  const openPct = Math.min(100, Math.round((emailCounts.opened / baseDenominator) * 100));
-  const clickPct = Math.min(100, Math.round((emailCounts.clicked / baseDenominator) * 100));
+  // Calculate mathematically consistent rates
+  const totalAttempted = Math.max(sentMessageIds.size, deliveredMessageIds.size + totalBounces);
+  const deliveredCount = deliveredMessageIds.size || sentMessageIds.size;
+  const deliveryPct = totalAttempted > 0 ? Math.min(100, Math.round((deliveredCount / totalAttempted) * 1000) / 10) : 100;
+  const openPct = deliveredCount > 0 ? Math.min(100, Math.round((uniqueOpens.size / deliveredCount) * 1000) / 10) : 0;
+  const clickPct = deliveredCount > 0 ? Math.min(100, Math.round((uniqueClicks.size / deliveredCount) * 1000) / 10) : 0;
 
   // --- Last 7 Days Activity (Email sends & Lead creations) ---
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -423,22 +440,22 @@ export default async function CrmDashboardPage() {
             <div className="bg-background/40 border border-border/50 rounded-lg p-3 text-center">
               <span className="text-xs text-muted block mb-1">Delivered</span>
               <span className="text-xl font-bold text-accent-green">{deliveryPct}%</span>
-              <span className="text-[11px] text-muted block mt-0.5">{emailCounts.delivered} confirmed</span>
+              <span className="text-[11px] text-muted block mt-0.5">{deliveredCount} confirmed</span>
             </div>
             <div className="bg-background/40 border border-border/50 rounded-lg p-3 text-center">
               <span className="text-xs text-muted block mb-1">Open Rate</span>
               <span className="text-xl font-bold text-accent-blue">{openPct}%</span>
-              <span className="text-[11px] text-muted block mt-0.5">{emailCounts.opened} opens</span>
+              <span className="text-[11px] text-muted block mt-0.5">{uniqueOpens.size} unique ({totalRawOpens} total)</span>
             </div>
             <div className="bg-background/40 border border-border/50 rounded-lg p-3 text-center">
               <span className="text-xs text-muted block mb-1">Click Rate</span>
               <span className="text-xl font-bold text-purple-400">{clickPct}%</span>
-              <span className="text-[11px] text-muted block mt-0.5">{emailCounts.clicked} clicks</span>
+              <span className="text-[11px] text-muted block mt-0.5">{uniqueClicks.size} unique ({totalRawClicks} total)</span>
             </div>
             <div className="bg-background/40 border border-border/50 rounded-lg p-3 text-center">
               <span className="text-xs text-muted block mb-1">Bounces</span>
-              <span className={`text-xl font-bold ${emailCounts.bounce > 0 ? "text-red-400" : "text-muted"}`}>
-                {emailCounts.bounce}
+              <span className={`text-xl font-bold ${totalBounces > 0 ? "text-red-400" : "text-muted"}`}>
+                {totalBounces}
               </span>
               <span className="text-[11px] text-muted block mt-0.5">soft & hard bounces</span>
             </div>

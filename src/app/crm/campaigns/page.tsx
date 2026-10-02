@@ -16,26 +16,41 @@ export default async function CrmCampaignsPage() {
       .limit(500),
     supabase
       .from("crm_email_events")
-      .select("campaign_id, type"),
+      .select("id, campaign_id, type, message_id, recipient_email"),
   ]);
 
-  // Aggregate event counts per campaign_id
-  const eventStatsByCampaign = new Map<string, { delivered: number; opened: number; clicked: number; bounce: number }>();
+  // Aggregate event counts per campaign_id with deduplication
+  const campaignDelivered = new Map<string, Set<string>>();
+  const campaignOpens = new Map<string, Set<string>>();
+  const campaignClicks = new Map<string, Set<string>>();
+  const campaignBounces = new Map<string, number>();
 
   for (const e of events || []) {
     if (!e.campaign_id) continue;
-    if (!eventStatsByCampaign.has(e.campaign_id)) {
-      eventStatsByCampaign.set(e.campaign_id, { delivered: 0, opened: 0, clicked: 0, bounce: 0 });
+    const cid = e.campaign_id;
+    const msgKey = e.message_id || e.recipient_email || e.id;
+
+    if (!campaignDelivered.has(cid)) campaignDelivered.set(cid, new Set());
+    if (!campaignOpens.has(cid)) campaignOpens.set(cid, new Set());
+    if (!campaignClicks.has(cid)) campaignClicks.set(cid, new Set());
+    if (!campaignBounces.has(cid)) campaignBounces.set(cid, 0);
+
+    if (e.type === "delivered") {
+      campaignDelivered.get(cid)!.add(msgKey);
+    } else if (e.type === "opened") {
+      campaignOpens.get(cid)!.add(msgKey);
+    } else if (e.type === "clicked") {
+      campaignClicks.get(cid)!.add(msgKey);
+    } else if (e.type === "soft_bounce" || e.type === "hard_bounce") {
+      campaignBounces.set(cid, (campaignBounces.get(cid) || 0) + 1);
     }
-    const current = eventStatsByCampaign.get(e.campaign_id)!;
-    if (e.type === "delivered") current.delivered++;
-    else if (e.type === "opened") current.opened++;
-    else if (e.type === "clicked") current.clicked++;
-    else if (e.type === "soft_bounce" || e.type === "hard_bounce") current.bounce++;
   }
 
   const campaignsWithMetrics: CampaignWithMetrics[] = (campaigns || []).map((c) => {
-    const stats = eventStatsByCampaign.get(c.id) || { delivered: 0, opened: 0, clicked: 0, bounce: 0 };
+    const deliveredCount = campaignDelivered.get(c.id)?.size || 0;
+    const openedCount = campaignOpens.get(c.id)?.size || 0;
+    const clickedCount = campaignClicks.get(c.id)?.size || 0;
+    const bounceCount = campaignBounces.get(c.id) || 0;
     return {
       id: c.id,
       subject: c.subject,
@@ -44,10 +59,10 @@ export default async function CrmCampaignsPage() {
       sent_count: c.sent_count,
       total_recipients: c.total_recipients,
       created_at: c.created_at,
-      delivered_count: stats.delivered,
-      opened_count: stats.opened,
-      clicked_count: stats.clicked,
-      bounce_count: stats.bounce,
+      delivered_count: deliveredCount,
+      opened_count: openedCount,
+      clicked_count: clickedCount,
+      bounce_count: bounceCount,
     };
   });
 

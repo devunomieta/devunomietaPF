@@ -16,6 +16,8 @@ export type RecipientStatusItem = {
 import { cancelJobAction } from "./actions";
 import { Loader2, StopCircle } from "lucide-react";
 
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
+
 export function JobDetailsModal({
   jobId,
   jobType,
@@ -33,19 +35,27 @@ export function JobDetailsModal({
   results?: RecipientStatusItem[];
   recipients?: Array<{ phone?: string; email?: string; name?: string }>;
 }) {
+  const { confirm, toast } = useCrmFeedback();
   const [open, setOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(status);
 
   async function handleCancelJob() {
-    if (!confirm("Are you sure you want to stop this job? Any unsent recipients will be aborted.")) return;
+    const ok = await confirm("Are you sure you want to stop this job? Any unsent recipients will be aborted.", {
+      title: "Stop Background Job",
+      confirmLabel: "Stop Job",
+      danger: true,
+    });
+    if (!ok) return;
+
     setCanceling(true);
     const res = await cancelJobAction(jobId);
     setCanceling(false);
     if ("success" in res) {
       setCurrentStatus("canceled");
+      toast("Job has been stopped successfully.", "success");
     } else {
-      alert(res.error || "Failed to stop job.");
+      toast(res.error || "Failed to stop job.", "error");
     }
   }
 
