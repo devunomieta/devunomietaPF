@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
-import { AlertTriangle, Copy, RotateCcw, CheckCircle2, Wifi, WifiOff } from "lucide-react";
+import { AlertTriangle, Copy, RotateCcw, CheckCircle2, Check, CheckCheck, ArrowDownLeft, Wifi, WifiOff } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
 import { isWhatsAppConfigured, getWhatsAppInstanceState } from "@/lib/crm/whatsapp";
 import type { CrmJourneyStage } from "@/lib/crm/types";
@@ -110,16 +110,131 @@ export default async function CrmWhatsAppPage({
 
   const prefillMessage = sourceEvent?.message || duplicateMessage || null;
 
+  // Resolve entity names and links for displayed event numbers
+  const eventPhones = (pagedEvents || []).map((e) => e.phone).filter(Boolean);
+  const { batchResolveEntitiesFromPhones } = await import("@/lib/crm/communicationResolver");
+  const phoneEntitiesMap = await batchResolveEntitiesFromPhones(eventPhones);
+
+  const renderStatusIcon = (status: string, direction: string) => {
+    const normalizedStatus = (status || "").toLowerCase();
+
+    if (direction === "inbound") {
+      return (
+        <span
+          title="Inbound Message"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+        >
+          <ArrowDownLeft size={14} className="stroke-[2.2] text-emerald-400" />
+          <span className="capitalize">In</span>
+        </span>
+      );
+    }
+
+    if (normalizedStatus === "read") {
+      return (
+        <span
+          title="Read"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+        >
+          {/* Circle green with single green tick inside */}
+          <CheckCircle2 size={14} className="stroke-[2.2] text-emerald-400" />
+          <span className="capitalize">Read</span>
+        </span>
+      );
+    }
+
+    if (normalizedStatus === "delivered") {
+      return (
+        <span
+          title="Delivered"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+        >
+          {/* Double green tick */}
+          <CheckCheck size={14} className="stroke-[2.2] text-emerald-400" />
+          <span className="capitalize">Delivered</span>
+        </span>
+      );
+    }
+
+    if (normalizedStatus === "sent") {
+      return (
+        <span
+          title="Sent"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+        >
+          {/* Single green tick */}
+          <Check size={14} className="stroke-[2.2] text-emerald-400" />
+          <span className="capitalize">Sent</span>
+        </span>
+      );
+    }
+
+    if (normalizedStatus === "failed") {
+      return (
+        <span
+          title="Failed"
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-red-400 bg-red-400/10 border border-red-400/20"
+        >
+          <span className="capitalize">Failed</span>
+        </span>
+      );
+    }
+
+    return (
+      <span
+        title={status}
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium text-muted bg-muted/10 border border-border"
+      >
+        <span className="capitalize">{status || "Queued"}</span>
+      </span>
+    );
+  };
+
   const columns: CrmColumn<EventRow>[] = [
+    {
+      header: "Name",
+      className: "w-44 shrink-0",
+      cell: (e) => {
+        const entity = phoneEntitiesMap.get(e.phone);
+        const name = entity?.contactName || entity?.entityName;
+        const targetHref = entity?.clientId
+          ? `/crm/clients/${entity.clientId}`
+          : entity?.leadId
+          ? `/crm/leads/${entity.leadId}`
+          : null;
+
+        if (name && targetHref) {
+          return (
+            <Link
+              href={targetHref}
+              className="text-xs font-semibold text-accent-blue hover:underline truncate block max-w-[170px]"
+              title={name}
+            >
+              {name}
+            </Link>
+          );
+        }
+
+        if (name) {
+          return (
+            <span className="text-xs font-semibold text-foreground/90 truncate block max-w-[170px]" title={name}>
+              {name}
+            </span>
+          );
+        }
+
+        // Stays as phone number if not linked to a contact/entity in the system
+        return (
+          <span className="font-mono text-xs text-muted truncate block max-w-[170px]" title={e.phone}>
+            {e.phone}
+          </span>
+        );
+      },
+    },
     {
       header: "Phone",
       className: "w-36 shrink-0",
-      cell: (e) => <span className="font-mono text-xs font-semibold text-foreground/90 whitespace-nowrap">{e.phone}</span>,
-    },
-    {
-      header: "Direction",
-      className: "w-24 shrink-0",
-      cell: (e) => <span className="text-muted capitalize text-xs">{e.direction}</span>,
+      cell: (e) => <span className="font-mono text-xs font-medium text-foreground/80 whitespace-nowrap">{e.phone}</span>,
     },
     {
       header: "Message",
@@ -129,16 +244,12 @@ export default async function CrmWhatsAppPage({
     },
     {
       header: "Status",
-      className: "w-24 shrink-0 text-center",
-      cell: (e) => (
-        <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium inline-block capitalize ${STATUS_STYLES[e.status] || ""}`}>
-          {e.status}
-        </span>
-      ),
+      className: "w-28 shrink-0 text-center",
+      cell: (e) => renderStatusIcon(e.status, e.direction),
     },
     {
       header: "When",
-      className: "w-40 shrink-0 text-xs text-muted whitespace-nowrap",
+      className: "w-36 shrink-0 text-xs text-muted whitespace-nowrap",
       cell: (e) => new Date(e.occurred_at).toLocaleString(undefined, {
         dateStyle: "short",
         timeStyle: "short",
