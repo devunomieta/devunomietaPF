@@ -583,82 +583,120 @@ export async function autoPromoteLeadToContacted(leadId: string): Promise<boolea
   return false;
 }
 
+function cleanPhoneDigits(p: string | null | undefined): string {
+  return p ? p.replace(/\D/g, "") : "";
+}
+
 /**
- * Resolves lead or client entity from a phone number
+ * Checks if two phone representations refer to the same telephone number,
+ * handling local vs international prefixes (+234 vs 0...), spaces, dashes, etc.
+ */
+function arePhoneNumbersMatching(a: string | null | undefined, b: string | null | undefined): boolean {
+  const d1 = cleanPhoneDigits(a);
+  const d2 = cleanPhoneDigits(b);
+  if (!d1 || !d2) return false;
+  if (d1 === d2) return true;
+
+  // Suffix matching (e.g. 2348089332495 vs 08089332495 vs 8089332495)
+  if (d1.length >= 7 && d2.length >= 7) {
+    if (d1.endsWith(d2) || d2.endsWith(d1)) return true;
+    const s1 = d1.slice(-10);
+    const s2 = d2.slice(-10);
+    if (s1.length >= 7 && s1 === s2) return true;
+    const core1 = d1.slice(-8);
+    const core2 = d2.slice(-8);
+    if (core1.length >= 7 && core1 === core2) return true;
+  }
+  return false;
+}
+
+/**
+ * Resolves lead or client entity from a phone number.
+ * Robust against variations in formatting (e.g., spaces, dashes, +234 vs 0...)
+ * and also checks secondary phone mentions in notes.
  */
 export async function resolveEntityFromPhone(rawPhone: string): Promise<ResolvedEntityIdentity> {
-  const clean = rawPhone.replace(/[^\d+]/g, "").trim();
-  if (!clean || clean.length < 6) {
+  const digitsOnly = cleanPhoneDigits(rawPhone);
+  if (!digitsOnly || digitsOnly.length < 6) {
     return { clientId: null, leadId: null, contactId: null, matchedVia: "none" };
   }
 
   const supabase = createAdminClient();
-  const digitsOnly = clean.replace(/^\+/, "");
+
+  // Construct wildcard search pattern across significant digits to match strings with spaces or dashes in DB
+  // e.g. "9332495" -> "%9%3%3%2%4%9%5%"
+  const coreDigits = digitsOnly.slice(-7);
+  const wildPattern = `%${coreDigits.split("").join("%")}%`;
 
   // 1. Check crm_contacts by phone
-  const { data: contact } = await supabase
+  const { data: contacts } = await supabase
     .from("crm_contacts")
     .select("id, name, role, client_id, lead_id, phone")
-    .or(`phone.ilike.%${digitsOnly}%`)
-    .limit(1)
-    .maybeSingle();
+    .or(`phone.ilike.${wildPattern}`)
+    .limit(10);
 
-  if (contact) {
+  const matchedContact = (contacts || []).find((c) => arePhoneNumbersMatching(c.phone, rawPhone));
+
+  if (matchedContact) {
     let companyName: string | undefined;
-    if (contact.client_id) {
-      const { data: cl } = await supabase.from("crm_clients").select("name, company").eq("id", contact.client_id).maybeSingle();
+    if (matchedContact.client_id) {
+      const { data: cl } = await supabase.from("crm_clients").select("name, company").eq("id", matchedContact.client_id).maybeSingle();
       companyName = cl?.company || cl?.name || undefined;
-    } else if (contact.lead_id) {
-      const { data: ld } = await supabase.from("crm_leads").select("name, company").eq("id", contact.lead_id).maybeSingle();
+    } else if (matchedContact.lead_id) {
+      const { data: ld } = await supabase.from("crm_leads").select("name, company").eq("id", matchedContact.lead_id).maybeSingle();
       companyName = ld?.company || ld?.name || undefined;
     }
 
     return {
-      clientId: contact.client_id,
-      leadId: contact.lead_id,
-      contactId: contact.id,
+      clientId: matchedContact.client_id,
+      leadId: matchedContact.lead_id,
+      contactId: matchedContact.id,
       matchedVia: "contact_exact",
-      contactName: contact.name,
-      contactRole: contact.role || undefined,
+      contactName: matchedContact.name,
+      contactRole: matchedContact.role || undefined,
       company: companyName,
     };
   }
 
   // 2. Check crm_clients by phone
-  const { data: client } = await supabase
+  const { data: clients } = await supabase
     .from("crm_clients")
     .select("id, name, phone, company")
-    .or(`phone.ilike.%${digitsOnly}%`)
-    .limit(1)
-    .maybeSingle();
+    .or(`phone.ilike.${wildPattern}`)
+    .limit(10);
 
-  if (client) {
+  const matchedClient = (clients || []).find((cl) => arePhoneNumbersMatching(cl.phone, rawPhone));
+
+  if (matchedClient) {
     return {
-      clientId: client.id,
+      clientId: matchedClient.id,
       leadId: null,
       contactId: null,
       matchedVia: "client_exact",
-      entityName: client.name,
-      company: client.company || client.name || undefined,
+      entityName: matchedClient.name,
+      company: matchedClient.company || matchedClient.name || undefined,
     };
   }
 
-  // 3. Check crm_leads by phone
-  const { data: lead } = await supabase
+  // 3. Check crm_leads by phone & notes
+  const { data: leads } = await supabase
     .from("crm_leads")
-    .select("id, name, phone, company")
-    .or(`phone.ilike.%${digitsOnly}%`)
-    .limit(1)
-    .maybeSingle();
+    .select("id, name, phone, company, notes")
+    .or(`phone.ilike.${wildPattern},notes.ilike.${wildPattern}`)
+    .limit(10);
 
-  if (lead) {
+  const matchedLead = (leads || []).find(
+    (ld) => arePhoneNumbersMatching(ld.phone, rawPhone) || arePhoneNumbersMatching(ld.notes, rawPhone)
+  );
+
+  if (matchedLead) {
     return {
       clientId: null,
-      leadId: lead.id,
+      leadId: matchedLead.id,
       contactId: null,
       matchedVia: "lead_exact",
-      entityName: lead.name,
-      company: lead.company || lead.name || undefined,
+      entityName: matchedLead.name,
+      company: matchedLead.company || matchedLead.name || undefined,
     };
   }
 
@@ -680,22 +718,26 @@ export async function batchResolveEntitiesFromPhones(
   // Fetch candidate records
   const [{ data: contacts }, { data: clients }, { data: leads }] = await Promise.all([
     supabase.from("crm_contacts").select("id, name, role, phone, client_id, lead_id").not("phone", "is", null),
-    supabase.from("crm_clients").select("id, name, phone").not("phone", "is", null),
-    supabase.from("crm_leads").select("id, name, phone").not("phone", "is", null),
+    supabase.from("crm_clients").select("id, name, phone, company").not("phone", "is", null),
+    supabase.from("crm_leads").select("id, name, phone, company, notes").not("phone", "is", null),
   ]);
 
-  const cleanDigits = (p: string | null | undefined) => (p ? p.replace(/\D/g, "") : "");
-
   for (const rawPhone of phones) {
-    const digits = cleanDigits(rawPhone);
+    const digits = cleanPhoneDigits(rawPhone);
     if (!digits || digits.length < 6) continue;
 
     // Check contact
-    const contact = (contacts || []).find((c) => {
-      const cDig = cleanDigits(c.phone);
-      return cDig && (cDig.endsWith(digits) || digits.endsWith(cDig));
-    });
+    const contact = (contacts || []).find((c) => arePhoneNumbersMatching(c.phone, rawPhone));
     if (contact) {
+      let companyName: string | undefined;
+      if (contact.client_id) {
+        const cl = (clients || []).find((c) => c.id === contact.client_id);
+        companyName = cl?.company || cl?.name || undefined;
+      } else if (contact.lead_id) {
+        const ld = (leads || []).find((l) => l.id === contact.lead_id);
+        companyName = ld?.company || ld?.name || undefined;
+      }
+
       map.set(rawPhone, {
         clientId: contact.client_id,
         leadId: contact.lead_id,
@@ -703,15 +745,13 @@ export async function batchResolveEntitiesFromPhones(
         matchedVia: "contact_exact",
         contactName: contact.name,
         contactRole: contact.role || undefined,
+        company: companyName,
       });
       continue;
     }
 
     // Check client
-    const client = (clients || []).find((cl) => {
-      const clDig = cleanDigits(cl.phone);
-      return clDig && (clDig.endsWith(digits) || digits.endsWith(clDig));
-    });
+    const client = (clients || []).find((cl) => arePhoneNumbersMatching(cl.phone, rawPhone));
     if (client) {
       map.set(rawPhone, {
         clientId: client.id,
@@ -719,15 +759,13 @@ export async function batchResolveEntitiesFromPhones(
         contactId: null,
         matchedVia: "client_exact",
         entityName: client.name,
+        company: client.company || client.name || undefined,
       });
       continue;
     }
 
-    // Check lead
-    const lead = (leads || []).find((ld) => {
-      const ldDig = cleanDigits(ld.phone);
-      return ldDig && (ldDig.endsWith(digits) || digits.endsWith(ldDig));
-    });
+    // Check lead (phone or notes)
+    const lead = (leads || []).find((ld) => arePhoneNumbersMatching(ld.phone, rawPhone) || arePhoneNumbersMatching(ld.notes, rawPhone));
     if (lead) {
       map.set(rawPhone, {
         clientId: null,
@@ -735,6 +773,7 @@ export async function batchResolveEntitiesFromPhones(
         contactId: null,
         matchedVia: "lead_exact",
         entityName: lead.name,
+        company: lead.company || lead.name || undefined,
       });
       continue;
     }
@@ -749,5 +788,6 @@ export async function batchResolveEntitiesFromPhones(
 
   return map;
 }
+
 
 

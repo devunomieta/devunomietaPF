@@ -344,7 +344,7 @@ export function WhatsAppForm({
               ) : resolvedEntity?.found ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                   <Check size={11} />
-                  Matched existing {resolvedEntity.type}: {resolvedEntity.name}
+                  Existing {resolvedEntity.type}: {resolvedEntity.name}
                 </span>
               ) : singlePhone.replace(/\D/g, "").length >= 8 ? (
                 <span className="text-[11px] text-amber-400/90 font-medium">
