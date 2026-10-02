@@ -146,28 +146,18 @@ export default async function CrmWhatsAppPage({
     },
     {
       header: "",
-      className: "w-36 shrink-0 text-right",
+      className: "w-24 shrink-0 text-right",
       cell: (e) => (
-        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+        <div className="flex items-center justify-end whitespace-nowrap">
           {e.direction === "outbound" && (
-            <>
-              <Link
-                href={`/crm/whatsapp?resendEventId=${e.id}`}
-                title="Resend to this number"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-header/60 hover:bg-header text-foreground border border-border/80 transition-colors shadow-xs"
-              >
-                <RotateCcw size={11} className="text-accent-blue" />
-                Resend
-              </Link>
-              <Link
-                href={`/crm/whatsapp?duplicateMessage=${encodeURIComponent(e.message || "")}`}
-                title="Duplicate & Edit message"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-header/60 hover:bg-header text-muted hover:text-foreground border border-border/80 transition-colors shadow-xs"
-              >
-                <Copy size={11} />
-                Duplicate
-              </Link>
-            </>
+            <Link
+              href={`/crm/whatsapp?resendEventId=${e.id}`}
+              title="Resend to this number"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-header/60 hover:bg-header text-foreground border border-border/80 transition-colors shadow-xs"
+            >
+              <RotateCcw size={11} className="text-accent-blue" />
+              Resend
+            </Link>
           )}
         </div>
       ),
