@@ -41,6 +41,7 @@ export class BaileysSocketManager {
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
         markOnlineOnConnect: true,
+        printQRInTerminal: true,
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
       });
@@ -56,7 +57,13 @@ export class BaileysSocketManager {
   private setupListeners(saveCreds: () => Promise<void>) {
     if (!this.sock) return;
 
-    this.sock.ev.on("creds.update", saveCreds);
+    this.sock.ev.on("creds.update", async () => {
+      try {
+        await saveCreds();
+      } catch (err) {
+        this.logger.error({ err }, "Failed to save creds update");
+      }
+    });
 
     this.sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update;
@@ -88,12 +95,17 @@ export class BaileysSocketManager {
       }
 
       if (connection === "close") {
-        const error = (lastDisconnect?.error as Boom)?.output?.statusCode;
-        const shouldReconnect = error !== DisconnectReason.loggedOut;
+        const boomError = lastDisconnect?.error as Boom | undefined;
+        const statusCode = boomError?.output?.statusCode;
+        const errorDetails = boomError?.message || lastDisconnect?.error;
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-        this.logger.warn({ statusCode: error }, `Connection closed. Should reconnect: ${shouldReconnect}`);
+        this.logger.warn(
+          { statusCode, error: errorDetails, shouldReconnect },
+          `WhatsApp connection closed.`
+        );
 
-        if (error === DisconnectReason.loggedOut) {
+        if (statusCode === DisconnectReason.loggedOut) {
           this.connectionState = "logged_out";
           this.connectedPhone = null;
           this.qrCodeDataUrl = null;

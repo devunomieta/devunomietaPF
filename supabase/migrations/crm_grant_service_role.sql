@@ -16,7 +16,7 @@ begin
     'crm_jobs', 'crm_settings',
     'crm_email_templates', 'crm_email_campaigns', 'crm_email_events', 'crm_suppressions',
     'crm_invoices', 'crm_invoice_payments',
-    'crm_whatsapp_events'
+    'crm_whatsapp_events', 'crm_baileys_auth'
   ]
   loop
     begin
