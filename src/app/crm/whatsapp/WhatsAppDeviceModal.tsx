@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { QrCode, Wifi, WifiOff, RefreshCw, LogOut, CheckCircle2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 
 interface WhatsAppDeviceModalProps {
   initialState: string;
@@ -22,6 +23,7 @@ export function WhatsAppDeviceModal({ initialState, connectedPhone, provider }: 
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [requestingCode, setRequestingCode] = useState(false);
   const router = useRouter();
+  const { confirm, toast } = useCrmFeedback();
 
   const isConnected = state === "authorized" || state === "connected";
 
@@ -100,7 +102,16 @@ export function WhatsAppDeviceModal({ initialState, connectedPhone, provider }: 
   };
 
   const handleLogout = async () => {
-    if (!confirm("Are you sure you want to unlink this WhatsApp device?")) return;
+    const shouldUnlink = await confirm(
+      "Are you sure you want to unlink this WhatsApp device? Any active outbound messaging will be stopped until you scan a new QR code.",
+      {
+        title: "Unlink WhatsApp Device?",
+        confirmLabel: "Unlink Device",
+        danger: true,
+      }
+    );
+    if (!shouldUnlink) return;
+
     setLoading(true);
     try {
       const res = await fetch("/api/crm/whatsapp/logout", { method: "POST" });
@@ -109,13 +120,14 @@ export function WhatsAppDeviceModal({ initialState, connectedPhone, provider }: 
         setState("disconnected");
         setPhone(null);
         setQr(null);
+        toast("WhatsApp device unlinked successfully.", "success");
         router.refresh();
         fetchQr();
       } else {
-        alert(data.error || "Logout failed");
+        toast(data.error || "Logout failed", "error");
       }
     } catch {
-      alert("Network error unlinking device");
+      toast("Network error unlinking device", "error");
     } finally {
       setLoading(false);
     }
