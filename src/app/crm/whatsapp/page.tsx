@@ -125,7 +125,7 @@ export default async function CrmWhatsAppPage({
       header: "Message",
       className: "min-w-[200px] max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg",
       mobileStacked: true,
-      cell: (e) => <WhatsAppMessageCell message={e.message} />,
+      cell: (e) => <WhatsAppMessageCell message={e.message} phone={e.phone} date={e.occurred_at} />,
     },
     {
       header: "Status",
