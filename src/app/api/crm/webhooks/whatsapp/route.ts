@@ -14,7 +14,10 @@ export async function POST(request: Request) {
   const secretParam = url.searchParams.get("secret");
   const secretHeader = request.headers.get("x-webhook-secret");
 
-  const expectedSecret = process.env.WHATSAPP_WEBHOOK_SECRET || process.env.GREEN_API_WEBHOOK_SECRET;
+  const expectedSecret =
+    process.env.WHATSAPP_WEBHOOK_SECRET ||
+    process.env.CRM_WEBHOOK_SECRET ||
+    process.env.CRM_WHATSAPP_WEBHOOK_SECRET;
 
   if (expectedSecret && secretParam !== expectedSecret && secretHeader !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

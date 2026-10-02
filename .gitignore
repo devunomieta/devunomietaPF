@@ -55,6 +55,8 @@ desktop.ini
 
 # Environment variables
 .env
+.env.example
+*.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -108,3 +110,5 @@ wrangler.toml
 *.pem
 *.key
 *.cert
+services/baileys-bridge/.env.example
+services/baileys-bridge/.env.example
