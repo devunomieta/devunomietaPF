@@ -134,7 +134,45 @@ export class BaileysSocketManager {
         // Ignore status broadcasts and group messages
         if (!jid || jid.endsWith("@g.us") || jid.includes("status@broadcast") || jid.includes("@broadcast")) continue;
 
-        const phone = jid.replace("@s.whatsapp.net", "").replace("@c.us", "");
+        let phone = "";
+
+        // 1. Check if Baileys extracted the sender's phone number directly in key attributes
+        const keyWithPn = msg.key as typeof msg.key & {
+          senderPn?: string;
+          participantPn?: string;
+        };
+        const candidatePn = keyWithPn.senderPn || keyWithPn.participantPn;
+
+        if (candidatePn) {
+          phone = candidatePn.replace("@s.whatsapp.net", "").replace("@c.us", "").replace(/[^\d]/g, "");
+        }
+
+        // 2. If it's a standard user JID (@s.whatsapp.net or @c.us)
+        if (!phone && (jid.endsWith("@s.whatsapp.net") || jid.endsWith("@c.us"))) {
+          phone = jid.replace("@s.whatsapp.net", "").replace("@c.us", "").replace(/[^\d]/g, "");
+        }
+
+        // 3. If remoteJid is a LID (@lid) and no PN was in the key
+        if (!phone && jid.endsWith("@lid")) {
+          const rawLid = jid.replace("@lid", "");
+
+          // Check if the LID exists in contacts/chats cache with a known phone
+          try {
+            // Check if socket's signal auth or contacts has a mapping
+            const credsMe = this.sock?.authState?.creds?.me;
+            if (credsMe?.lid === jid && credsMe?.id) {
+              phone = credsMe.id.replace("@s.whatsapp.net", "").replace(/[^\d]/g, "");
+            }
+          } catch {
+            // Ignore cache error
+          }
+
+          // Fallback: If still not resolved, use the raw LID digits so the message is not lost
+          if (!phone) {
+            phone = rawLid.replace(/[^\d]/g, "");
+          }
+        }
+
         const text =
           msg.message?.conversation ||
           msg.message?.extendedTextMessage?.text ||
@@ -142,7 +180,7 @@ export class BaileysSocketManager {
           "";
 
         if (phone && text) {
-          this.logger.info(`Inbound message received from ${phone}`);
+          this.logger.info(`Inbound message received from ${phone} (raw remoteJid: ${jid})`);
 
           // Forward to CRM Webhook (which attaches the message to the matched client/lead)
           forwardToCrmWebhook({
