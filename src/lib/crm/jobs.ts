@@ -334,9 +334,9 @@ export async function processBulkWhatsAppJobBatch(
     return { processed: 0, done: false };
   }
 
-  // Slice at most 1 to 2 messages per serverless execution step or up to remainingDailyCap
-  // Standard serverless timeout is 60s. 1 msg with 30s-45s jitter safely completes within budget.
-  const sliceSize = Math.max(1, Math.min(2, remainingDailyCap));
+  // Slice up to 5 messages per serverless execution step or up to remainingDailyCap
+  // With 5s–8s jitter between messages, 5 messages safely complete in ~30–35s (well below Vercel's 60s maxDuration).
+  const sliceSize = Math.max(1, Math.min(5, remainingDailyCap));
   const batch = recipients.slice(job.progress, job.progress + sliceSize);
 
   let sentCount = 0;
@@ -440,9 +440,9 @@ export async function processBulkWhatsAppJobBatch(
       return { processed: sentCount, done: true };
     }
 
-    // Apply safe randomized jitter before sending the second message in this slice
+    // Apply safe randomized jitter before sending the next message in this slice
     if (i < batch.length - 1) {
-      const jitterMs = Math.floor(Math.random() * (25000 - 15000 + 1)) + 15000; // 15s to 25s safe within slice
+      const jitterMs = Math.floor(Math.random() * (8000 - 5000 + 1)) + 5000; // 5s to 8s jitter
       console.log(`[WhatsApp Batch] In-slice jitter delay: ${(jitterMs / 1000).toFixed(1)}s`);
       await new Promise((r) => setTimeout(r, jitterMs));
     }
@@ -518,13 +518,13 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
   let remainingWhatsAppCap = Math.max(0, effectiveWhatsAppCap - sentWhatsAppToday);
 
   for (const job of jobs) {
-    // Check batch wait cooldown for WhatsApp (e.g. 5 minutes between bursts if specified)
+    // Check batch wait cooldown for WhatsApp (e.g. safe spacing between bursts)
     if (job.type === "bulk_whatsapp") {
       const lastBatchAt = job.payload?.lastBatchAt;
       if (lastBatchAt) {
         const elapsedMs = Date.now() - new Date(lastBatchAt).getTime();
-        // If less than 20 seconds have elapsed since last send, skip this iteration to allow safe pacing
-        if (elapsedMs < 20000) {
+        // If less than 10 seconds have elapsed since last send, skip this iteration to allow safe pacing
+        if (elapsedMs < 10000) {
           continue;
         }
       }
@@ -553,9 +553,9 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
   const hasRemaining = (remainingJobsCount || 0) > 0;
 
   // SELF-CHAINING ASYNC DRAIN:
-  // If jobs still remain, self-trigger next batch in the background after a safe pacing delay
+  // If jobs still remain, self-trigger next batch in the background after a safe pacing delay (8s)
   if (hasRemaining) {
-    triggerCrmDrainAsync(25000);
+    triggerCrmDrainAsync(8000);
   }
 
   return { jobsTouched: jobs.length, remainingJobs: remainingJobsCount || 0 };
@@ -566,22 +566,32 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
  * Allows bulk sending and WhatsApp batches to self-drain without waiting for external crons.
  */
 export function triggerCrmDrainAsync(delayMs: number = 0) {
-  setTimeout(async () => {
+  const executeTrigger = async () => {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
     try {
       const cronSecret = process.env.CRON_SECRET;
       // Derive baseUrl from standard Vercel environment variables or fallback to production domain
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL ||
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.devunomieta.xyz");
 
       const endpoint = `${baseUrl}/api/cron/crm-jobs`;
-      await fetch(endpoint, {
+      console.log(`[Self-Chaining Drain] Dispatching background trigger to: ${endpoint}`);
+      fetch(endpoint, {
         method: "GET",
         headers: {
           ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
         },
+      }).catch((fetchErr) => {
+        console.warn("[Self-Chaining Drain] Background trigger fetch error:", fetchErr);
       });
     } catch (err) {
       console.warn("[Self-Chaining Drain] Background trigger dispatch notice:", err);
     }
-  }, delayMs);
+  };
+
+  // Run unblocked
+  executeTrigger();
 }

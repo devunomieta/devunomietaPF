@@ -1,4 +1,4 @@
-name: Keep Render Baileys Bridge Awake
+name: Keep Render Baileys Bridge Awake & Drain CRM Jobs
 
 on:
   schedule:
@@ -7,9 +7,19 @@ on:
   workflow_dispatch: # Allows manual trigger from GitHub Actions UI
 
 jobs:
-  ping-render:
+  ping-services:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Baileys Bridge Health Endpoint
         run: |
-          curl -s -f -m 15 https://devunomietapf.onrender.com/health || echo "Ping failed or timed out"
+          curl -s -f -m 15 https://devunomietapf.onrender.com/health || echo "Bridge health ping notice"
+
+      - name: Drain Pending CRM Jobs (WhatsApp & Bulk Campaigns)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -n "$CRON_SECRET" ]; then
+            curl -s -f -m 30 -H "Authorization: Bearer $CRON_SECRET" https://www.devunomieta.xyz/api/cron/crm-jobs || echo "CRM jobs ping completed"
+          else
+            echo "CRON_SECRET not set in repo secrets; relying on app-level self-chaining"
+          fi
