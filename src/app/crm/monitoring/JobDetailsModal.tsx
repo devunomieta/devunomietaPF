@@ -13,8 +13,8 @@ export type RecipientStatusItem = {
   providerMessageId?: string | null;
 };
 
-import { cancelJobAction } from "./actions";
-import { Loader2, StopCircle } from "lucide-react";
+import { cancelJobAction, pauseJobAction, resumeJobAction, retryFailedOrPendingAction } from "./actions";
+import { Loader2, StopCircle, Pause, Play, RotateCcw } from "lucide-react";
 
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 
@@ -38,7 +38,55 @@ export function JobDetailsModal({
   const { confirm, toast } = useCrmFeedback();
   const [open, setOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(status);
+
+  async function handlePauseJob() {
+    setPausing(true);
+    const res = await pauseJobAction(jobId);
+    setPausing(false);
+    if ("success" in res) {
+      setCurrentStatus("paused");
+      toast("Job has been paused. You can resume or retry failed/pending recipients later.", "success");
+    } else {
+      toast(res.error || "Failed to pause job.", "error");
+    }
+  }
+
+  async function handleResumeJob() {
+    setPausing(true);
+    const res = await resumeJobAction(jobId);
+    setPausing(false);
+    if ("success" in res) {
+      setCurrentStatus("queued");
+      toast("Job resumed and queued for processing.", "success");
+    } else {
+      toast(res.error || "Failed to resume job.", "error");
+    }
+  }
+
+  async function handleRetryFailedOrPending() {
+    const ok = await confirm(
+      "This will queue a send only to the recipients who failed or are still pending. Already-sent contacts will NOT be messaged again.",
+      {
+        title: "Retry Failed / Pending Recipients",
+        confirmLabel: "Queue Retry Batch",
+      }
+    );
+    if (!ok) return;
+
+    setRetrying(true);
+    const res = await retryFailedOrPendingAction(jobId);
+    setRetrying(false);
+    if ("success" in res) {
+      setCurrentStatus("queued");
+      toast("Batch re-queued for failed and pending recipients.", "success");
+      setOpen(false);
+    } else {
+      toast(res.error || "Failed to re-queue recipients.", "error");
+    }
+  }
 
   async function handleCancelJob() {
     const ok = await confirm("Are you sure you want to stop this job? Any unsent recipients will be aborted.", {
@@ -177,28 +225,73 @@ export function JobDetailsModal({
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              {(currentStatus === "queued" || currentStatus === "processing") ? (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-border">
+              <div className="flex items-center flex-wrap gap-2">
+                {/* Pause Button */}
+                {(currentStatus === "queued" || currentStatus === "processing") && (
+                  <button
+                    type="button"
+                    onClick={handlePauseJob}
+                    disabled={pausing}
+                    className="px-2.5 py-1.5 text-xs text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 border border-yellow-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                  >
+                    {pausing ? <Loader2 size={12} className="animate-spin" /> : <Pause size={12} />}
+                    Pause Job
+                  </button>
+                )}
+
+                {/* Resume Button */}
+                {currentStatus === "paused" && (
+                  <button
+                    type="button"
+                    onClick={handleResumeJob}
+                    disabled={pausing}
+                    className="px-2.5 py-1.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 border border-emerald-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                  >
+                    {pausing ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+                    Resume Job
+                  </button>
+                )}
+
+                {/* Resend to Failed / Pending Only */}
+                {(failedCount > 0 || (currentStatus === "paused" && pendingCount > 0) || (currentStatus === "canceled" && pendingCount > 0)) && (
+                  <button
+                    type="button"
+                    onClick={handleRetryFailedOrPending}
+                    disabled={retrying}
+                    className="px-2.5 py-1.5 text-xs text-accent-blue hover:text-accent-blue/80 hover:bg-accent-blue/10 border border-accent-blue/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                  >
+                    {retrying ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                    Retry Failed / Pending ({failedCount + (currentStatus !== "done" ? pendingCount : 0)})
+                  </button>
+                )}
+
+                {/* Cancel / Stop Button */}
+                {(currentStatus === "queued" || currentStatus === "processing" || currentStatus === "paused") && (
+                  <button
+                    type="button"
+                    onClick={handleCancelJob}
+                    disabled={canceling}
+                    className="px-2.5 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 border border-red-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                  >
+                    {canceling ? <Loader2 size={12} className="animate-spin" /> : <StopCircle size={12} />}
+                    Stop Job
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 shrink-0">
+                <span className="text-[11px] text-muted">
+                  Status: <strong className="capitalize text-foreground">{currentStatus}</strong>
+                </span>
                 <button
                   type="button"
-                  onClick={handleCancelJob}
-                  disabled={canceling}
-                  className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 border border-red-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors"
+                  onClick={() => setOpen(false)}
+                  className="px-3.5 py-1.5 text-xs text-muted hover:text-foreground border border-border rounded-lg transition-colors cursor-pointer"
                 >
-                  {canceling ? <Loader2 size={12} className="animate-spin" /> : <StopCircle size={12} />}
-                  Stop / Cancel Job
+                  Close
                 </button>
-              ) : (
-                <span className="text-xs text-muted">Status: <strong className="capitalize">{currentStatus}</strong></span>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="px-4 py-1.5 text-xs text-muted hover:text-foreground border border-border rounded-lg"
-              >
-                Close
-              </button>
+              </div>
             </div>
           </div>
         </CrmModal>

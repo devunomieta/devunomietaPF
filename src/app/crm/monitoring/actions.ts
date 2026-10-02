@@ -34,6 +34,98 @@ export async function cancelJobAction(jobId: string): Promise<ActionResult> {
   return { success: true };
 }
 
+export async function pauseJobAction(jobId: string): Promise<ActionResult> {
+  const supabase = await requireAdmin();
+  const { error } = await supabase
+    .from("crm_jobs")
+    .update({ status: "paused", updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/crm/monitoring");
+  return { success: true };
+}
+
+export async function resumeJobAction(jobId: string): Promise<ActionResult> {
+  const supabase = await requireAdmin();
+  const { error } = await supabase
+    .from("crm_jobs")
+    .update({ status: "queued", updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/crm/monitoring");
+  return { success: true };
+}
+
+/**
+ * Resends to failed and pending recipients only.
+ * Filters out already-sent contacts so nobody receives duplicate messages.
+ */
+export async function retryFailedOrPendingAction(jobId: string): Promise<ActionResult> {
+  const supabase = await requireAdmin();
+
+  const { data: job, error: fetchErr } = await supabase
+    .from("crm_jobs")
+    .select("*")
+    .eq("id", jobId)
+    .single();
+
+  if (fetchErr || !job) {
+    return { error: fetchErr?.message || "Job not found." };
+  }
+
+  const payload = job.payload || {};
+  const allRecipients: Array<{ phone?: string; email?: string; name?: string; clientId?: string; leadId?: string }> =
+    payload.recipients || [];
+  const results: Array<{ phone?: string; email?: string; status: string }> =
+    payload.recipientResults || [];
+
+  // Identify targets that successfully sent
+  const successfulTargets = new Set<string>();
+  for (const r of results) {
+    if (r.status === "sent") {
+      const target = r.phone || r.email;
+      if (target) successfulTargets.add(target);
+    }
+  }
+
+  // Filter remaining targets (failed or pending)
+  const remainingRecipients = allRecipients.filter((rec) => {
+    const target = rec.phone || rec.email;
+    return target && !successfulTargets.has(target);
+  });
+
+  if (remainingRecipients.length === 0) {
+    return { error: "All recipients have already been sent successfully. Nothing to resend." };
+  }
+
+  // Reset the job with the remaining recipients only
+  const { error: updateErr } = await supabase
+    .from("crm_jobs")
+    .update({
+      status: "queued",
+      progress: 0,
+      total: remainingRecipients.length,
+      payload: {
+        ...payload,
+        recipients: remainingRecipients,
+        recipientResults: [], // fresh ledger for the remaining batch
+        lastBatchAt: null,
+      },
+      error: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
+
+  if (updateErr) return { error: updateErr.message };
+
+  revalidatePath("/crm/monitoring");
+  return { success: true };
+}
+
 export async function sendTestReportAction(params: {
   cadence: ReportCadence;
   year: number;

@@ -302,6 +302,7 @@ type BulkWhatsAppPayload = {
   message: string;
   recipientResults?: RecipientResult[];
   lastBatchAt?: string;
+  nextBatchCooldownMs?: number;
 };
 
 export async function getTodaysSentWhatsAppCount(supabase: SupabaseClient): Promise<number> {
@@ -334,9 +335,9 @@ export async function processBulkWhatsAppJobBatch(
     return { processed: 0, done: false };
   }
 
-  // Slice up to 5 messages per serverless execution step or up to remainingDailyCap
-  // With 5s–8s jitter between messages, 5 messages safely complete in ~30–35s (well below Vercel's 60s maxDuration).
-  const sliceSize = Math.max(1, Math.min(5, remainingDailyCap));
+  // Smart Anti-Ban: Randomize slice size to 2 or 3 messages per burst (so it never forms a rigid pattern)
+  const randomSliceTarget = Math.random() < 0.5 ? 2 : 3;
+  const sliceSize = Math.max(1, Math.min(randomSliceTarget, remainingDailyCap));
   const batch = recipients.slice(job.progress, job.progress + sliceSize);
 
   let sentCount = 0;
@@ -397,6 +398,9 @@ export async function processBulkWhatsAppJobBatch(
     currentProgress++;
     const isDone = currentProgress >= job.total;
 
+    // Calculate a randomized rest pause (5 to 10 minutes) for the next batch burst
+    const nextBatchCooldownMs = Math.floor(Math.random() * (600000 - 300000 + 1)) + 300000;
+
     // ATOMIC PROGRESS UPDATE: Immediately commit progress after EACH message
     // If the serverless process dies or is killed, it will NEVER resend to this recipient
     await supabase
@@ -408,10 +412,39 @@ export async function processBulkWhatsAppJobBatch(
           ...job.payload,
           recipientResults,
           lastBatchAt: new Date().toISOString(),
+          nextBatchCooldownMs,
         },
         updated_at: new Date().toISOString(),
       })
       .eq("id", job.id);
+
+    const isDisconnectedOrNotConnected =
+      !isSuccess &&
+      (result.error.toLowerCase().includes("not connected") ||
+        result.error.toLowerCase().includes("logged out") ||
+        result.error.toLowerCase().includes("qr_ready") ||
+        result.error.toLowerCase().includes("disconnected"));
+
+    // If device is disconnected or logged out (e.g. banned or unlinked), auto-pause the job immediately
+    if (isDisconnectedOrNotConnected) {
+      console.warn(`[WhatsApp Batch] WhatsApp bridge is disconnected/unlinked. Auto-pausing job ${job.id}.`);
+      await supabase
+        .from("crm_jobs")
+        .update({
+          progress: currentProgress,
+          status: "paused",
+          error: "WhatsApp disconnected or device session ended. Job paused safely to preserve remaining recipients.",
+          payload: {
+            ...job.payload,
+            recipientResults,
+            lastBatchAt: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
+
+      return { processed: sentCount, done: true };
+    }
 
     const isQuotaExceeded = !isSuccess && (result.error.includes("Monthly quota has been exceeded") || result.error.includes("466"));
 
@@ -422,7 +455,7 @@ export async function processBulkWhatsAppJobBatch(
         .from("crm_jobs")
         .update({
           progress: currentProgress,
-          status: "failed",
+          status: "paused",
           error: "WhatsApp sending rate limit or quota exceeded. Please check bridge status and retry.",
           payload: {
             ...job.payload,
@@ -440,9 +473,10 @@ export async function processBulkWhatsAppJobBatch(
       return { processed: sentCount, done: true };
     }
 
-    // Apply safe randomized jitter before sending the next message in this slice
+    // Apply safe randomized jitter before sending the next message in this burst
+    // Random 20s to 35s jitter so it delivers ~2 to 3 messages per minute without a detectable rhythm
     if (i < batch.length - 1) {
-      const jitterMs = Math.floor(Math.random() * (8000 - 5000 + 1)) + 5000; // 5s to 8s jitter
+      const jitterMs = Math.floor(Math.random() * (35000 - 20000 + 1)) + 20000;
       console.log(`[WhatsApp Batch] In-slice jitter delay: ${(jitterMs / 1000).toFixed(1)}s`);
       await new Promise((r) => setTimeout(r, jitterMs));
     }
@@ -518,13 +552,15 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
   let remainingWhatsAppCap = Math.max(0, effectiveWhatsAppCap - sentWhatsAppToday);
 
   for (const job of jobs) {
-    // Check batch wait cooldown for WhatsApp (e.g. safe spacing between bursts)
+    // Anti-Ban Burst Protection: Enforce a randomized 5 to 10 minute rest pause between batch bursts
     if (job.type === "bulk_whatsapp") {
       const lastBatchAt = job.payload?.lastBatchAt;
+      const cooldownTargetMs = job.payload?.nextBatchCooldownMs || 300000; // default 5 mins
       if (lastBatchAt) {
         const elapsedMs = Date.now() - new Date(lastBatchAt).getTime();
-        // If less than 10 seconds have elapsed since last send, skip this iteration to allow safe pacing
-        if (elapsedMs < 10000) {
+        if (elapsedMs < cooldownTargetMs) {
+          const waitMinsRemaining = ((cooldownTargetMs - elapsedMs) / 60000).toFixed(1);
+          console.log(`[WhatsApp Batch] Anti-Ban Rest Period active for job ${job.id}. ${waitMinsRemaining}m remaining before next burst.`);
           continue;
         }
       }
@@ -553,9 +589,10 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
   const hasRemaining = (remainingJobsCount || 0) > 0;
 
   // SELF-CHAINING ASYNC DRAIN:
-  // If jobs still remain, self-trigger next batch in the background after a safe pacing delay (8s)
+  // If jobs still remain, schedule next burst after a randomized 5 to 10 minute rest pause (300s–600s)
   if (hasRemaining) {
-    triggerCrmDrainAsync(8000);
+    const nextRestPauseMs = Math.floor(Math.random() * (600000 - 300000 + 1)) + 300000; // 5 to 10 minutes
+    triggerCrmDrainAsync(nextRestPauseMs);
   }
 
   return { jobsTouched: jobs.length, remainingJobs: remainingJobsCount || 0 };

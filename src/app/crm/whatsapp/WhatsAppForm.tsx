@@ -717,7 +717,7 @@ export function WhatsAppForm({
           <div className="flex items-start gap-1.5 text-muted leading-relaxed">
             <ShieldCheck size={14} className="text-accent-green shrink-0 mt-0.5" />
             <span>
-              <strong>Smart Anti-Ban Protection Active:</strong> Messages are sent with <strong>40–70s randomized jitter</strong>. For larger batches, the system introduces <strong>5–10 minute intermittent rest pauses every 5–10 messages</strong> to mimic human pacing.
+              <strong>Smart Anti-Ban Protection Active:</strong> Messages are sent in random micro-bursts of <strong>2 to 3 messages</strong> with <strong>20s–35s randomized jitter</strong>. Between bursts, the system enforces a <strong>5 to 10 minute randomized pause</strong> so it never forms a detectable pattern.
             </span>
           </div>
         </div>
