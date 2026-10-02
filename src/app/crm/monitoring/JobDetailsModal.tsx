@@ -156,6 +156,7 @@ export function JobDetailsModal({
           title={`Job Details: ${jobType.replace("_", " ").toUpperCase()}`}
           open={open}
           onClose={() => setOpen(false)}
+          widthClassName="max-w-xl"
         >
           <div className="flex flex-col gap-4">
             {/* Summary stat cards */}
@@ -225,31 +226,33 @@ export function JobDetailsModal({
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-border">
+            {/* Action Bar & Footer */}
+            <div className="flex flex-col gap-3 pt-3 border-t border-border">
+              {/* Row 1: Action Buttons */}
               <div className="flex items-center flex-wrap gap-2">
-                {/* Pause Button */}
-                {(currentStatus === "queued" || currentStatus === "processing") && (
-                  <button
-                    type="button"
-                    onClick={handlePauseJob}
-                    disabled={pausing}
-                    className="px-2.5 py-1.5 text-xs text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 border border-yellow-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
-                  >
-                    {pausing ? <Loader2 size={12} className="animate-spin" /> : <Pause size={12} />}
-                    Pause Job
-                  </button>
-                )}
-
                 {/* Resume Button */}
                 {currentStatus === "paused" && (
                   <button
                     type="button"
                     onClick={handleResumeJob}
                     disabled={pausing}
-                    className="px-2.5 py-1.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 border border-emerald-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                    className="px-3 py-1.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 border border-emerald-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
                   >
                     {pausing ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
                     Resume Job
+                  </button>
+                )}
+
+                {/* Pause Button */}
+                {(currentStatus === "queued" || currentStatus === "processing") && (
+                  <button
+                    type="button"
+                    onClick={handlePauseJob}
+                    disabled={pausing}
+                    className="px-3 py-1.5 text-xs text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 border border-yellow-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                  >
+                    {pausing ? <Loader2 size={12} className="animate-spin" /> : <Pause size={12} />}
+                    Pause Job
                   </button>
                 )}
 
@@ -259,7 +262,7 @@ export function JobDetailsModal({
                     type="button"
                     onClick={handleRetryFailedOrPending}
                     disabled={retrying}
-                    className="px-2.5 py-1.5 text-xs text-accent-blue hover:text-accent-blue/80 hover:bg-accent-blue/10 border border-accent-blue/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                    className="px-3 py-1.5 text-xs text-accent-blue hover:text-accent-blue/80 hover:bg-accent-blue/10 border border-accent-blue/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
                   >
                     {retrying ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
                     Retry Failed / Pending ({failedCount + (currentStatus !== "done" ? pendingCount : 0)})
@@ -272,7 +275,7 @@ export function JobDetailsModal({
                     type="button"
                     onClick={handleCancelJob}
                     disabled={canceling}
-                    className="px-2.5 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 border border-red-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+                    className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 border border-red-400/30 rounded-lg inline-flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
                   >
                     {canceling ? <Loader2 size={12} className="animate-spin" /> : <StopCircle size={12} />}
                     Stop Job
@@ -280,14 +283,15 @@ export function JobDetailsModal({
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2 shrink-0">
-                <span className="text-[11px] text-muted">
-                  Status: <strong className="capitalize text-foreground">{currentStatus}</strong>
+              {/* Row 2: Status Indicator & Close */}
+              <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs">
+                <span className="text-muted">
+                  Current Status: <strong className="capitalize text-foreground font-semibold ml-1">{currentStatus}</strong>
                 </span>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="px-3.5 py-1.5 text-xs text-muted hover:text-foreground border border-border rounded-lg transition-colors cursor-pointer"
+                  className="px-4 py-1.5 text-xs font-medium text-foreground bg-header/60 hover:bg-header border border-border rounded-lg transition-colors cursor-pointer"
                 >
                   Close
                 </button>
