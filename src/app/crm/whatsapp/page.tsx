@@ -6,6 +6,7 @@ import { isWhatsAppConfigured, getWhatsAppInstanceState } from "@/lib/crm/whatsa
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { WhatsAppForm } from "./WhatsAppForm";
 import { WhatsAppDeviceModal } from "./WhatsAppDeviceModal";
+import { WhatsAppMessageCell } from "./WhatsAppMessageCell";
 import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
 
 export const metadata = { title: "WhatsApp · CRM" };
@@ -122,13 +123,9 @@ export default async function CrmWhatsAppPage({
     },
     {
       header: "Message",
-      className: "max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg",
+      className: "min-w-[200px] max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg",
       mobileStacked: true,
-      cell: (e) => (
-        <span className="truncate block text-foreground/90 text-xs sm:text-sm" title={e.message || undefined}>
-          {e.message || "—"}
-        </span>
-      ),
+      cell: (e) => <WhatsAppMessageCell message={e.message} />,
     },
     {
       header: "Status",
