@@ -147,27 +147,42 @@ export async function sendWhatsAppMessage({
     return { error: "WhatsApp is not configured. Set BAILEYS_BRIDGE_URL & BAILEYS_BRIDGE_SECRET." };
   }
 
-  try {
-    const res = await fetch(`${BAILEYS_URL.replace(/\/$/, "")}/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-service-key": BAILEYS_SECRET,
-      },
-      body: JSON.stringify({ phone: chatId, message }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(15000),
-    });
+  // Try up to 2 attempts with a short backoff (heals transient Render bridge spin-ups and connection re-establishment)
+  let lastError = "Send failed";
 
-    const data = await res.json();
-    if (!res.ok || data.error) {
-      return { error: data.error || `Baileys send failed (${res.status})` };
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await fetch(`${BAILEYS_URL.replace(/\/$/, "")}/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-service-key": BAILEYS_SECRET,
+        },
+        body: JSON.stringify({ phone: chatId, message }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(20000),
+      });
+
+      const data = await res.json();
+      if (res.ok && !data.error && data.messageId) {
+        return { success: true, messageId: data.messageId as string };
+      }
+
+      lastError = data.error || `Baileys send failed (${res.status})`;
+
+      // If disconnected or not ready, wait 2 seconds before retrying
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "Network error contacting Baileys bridge";
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
     }
-
-    return { success: true, messageId: data.messageId as string };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Network error contacting Baileys bridge" };
   }
+
+  return { error: lastError };
 }
 
 /**
