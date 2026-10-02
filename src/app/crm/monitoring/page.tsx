@@ -45,7 +45,7 @@ export default async function CrmMonitoringPage({
   since.setDate(since.getDate() - 30);
 
   const [{ data: events }, { data: jobs }, { data: settings }] = await Promise.all([
-    supabase.from("crm_email_events").select("id, type, message_id, recipient_email, occurred_at, meta").gte("occurred_at", since.toISOString()),
+    supabase.from("crm_email_events").select("id, type, message_id, recipient_email, occurred_at, meta, campaign_id").gte("occurred_at", since.toISOString()),
     supabase.from("crm_jobs").select("id, type, status, progress, total, error, payload, created_at").order("created_at", { ascending: false }).limit(200),
     supabase.from("crm_settings").select("*").eq("id", "default").maybeSingle(),
   ]);
@@ -55,6 +55,8 @@ export default async function CrmMonitoringPage({
   const deliveredMessageIds = new Set<string>();
   const openedMessageIds = new Set<string>();
   const clickedMessageIds = new Set<string>();
+  const campaignClickedIds = new Set<string>();
+  const nonCampaignClickedIds = new Set<string>();
   const bouncedEvents: Array<{ id: string; email: string; type: string; date: string; reason?: string }> = [];
   let complaints = 0;
 
@@ -68,6 +70,11 @@ export default async function CrmMonitoringPage({
       openedMessageIds.add(msgKey);
     } else if (e.type === "clicked") {
       clickedMessageIds.add(msgKey);
+      if (e.campaign_id) {
+        campaignClickedIds.add(msgKey);
+      } else {
+        nonCampaignClickedIds.add(msgKey);
+      }
     } else if (e.type === "hard_bounce" || e.type === "soft_bounce") {
       bouncedEvents.push({
         id: e.id,
@@ -162,11 +169,16 @@ export default async function CrmMonitoringPage({
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: "Delivery rate", value: `${deliveryRate}%` },
-          { label: "Bounce rate", value: `${bounceRate}%`, warn: bounceRate > bounceThreshold },
-          { label: "Complaint rate", value: `${complaintRate}%`, warn: complaintRate > complaintThreshold },
-          { label: "Open rate", value: `${openRate}%` },
-          { label: "Click rate", value: `${clickRate}%`, isFifth: true },
+          { label: "Delivery rate", value: `${deliveryRate}%`, subtext: `${delivered} confirmed` },
+          { label: "Bounce rate", value: `${bounceRate}%`, warn: bounceRate > bounceThreshold, subtext: `${bounced} bounces` },
+          { label: "Complaint rate", value: `${complaintRate}%`, warn: complaintRate > complaintThreshold, subtext: `${complaints} reports` },
+          { label: "Open rate", value: `${openRate}%`, subtext: `${opened} unique opens` },
+          { 
+            label: "Click rate", 
+            value: `${clickRate}%`, 
+            isFifth: true, 
+            subtext: `${clicked} unique (${campaignClickedIds.size} camp / ${nonCampaignClickedIds.size} others)` 
+          },
         ].map((m) => (
           <div
             key={m.label}
@@ -176,6 +188,7 @@ export default async function CrmMonitoringPage({
           >
             <p className={`text-lg font-bold ${m.warn ? "text-red-400" : "text-foreground"}`}>{m.value}</p>
             <p className="text-xs text-muted">{m.label}</p>
+            {m.subtext && <p className="text-[10px] text-muted/80 mt-0.5 truncate">{m.subtext}</p>}
           </div>
         ))}
       </div>

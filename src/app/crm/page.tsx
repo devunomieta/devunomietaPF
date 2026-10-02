@@ -59,7 +59,7 @@ export default async function CrmDashboardPage() {
     supabase.from("crm_journeys").select("stages").eq("is_default", true).maybeSingle(),
     supabase.from("crm_invoices").select("id, total, status, currency, created_at").neq("status", "void"),
     supabase.from("crm_invoice_payments").select("id, amount, channel, paid_at"),
-    supabase.from("crm_email_events").select("id, type, message_id, recipient_email, occurred_at"),
+    supabase.from("crm_email_events").select("id, type, message_id, recipient_email, occurred_at, campaign_id"),
     supabase.from("crm_email_campaigns").select("*", { count: "exact", head: true }),
     supabase.from("crm_whatsapp_events").select("*", { count: "exact", head: true }),
     supabase.from("crm_leads").select("id, name, company, current_stage_key, created_at").order("created_at", { ascending: false }).limit(5),
@@ -101,7 +101,7 @@ export default async function CrmDashboardPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
 
-  // --- Email Performance Metrics (Aligned with Live Monitoring) ---
+  // --- Email Performance Metrics (Aligned with Live Monitoring & Campaigns) ---
   const sentMessageIds = new Set<string>();
   const deliveredMessageIds = new Set<string>();
   const uniqueOpens = new Set<string>();
@@ -110,20 +110,40 @@ export default async function CrmDashboardPage() {
   let totalRawOpens = 0;
   let totalRawClicks = 0;
 
+  // Track campaign-specific vs non-campaign (direct/transactional) breakdown
+  const campaignDeliveredIds = new Set<string>();
+  const campaignOpenIds = new Set<string>();
+  const campaignClickIds = new Set<string>();
+  let campaignBounces = 0;
+
+  const nonCampaignClickIds = new Set<string>();
+  let nonCampaignRawClicks = 0;
+
   for (const ev of emailEvents || []) {
     const msgKey = ev.message_id || ev.recipient_email || ev.id;
+    const isCampaign = Boolean(ev.campaign_id);
+
     if (ev.type === "sent") {
       sentMessageIds.add(msgKey);
     } else if (ev.type === "delivered") {
       deliveredMessageIds.add(msgKey);
+      if (isCampaign) campaignDeliveredIds.add(msgKey);
     } else if (ev.type === "opened") {
       uniqueOpens.add(msgKey);
       totalRawOpens++;
+      if (isCampaign) campaignOpenIds.add(msgKey);
     } else if (ev.type === "clicked") {
       uniqueClicks.add(msgKey);
       totalRawClicks++;
+      if (isCampaign) {
+        campaignClickIds.add(msgKey);
+      } else {
+        nonCampaignClickIds.add(msgKey);
+        nonCampaignRawClicks++;
+      }
     } else if (ev.type === "soft_bounce" || ev.type === "hard_bounce") {
       totalBounces++;
+      if (isCampaign) campaignBounces++;
     }
   }
 
@@ -133,6 +153,11 @@ export default async function CrmDashboardPage() {
   const deliveryPct = totalAttempted > 0 ? Math.min(100, Math.round((deliveredCount / totalAttempted) * 1000) / 10) : 100;
   const openPct = deliveredCount > 0 ? Math.min(100, Math.round((uniqueOpens.size / deliveredCount) * 1000) / 10) : 0;
   const clickPct = deliveredCount > 0 ? Math.min(100, Math.round((uniqueClicks.size / deliveredCount) * 1000) / 10) : 0;
+
+  // Campaign-only rates
+  const campaignDeliveredCount = campaignDeliveredIds.size;
+  const campaignOpenPct = campaignDeliveredCount > 0 ? Math.min(100, Math.round((campaignOpenIds.size / campaignDeliveredCount) * 1000) / 10) : 0;
+  const campaignClickPct = campaignDeliveredCount > 0 ? Math.min(100, Math.round((campaignClickIds.size / campaignDeliveredCount) * 1000) / 10) : 0;
 
   // --- Last 7 Days Activity (Email sends & Lead creations) ---
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -426,14 +451,20 @@ export default async function CrmDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Email Engagement Rates */}
         <div className="lg:col-span-2 bg-header/20 border border-border/80 rounded-xl p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
             <div className="flex items-center gap-2">
               <Eye size={16} className="text-accent-blue" />
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Campaign Engagement Health</h2>
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Email Dispatch &amp; Engagement Health</h2>
             </div>
-            <Link href="/crm/monitoring" className="text-xs text-accent-blue hover:underline inline-flex items-center gap-1">
-              Live Monitoring <ChevronRight size={12} />
-            </Link>
+            <div className="flex items-center gap-3 text-xs">
+              <Link href="/crm/campaigns" className="text-accent-blue hover:underline inline-flex items-center gap-1">
+                Campaigns <ChevronRight size={12} />
+              </Link>
+              <span className="text-border">|</span>
+              <Link href="/crm/monitoring" className="text-muted hover:text-foreground hover:underline inline-flex items-center gap-1">
+                Live Monitoring <ChevronRight size={12} />
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -457,7 +488,29 @@ export default async function CrmDashboardPage() {
               <span className={`text-xl font-bold ${totalBounces > 0 ? "text-red-400" : "text-muted"}`}>
                 {totalBounces}
               </span>
-              <span className="text-[11px] text-muted block mt-0.5">soft & hard bounces</span>
+              <span className="text-[11px] text-muted block mt-0.5">soft &amp; hard bounces</span>
+            </div>
+          </div>
+
+          {/* Explicit Source Attribution Breakdown for Clicks & Engagement */}
+          <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-background/30 border border-border/40">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-accent-blue" />
+                <span className="text-muted">Campaign Clicks:</span>
+              </div>
+              <span className="font-semibold text-foreground font-mono">
+                {campaignClickIds.size} unique ({campaignClickPct}%)
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-background/30 border border-border/40">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="text-muted">Others (Onboarding / Direct):</span>
+              </div>
+              <span className="font-semibold text-amber-400 font-mono">
+                {nonCampaignClickIds.size} unique ({nonCampaignRawClicks} total)
+              </span>
             </div>
           </div>
         </div>
