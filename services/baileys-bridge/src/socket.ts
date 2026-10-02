@@ -264,18 +264,19 @@ export class BaileysSocketManager {
     message: string
   ): Promise<{ success: true; messageId: string } | { error: string }> {
     // If socket is momentarily reconnecting or disconnected, give it up to 4 seconds to settle
-    if (!this.sock || this.connectionState !== "connected") {
-      if (this.connectionState === "disconnected" || this.connectionState === "connecting") {
+    if (!this.sock || (this.connectionState as string) !== "connected") {
+      const currentState = this.connectionState as string;
+      if (currentState === "disconnected" || currentState === "connecting") {
         this.logger.info("Socket not in open state during send; waiting briefly for reconnection...");
         // Wait up to 3.5 seconds
         for (let i = 0; i < 7; i++) {
           await new Promise((r) => setTimeout(r, 500));
-          if (this.connectionState === "connected" && this.sock) break;
+          if ((this.connectionState as string) === "connected" && this.sock) break;
         }
       }
     }
 
-    if (!this.sock || this.connectionState !== "connected") {
+    if (!this.sock || (this.connectionState as string) !== "connected") {
       return { error: `WhatsApp is not connected (current state: ${this.connectionState})` };
     }
 
