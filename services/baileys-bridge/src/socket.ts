@@ -128,7 +128,8 @@ export class BaileysSocketManager {
       for (const msg of messages) {
         if (msg.key.fromMe) continue; // Ignore own outgoing messages
         const jid = msg.key.remoteJid;
-        if (!jid || jid.endsWith("@g.us")) continue; // Focus on direct contact chats
+        // Ignore status broadcasts and group messages
+        if (!jid || jid.endsWith("@g.us") || jid.includes("status@broadcast") || jid.includes("@broadcast")) continue;
 
         const phone = jid.replace("@s.whatsapp.net", "").replace("@c.us", "");
         const text =
@@ -140,21 +141,7 @@ export class BaileysSocketManager {
         if (phone && text) {
           this.logger.info(`Inbound message received from ${phone}`);
 
-          // Recommendation 4: Direct Supabase Ingestion Fallback
-          try {
-            await this.supabase.from("crm_whatsapp_events").insert([
-              {
-                phone,
-                message: text,
-                direction: "inbound",
-                status: "delivered",
-                provider_message_id: msg.key.id || null,
-              },
-            ]);
-          } catch (dbErr) {
-            this.logger.warn({ dbErr }, "Direct Supabase inbound insert fallback warning");
-          }
-
+          // Forward to CRM Webhook (which attaches the message to the matched client/lead)
           forwardToCrmWebhook({
             event: "message.inbound",
             phone,

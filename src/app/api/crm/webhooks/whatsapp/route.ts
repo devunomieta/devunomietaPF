@@ -146,15 +146,19 @@ async function processInboundMessage(
     }
   }
 
-  const { data: client } = await supabase.from("crm_clients").select("id").eq("phone", cleanPhone).maybeSingle();
-  const { data: lead } = !client ? await supabase.from("crm_leads").select("id").eq("phone", cleanPhone).maybeSingle() : { data: null };
+  if (cleanPhone.includes("broadcast") || cleanPhone.includes("status")) {
+    return;
+  }
+
+  const { resolveEntityFromPhone } = await import("@/lib/crm/communicationResolver");
+  const entity = await resolveEntityFromPhone(cleanPhone);
 
   await supabase.from("crm_whatsapp_events").insert([
     {
-      client_id: client?.id || null,
-      lead_id: lead?.id || null,
+      client_id: entity.clientId || null,
+      lead_id: entity.leadId || null,
       direction: "inbound",
-      phone: cleanPhone,
+      phone: cleanPhone.startsWith("+") ? cleanPhone : `+${cleanPhone}`,
       message,
       status: "delivered",
       provider_message_id: messageId || null,
