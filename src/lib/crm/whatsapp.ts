@@ -102,7 +102,36 @@ export async function logoutBaileysDevice(): Promise<{ success: boolean; error?:
 }
 
 /**
- * WhatsApp Message Sender using Baileys bridge.
+ * Request an 8-digit phone pairing code (Recommendation 1)
+ */
+export async function requestBaileysPairingCode(phone: string): Promise<{ success: boolean; code?: string; error?: string }> {
+  if (!BAILEYS_URL || !BAILEYS_SECRET) {
+    return { success: false, error: "Baileys bridge is not configured." };
+  }
+
+  const chatId = normalizeE164Phone(phone);
+  if (!chatId) return { success: false, error: "Invalid phone number." };
+
+  try {
+    const res = await fetch(`${BAILEYS_URL.replace(/\/$/, "")}/pairing-code`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-service-key": BAILEYS_SECRET,
+      },
+      body: JSON.stringify({ phone: chatId }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Failed to contact bridge for pairing code" };
+  }
+}
+
+/**
+ * WhatsApp Text Message Sender using Baileys bridge.
  */
 export async function sendWhatsAppMessage({
   phone,
@@ -133,6 +162,52 @@ export async function sendWhatsAppMessage({
     const data = await res.json();
     if (!res.ok || data.error) {
       return { error: data.error || `Baileys send failed (${res.status})` };
+    }
+
+    return { success: true, messageId: data.messageId as string };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Network error contacting Baileys bridge" };
+  }
+}
+
+/**
+ * WhatsApp Media Sender (Recommendation 3: PDF, Images, Audio, Video)
+ */
+export async function sendWhatsAppMediaMessage({
+  phone,
+  mediaUrl,
+  mediaType,
+  caption,
+  fileName,
+}: {
+  phone: string;
+  mediaUrl: string;
+  mediaType: "image" | "document" | "audio" | "video";
+  caption?: string;
+  fileName?: string;
+}): Promise<{ success: true; messageId: string } | { error: string }> {
+  const chatId = normalizeE164Phone(phone);
+  if (!chatId) return { error: `"${phone}" doesn't look like a valid phone number.` };
+
+  if (!BAILEYS_URL || !BAILEYS_SECRET) {
+    return { error: "WhatsApp is not configured. Set BAILEYS_BRIDGE_URL & BAILEYS_BRIDGE_SECRET." };
+  }
+
+  try {
+    const res = await fetch(`${BAILEYS_URL.replace(/\/$/, "")}/send-media`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-service-key": BAILEYS_SECRET,
+      },
+      body: JSON.stringify({ phone: chatId, mediaUrl, mediaType, caption, fileName }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(25000),
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      return { error: data.error || `Baileys media send failed (${res.status})` };
     }
 
     return { success: true, messageId: data.messageId as string };

@@ -484,10 +484,38 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
   const sentEmailsToday = await getTodaysSentEmailCount(supabase);
   let remainingEmailCap = Math.max(0, dailyEmailCap - sentEmailsToday);
 
-  // WhatsApp daily cap & warm-up logic
-  const defaultWhatsAppCap = settings?.whatsapp_daily_cap ?? 60;
+  // Recommendation 5: Smart Account Warmup Scheduler
+  // If warmup mode is ON, dynamically scale the daily cap based on account age/history:
+  // Days 1-2: 15 messages/day | Days 3-4: 25 | Days 5-6: 40 | Days 7+: Full configured cap (default 60+)
+  let effectiveWhatsAppCap = settings?.whatsapp_daily_cap ?? 60;
+  if (settings?.whatsapp_warmup_mode) {
+    const { data: firstMessage } = await supabase
+      .from("crm_whatsapp_events")
+      .select("occurred_at")
+      .eq("direction", "outbound")
+      .order("occurred_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (firstMessage?.occurred_at) {
+      const daysSinceStart = Math.floor(
+        (Date.now() - new Date(firstMessage.occurred_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysSinceStart <= 2) {
+        effectiveWhatsAppCap = Math.min(15, effectiveWhatsAppCap);
+      } else if (daysSinceStart <= 4) {
+        effectiveWhatsAppCap = Math.min(25, effectiveWhatsAppCap);
+      } else if (daysSinceStart <= 6) {
+        effectiveWhatsAppCap = Math.min(40, effectiveWhatsAppCap);
+      }
+    } else {
+      // Very first day
+      effectiveWhatsAppCap = Math.min(15, effectiveWhatsAppCap);
+    }
+  }
+
   const sentWhatsAppToday = await getTodaysSentWhatsAppCount(supabase);
-  let remainingWhatsAppCap = Math.max(0, defaultWhatsAppCap - sentWhatsAppToday);
+  let remainingWhatsAppCap = Math.max(0, effectiveWhatsAppCap - sentWhatsAppToday);
 
   for (const job of jobs) {
     // Check batch wait cooldown for WhatsApp (e.g. 5 minutes between bursts if specified)

@@ -50,6 +50,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Recommendation 2: Auto-Reconnection & Disconnection Alerting in CRM Notification Center
+  if (body.event === "connection.update") {
+    const status = String(body.status);
+    const { createCrmNotification } = await import("@/lib/crm/notifications");
+
+    if (status === "logged_out" || status === "disconnected") {
+      await createCrmNotification({
+        title: "WhatsApp Bridge Disconnected",
+        message:
+          status === "logged_out"
+            ? "Your WhatsApp device session was logged out. Please open CRM Settings > WhatsApp to scan a new QR code or enter a pairing code."
+            : "WhatsApp bridge connection temporarily lost. The bridge is attempting to reconnect.",
+        category: "whatsapp",
+        severity: status === "logged_out" ? "critical" : "warning",
+        required_page_permission: "whatsapp",
+        link_url: "/crm/whatsapp",
+        group_key: `wa_disconnect_${status}`,
+      });
+    } else if (status === "connected") {
+      const phone = body.phone ? ` (+${body.phone})` : "";
+      await createCrmNotification({
+        title: "WhatsApp Device Connected",
+        message: `WhatsApp bridge is now active and connected${phone}. Messaging services are operational.`,
+        category: "whatsapp",
+        severity: "info",
+        required_page_permission: "whatsapp",
+        link_url: "/crm/whatsapp",
+        group_key: "wa_connected",
+      });
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
   // B. HANDLE LEGACY GREEN-API FORMAT (Backward Compatibility)
   if (body.typeWebhook === "incomingMessageReceived") {
     const rawSender = (body.senderData as { sender?: string })?.sender;

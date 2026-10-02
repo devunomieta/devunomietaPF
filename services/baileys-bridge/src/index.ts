@@ -65,7 +65,26 @@ app.get("/qr", { preHandler: requireAuth }, async (_req, reply) => {
   return { state: status.state, qr };
 });
 
-// 4. Send Message route
+// 4. Request 8-digit Pairing Code (Recommendation 1)
+interface PairingCodeBody {
+  phone: string;
+}
+
+app.post<{ Body: PairingCodeBody }>("/pairing-code", { preHandler: requireAuth }, async (req, reply) => {
+  const { phone } = req.body || {};
+  if (!phone) {
+    reply.status(400);
+    return { error: "Field 'phone' is required." };
+  }
+
+  const result = await socketManager.requestPairingCode(phone);
+  if (!result.success) {
+    reply.status(502);
+  }
+  return result;
+});
+
+// 5. Send Text Message route
 interface SendBody {
   phone: string;
   message: string;
@@ -88,7 +107,33 @@ app.post<{ Body: SendBody }>("/send", { preHandler: requireAuth }, async (req, r
   return result;
 });
 
-// 5. Logout / Unlink Device route
+// 6. Send Media (PDF, Images, Audio, Video) route (Recommendation 3)
+interface SendMediaBody {
+  phone: string;
+  mediaUrl: string;
+  mediaType: "image" | "document" | "audio" | "video";
+  caption?: string;
+  fileName?: string;
+}
+
+app.post<{ Body: SendMediaBody }>("/send-media", { preHandler: requireAuth }, async (req, reply) => {
+  const { phone, mediaUrl, mediaType, caption, fileName } = req.body || {};
+
+  if (!phone || !mediaUrl || !mediaType) {
+    reply.status(400);
+    return { error: "'phone', 'mediaUrl', and 'mediaType' are required fields." };
+  }
+
+  const result = await socketManager.sendMediaMessage(phone, mediaUrl, mediaType, caption, fileName);
+  if ("error" in result) {
+    reply.status(502);
+    return result;
+  }
+
+  return result;
+});
+
+// 7. Logout / Unlink Device route
 app.post("/logout", { preHandler: requireAuth }, async () => {
   const result = await socketManager.logout();
   return result;
