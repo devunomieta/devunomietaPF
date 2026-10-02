@@ -261,21 +261,6 @@ export class BaileysSocketManager {
       const sent = await this.sock.sendMessage(jid, payload as never);
       const messageId = sent?.key.id || `media_${Date.now()}`;
 
-      // Recommendation 4: Direct Supabase ingestion fallback
-      try {
-        await this.supabase.from("crm_whatsapp_events").insert([
-          {
-            phone: cleanPhone,
-            message: caption ? `[${mediaType.toUpperCase()}]: ${caption}` : `[${mediaType.toUpperCase()}] ${mediaUrl}`,
-            direction: "outbound",
-            status: "sent",
-            provider_message_id: messageId,
-          },
-        ]);
-      } catch (dbErr) {
-        this.logger.warn({ dbErr }, "Direct Supabase write failed (non-fatal)");
-      }
-
       return { success: true, messageId };
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Failed to dispatch media";
@@ -311,21 +296,6 @@ export class BaileysSocketManager {
 
       const sent = await this.sock.sendMessage(jid, { text: message });
       const messageId = sent?.key.id || `msg_${Date.now()}`;
-
-      // Recommendation 4: Direct Supabase ingestion fallback (ensures data safety even if Vercel webhook cold-starts)
-      try {
-        await this.supabase.from("crm_whatsapp_events").insert([
-          {
-            phone: cleanPhone,
-            message,
-            direction: "outbound",
-            status: "sent",
-            provider_message_id: messageId,
-          },
-        ]);
-      } catch (dbErr) {
-        this.logger.warn({ dbErr }, "Direct Supabase write fallback failed (non-fatal)");
-      }
 
       return { success: true, messageId };
     } catch (err) {

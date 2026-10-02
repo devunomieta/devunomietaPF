@@ -8,6 +8,7 @@ export type ResolvedEntityIdentity = {
   entityName?: string;
   contactName?: string;
   contactRole?: string;
+  company?: string;
 };
 
 // Domains that should NEVER be used for domain-level fallback matching
@@ -603,6 +604,15 @@ export async function resolveEntityFromPhone(rawPhone: string): Promise<Resolved
     .maybeSingle();
 
   if (contact) {
+    let companyName: string | undefined;
+    if (contact.client_id) {
+      const { data: cl } = await supabase.from("crm_clients").select("name, company").eq("id", contact.client_id).maybeSingle();
+      companyName = cl?.company || cl?.name || undefined;
+    } else if (contact.lead_id) {
+      const { data: ld } = await supabase.from("crm_leads").select("name, company").eq("id", contact.lead_id).maybeSingle();
+      companyName = ld?.company || ld?.name || undefined;
+    }
+
     return {
       clientId: contact.client_id,
       leadId: contact.lead_id,
@@ -610,13 +620,14 @@ export async function resolveEntityFromPhone(rawPhone: string): Promise<Resolved
       matchedVia: "contact_exact",
       contactName: contact.name,
       contactRole: contact.role || undefined,
+      company: companyName,
     };
   }
 
   // 2. Check crm_clients by phone
   const { data: client } = await supabase
     .from("crm_clients")
-    .select("id, name, phone")
+    .select("id, name, phone, company")
     .or(`phone.ilike.%${digitsOnly}%`)
     .limit(1)
     .maybeSingle();
@@ -628,13 +639,14 @@ export async function resolveEntityFromPhone(rawPhone: string): Promise<Resolved
       contactId: null,
       matchedVia: "client_exact",
       entityName: client.name,
+      company: client.company || client.name || undefined,
     };
   }
 
   // 3. Check crm_leads by phone
   const { data: lead } = await supabase
     .from("crm_leads")
-    .select("id, name, phone")
+    .select("id, name, phone, company")
     .or(`phone.ilike.%${digitsOnly}%`)
     .limit(1)
     .maybeSingle();
@@ -646,6 +658,7 @@ export async function resolveEntityFromPhone(rawPhone: string): Promise<Resolved
       contactId: null,
       matchedVia: "lead_exact",
       entityName: lead.name,
+      company: lead.company || lead.name || undefined,
     };
   }
 

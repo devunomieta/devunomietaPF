@@ -6,7 +6,7 @@ import { Loader2, Send, Users, Shuffle, Sparkles, ShieldCheck, ShieldAlert, Tag,
 import { crmInputClass, crmLabelClass, crmPrimaryBtnClass } from "@/components/crm/CrmModal";
 import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 import type { CrmJourneyStage } from "@/lib/crm/types";
-import { sendSingleWhatsApp, createBulkWhatsApp, previewWhatsAppAudienceCount, previewCustomWhatsAppAudience } from "./actions";
+import { sendSingleWhatsApp, createBulkWhatsApp, previewWhatsAppAudienceCount, previewCustomWhatsAppAudience, lookupContactByPhone } from "./actions";
 import { hasSpintax, generateVariations } from "@/lib/crm/spintax";
 import {
   createShortLink,
@@ -51,6 +51,20 @@ export function WhatsAppForm({
     samples: Array<{ phone: string; name?: string; matched: boolean; type?: string; error?: string }>;
   } | null>(null);
   const [checkingCustom, setCheckingCustom] = useState(false);
+
+  // Single mode phone & contact lookup state
+  const [singlePhone, setSinglePhone] = useState(prefillRecipient?.phone || "");
+  const [contactName, setContactName] = useState(prefillRecipient?.name || "");
+  const [company, setCompany] = useState("");
+  const [resolvedEntity, setResolvedEntity] = useState<{
+    found: boolean;
+    name?: string;
+    company?: string;
+    type?: string;
+    clientId?: string | null;
+    leadId?: string | null;
+  } | null>(null);
+  const [isLookingUpPhone, setIsLookingUpPhone] = useState(false);
 
   // Link Shortener Modal State
   const [showShortenModal, setShowShortenModal] = useState(false);
@@ -210,6 +224,34 @@ export function WhatsAppForm({
     return () => clearTimeout(timeout);
   }, [mode, customPhonesRaw]);
 
+  // Automatically lookup phone number in CRM when typing in Single mode
+  useEffect(() => {
+    if (mode !== "single") return;
+    const cleanDigits = singlePhone.replace(/\D/g, "");
+    if (cleanDigits.length < 8) {
+      setResolvedEntity(null);
+      return;
+    }
+
+    setIsLookingUpPhone(true);
+    const timer = setTimeout(async () => {
+      try {
+        const lookup = await lookupContactByPhone(singlePhone);
+        setResolvedEntity(lookup);
+        if (lookup.found) {
+          if (lookup.name) setContactName(lookup.name);
+          if (lookup.company) setCompany(lookup.company);
+        }
+      } catch (err) {
+        console.error("Failed to lookup contact by phone:", err);
+      } finally {
+        setIsLookingUpPhone(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [mode, singlePhone]);
+
   function handleShufflePreview() {
     if (!message.trim()) {
       toast("Please enter a message template first.", "error");
@@ -285,21 +327,84 @@ export function WhatsAppForm({
       </div>
 
       {mode === "single" ? (
-        <>
-          <input type="hidden" name="clientId" value={prefillRecipient?.clientId || ""} />
-          <input type="hidden" name="leadId" value={prefillRecipient?.leadId || ""} />
+        <div className="flex flex-col gap-4 bg-background/50 border border-border/80 rounded-xl p-4 animate-in fade-in duration-200">
+          <input type="hidden" name="clientId" value={resolvedEntity?.clientId || prefillRecipient?.clientId || ""} />
+          <input type="hidden" name="leadId" value={resolvedEntity?.leadId || prefillRecipient?.leadId || ""} />
+
           <div>
-            <label className={crmLabelClass} htmlFor="phone">Phone number *</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={crmLabelClass} htmlFor="phone" style={{ marginBottom: 0 }}>
+                Phone number *
+              </label>
+              {isLookingUpPhone ? (
+                <span className="text-[11px] text-muted flex items-center gap-1">
+                  <Loader2 size={11} className="animate-spin text-accent-blue" />
+                  Checking CRM records…
+                </span>
+              ) : resolvedEntity?.found ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  <Check size={11} />
+                  Matched existing {resolvedEntity.type}: {resolvedEntity.name}
+                </span>
+              ) : singlePhone.replace(/\D/g, "").length >= 8 ? (
+                <span className="text-[11px] text-amber-400/90 font-medium">
+                  • New contact (will be saved to CRM)
+                </span>
+              ) : null}
+            </div>
             <input
               id="phone"
               name="phone"
               required
-              defaultValue={prefillRecipient?.phone || ""}
+              value={singlePhone}
+              onChange={(e) => setSinglePhone(e.target.value)}
               className={crmInputClass}
               placeholder="+234..."
             />
           </div>
-        </>
+
+          {/* Contact Details Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label className={crmLabelClass} htmlFor="contactName">
+                Contact Name {!resolvedEntity?.found && <span className="text-accent-blue">*</span>}
+              </label>
+              <input
+                id="contactName"
+                name="contactName"
+                required={!resolvedEntity?.found}
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder={resolvedEntity?.found ? resolvedEntity.name || "Full Name" : "e.g. John Doe"}
+                className={crmInputClass}
+              />
+              <span className="text-[10px] text-muted mt-1 block">
+                {resolvedEntity?.found
+                  ? "Auto-fetched from existing CRM contact record"
+                  : "Required for new numbers to personalize {{first_name}} and save to CRM"}
+              </span>
+            </div>
+
+            <div>
+              <label className={crmLabelClass} htmlFor="company">
+                Company / Organization <span className="text-muted font-normal">(optional)</span>
+              </label>
+              <input
+                id="company"
+                name="company"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder={resolvedEntity?.company || "e.g. Acme Corp"}
+                className={crmInputClass}
+              />
+              <span className="text-[10px] text-muted mt-1 block">
+                {resolvedEntity?.company
+                  ? "Auto-fetched from CRM account profile"
+                  : "Used for {{company}} personalization tag"}
+              </span>
+            </div>
+          </div>
+        </div>
       ) : mode === "custom" ? (
         /* Custom Batch Paste UI */
         <div className="flex flex-col gap-4 bg-background/50 border border-border/80 rounded-xl p-4 animate-in fade-in duration-200">
@@ -631,16 +736,14 @@ export function WhatsAppForm({
               <Scissors size={11} />
               Shorten link
             </button>
-            {mode === "bulk" && (
-              <button
-                type="button"
-                onClick={() => setShowSpintaxGuide(!showSpintaxGuide)}
-                className="text-[11px] text-accent-blue hover:underline inline-flex items-center gap-1 font-medium"
-              >
-                <Sparkles size={12} />
-                Spintax guide {showSpintaxGuide ? "▲" : "▼"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowSpintaxGuide(!showSpintaxGuide)}
+              className="text-[11px] text-accent-blue hover:underline inline-flex items-center gap-1 font-medium"
+            >
+              <Sparkles size={12} />
+              Spintax guide {showSpintaxGuide ? "▲" : "▼"}
+            </button>
           </div>
         </div>
 
@@ -648,7 +751,7 @@ export function WhatsAppForm({
           <div className="mb-3 p-3 bg-accent-blue/10 border border-accent-blue/20 rounded-xl text-xs text-foreground/90 flex flex-col gap-1.5">
             <p className="font-semibold text-accent-blue">How to use Spin Syntax (Spintax):</p>
             <p className="text-muted leading-relaxed">
-              Wrap variations in curly brackets separated by vertical pipes: <code>{"{Option 1|Option 2|Option 3}"}</code>. Each recipient receives a randomly picked variation so no two messages appear identical.
+              Wrap variations in curly brackets separated by vertical pipes: <code>{"{Option 1|Option 2|Option 3}"}</code>. Each sent message randomly picks one variation so messages aren&apos;t identical.
             </p>
             <div className="bg-background/80 rounded-lg p-2 font-mono text-[11px] text-muted border border-border">
               {"{Hi|Hello|Hey} {{first_name}}, {hope you're having a good week|just checking in}!"}
@@ -677,21 +780,19 @@ export function WhatsAppForm({
             )}
           </div>
 
-          {mode === "bulk" && (
-            <button
-              type="button"
-              onClick={handleShufflePreview}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg bg-header/40 hover:bg-header/60 text-foreground border border-border transition-colors self-start sm:self-auto"
-            >
-              <Shuffle size={13} className="text-accent-blue" />
-              Shuffle Preview
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleShufflePreview}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg bg-header/40 hover:bg-header/60 text-foreground border border-border transition-colors self-start sm:self-auto"
+          >
+            <Shuffle size={13} className="text-accent-blue" />
+            Shuffle Preview
+          </button>
         </div>
       </div>
 
       {/* Live Variations Preview */}
-      {mode === "bulk" && previewVariations.length > 0 && (
+      {previewVariations.length > 0 && (
         <div className="bg-header/30 border border-border/80 rounded-xl p-3.5 flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">

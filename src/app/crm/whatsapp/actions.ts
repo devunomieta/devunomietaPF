@@ -14,30 +14,88 @@ export async function sendSingleWhatsApp(formData: FormData): Promise<SendResult
   const supabase = createAdminClient();
 
   const phone = (formData.get("phone") as string)?.trim();
-  const message = (formData.get("message") as string)?.trim();
+  const rawMessage = (formData.get("message") as string)?.trim();
   let clientId = (formData.get("clientId") as string) || null;
   let leadId = (formData.get("leadId") as string) || null;
+  const contactName = (formData.get("contactName") as string)?.trim() || null;
+  const company = (formData.get("company") as string)?.trim() || null;
 
-  if (!phone || !message) return { error: "Phone number and message are required." };
+  if (!phone || !rawMessage) return { error: "Phone number and message are required." };
+
+  const { normalizeE164Phone } = await import("@/lib/crm/phone");
+  const normalizedPhone = normalizeE164Phone(phone);
+  if (!normalizedPhone) return { error: `"${phone}" does not appear to be a valid phone number.` };
 
   const { resolveEntityFromPhone, autoPromoteLeadToContacted } = await import("@/lib/crm/communicationResolver");
+  const { spinText } = await import("@/lib/crm/spintax");
+  const { personalizeText } = await import("@/lib/crm/personalization");
 
   // If clientId or leadId were not prefilled, auto-resolve them from the phone number
+  let resolvedName = contactName;
+  let resolvedCompany = company;
+
   if (!clientId && !leadId) {
-    const resolved = await resolveEntityFromPhone(phone);
+    const resolved = await resolveEntityFromPhone(normalizedPhone);
     clientId = resolved.clientId;
     leadId = resolved.leadId;
+    resolvedName = resolved.contactName || resolved.entityName || contactName;
+    resolvedCompany = resolved.company || company;
+
+    // If still not linked to any existing entity, but contactName was provided, auto-create a new Lead
+    if (!clientId && !leadId && contactName) {
+      try {
+        const { data: defaultJourney } = await supabase
+          .from("crm_journeys")
+          .select("id, stages")
+          .eq("is_default", true)
+          .maybeSingle();
+
+        const stages = (defaultJourney?.stages as Array<{ key: string }>) || [];
+        const firstStage = stages[0]?.key || "lead";
+
+        const { data: newLead } = await supabase
+          .from("crm_leads")
+          .insert([
+            {
+              name: contactName,
+              company: company || null,
+              phone: normalizedPhone,
+              source: "whatsapp",
+              journey_id: defaultJourney?.id || null,
+              current_stage_key: firstStage,
+            },
+          ])
+          .select("id")
+          .single();
+
+        if (newLead?.id) {
+          leadId = newLead.id;
+        }
+      } catch (leadCreateErr) {
+        console.warn("[Single WhatsApp] Failed to auto-create lead for new contact:", leadCreateErr);
+      }
+    }
   }
 
-  const result = await sendWhatsAppMessage({ phone, message });
+  // 1. Resolve Spintax: {Option1|Option2|Option3}
+  const spunMessage = spinText(rawMessage);
+
+  // 2. Personalize merge tags: {{first_name}}, {{company}}, etc.
+  const finalMessage = personalizeText(spunMessage, {
+    name: resolvedName,
+    company: resolvedCompany,
+    phone: normalizedPhone,
+  });
+
+  const result = await sendWhatsAppMessage({ phone: normalizedPhone, message: finalMessage });
 
   const { error: logError } = await supabase.from("crm_whatsapp_events").insert([
     {
       client_id: clientId,
       lead_id: leadId,
       direction: "outbound",
-      phone,
-      message,
+      phone: `+${normalizedPhone}`,
+      message: finalMessage,
       status: "error" in result ? "failed" : "sent",
       provider_message_id: "messageId" in result ? result.messageId : null,
     },
@@ -59,6 +117,40 @@ export async function sendSingleWhatsApp(formData: FormData): Promise<SendResult
     return { success: true, warning: `Sent, but couldn't save it to the activity log: ${logError.message}` };
   }
   return { success: true };
+}
+
+export type PhoneLookupResult = {
+  found: boolean;
+  name?: string;
+  company?: string;
+  type?: "contact" | "client" | "lead";
+  clientId?: string | null;
+  leadId?: string | null;
+  normalizedPhone?: string;
+};
+
+export async function lookupContactByPhone(rawPhone: string): Promise<PhoneLookupResult> {
+  await requireCrmUser({ page: "whatsapp" });
+  const { normalizeE164Phone } = await import("@/lib/crm/phone");
+  const normalized = normalizeE164Phone(rawPhone);
+  if (!normalized) return { found: false };
+
+  const { resolveEntityFromPhone } = await import("@/lib/crm/communicationResolver");
+  const entity = await resolveEntityFromPhone(normalized);
+
+  const found = Boolean(entity.contactId || entity.clientId || entity.leadId);
+  const name = entity.contactName || entity.entityName;
+  const type = entity.contactId ? "contact" : entity.clientId ? "client" : entity.leadId ? "lead" : undefined;
+
+  return {
+    found,
+    name: name || undefined,
+    company: entity.company || undefined,
+    type,
+    clientId: entity.clientId,
+    leadId: entity.leadId,
+    normalizedPhone: `+${normalized}`,
+  };
 }
 
 import { normalizeE164Phone, parseRawPhoneInput } from "@/lib/crm/phone";
