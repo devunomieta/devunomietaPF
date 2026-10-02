@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { requireCrmUser } from "@/lib/crm/auth";
 import { sendEmail } from "@/lib/brevo";
-import { processBulkSendJobBatch, getTodaysSentEmailCount } from "@/lib/crm/jobs";
+import { processBulkSendJobBatch, getTodaysSentEmailCount, triggerCrmDrainAsync } from "@/lib/crm/jobs";
 import { parseRawEmailsList } from "@/lib/crm/emailParser";
 import type { ActionResult } from "@/lib/crm/types";
 
@@ -603,7 +603,10 @@ export async function createBulkCampaign(formData: FormData): Promise<ActionResu
   const sentToday = await getTodaysSentEmailCount(supabase);
   const remainingCap = Math.max(0, dailyCap - sentToday);
 
-  await processBulkSendJobBatch(supabase, job as never, remainingCap);
+  const batchRes = await processBulkSendJobBatch(supabase, job as never, remainingCap);
+  if (!batchRes.done) {
+    triggerCrmDrainAsync(3000);
+  }
 
   revalidatePath("/crm/campaigns");
   revalidatePath("/crm/monitoring");

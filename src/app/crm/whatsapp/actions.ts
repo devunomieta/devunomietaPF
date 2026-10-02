@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { requireCrmUser } from "@/lib/crm/auth";
 import { sendWhatsAppMessage } from "@/lib/crm/green-api";
-import { processBulkWhatsAppJobBatch } from "@/lib/crm/jobs";
+import { processBulkWhatsAppJobBatch, triggerCrmDrainAsync } from "@/lib/crm/jobs";
 import type { ActionResult } from "@/lib/crm/types";
 
 type SendResult = { success: true; warning?: string } | { error: string };
@@ -281,14 +281,8 @@ export async function createBulkWhatsApp(formData: FormData): Promise<ActionResu
 
   if (jobError || !job) return { error: jobError?.message || "Could not queue the send." };
 
-  // Trigger one batch step asynchronously without blocking server action
-  try {
-    processBulkWhatsAppJobBatch(supabase, job as never).catch((e) =>
-      console.error("[WhatsApp Batch] Async background trigger error:", e)
-    );
-  } catch (err) {
-    console.warn("Async invoke failed:", err);
-  }
+  // Trigger automatic self-draining loop in the background
+  triggerCrmDrainAsync(1000);
 
   revalidatePath("/crm/whatsapp");
   revalidatePath("/crm/monitoring");

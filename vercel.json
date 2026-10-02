@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/crm-jobs",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/crm-monthly-reports",

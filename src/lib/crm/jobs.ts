@@ -441,7 +441,7 @@ export async function getTodaysSentEmailCount(supabase: SupabaseClient): Promise
 }
 
 /** Drains one batch from every queued/processing job. Used by both the cron route and the manual "process now" action. */
-export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouched: number }> {
+export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouched: number; remainingJobs?: number }> {
   const { data: jobs } = await supabase
     .from("crm_jobs")
     .select("*")
@@ -493,5 +493,44 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
     }
   }
 
-  return { jobsTouched: jobs.length };
+  // Check if any jobs remain queued or processing
+  const { count: remainingJobsCount } = await supabase
+    .from("crm_jobs")
+    .select("*", { count: "exact", head: true })
+    .in("status", ["queued", "processing"]);
+
+  const hasRemaining = (remainingJobsCount || 0) > 0;
+
+  // SELF-CHAINING ASYNC DRAIN:
+  // If jobs still remain, self-trigger next batch in the background after a safe pacing delay
+  if (hasRemaining) {
+    triggerCrmDrainAsync(25000);
+  }
+
+  return { jobsTouched: jobs.length, remainingJobs: remainingJobsCount || 0 };
+}
+
+/**
+ * Fires an unblocked background trigger to continue draining the CRM job queue.
+ * Allows bulk sending and WhatsApp batches to self-drain without waiting for external crons.
+ */
+export function triggerCrmDrainAsync(delayMs: number = 0) {
+  setTimeout(async () => {
+    try {
+      const cronSecret = process.env.CRON_SECRET;
+      // Derive baseUrl from standard Vercel environment variables or fallback to production domain
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.devunomieta.xyz");
+
+      const endpoint = `${baseUrl}/api/cron/crm-jobs`;
+      await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
+        },
+      });
+    } catch (err) {
+      console.warn("[Self-Chaining Drain] Background trigger dispatch notice:", err);
+    }
+  }, delayMs);
 }
