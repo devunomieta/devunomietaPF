@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/brevo";
-import { sendWhatsAppMessage } from "@/lib/crm/green-api";
+import { sendWhatsAppMessage } from "@/lib/crm/whatsapp";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { personalizeText } from "@/lib/crm/personalization";
 import { spinText } from "@/lib/crm/spintax";
@@ -412,6 +412,29 @@ export async function processBulkWhatsAppJobBatch(
         updated_at: new Date().toISOString(),
       })
       .eq("id", job.id);
+
+    const isQuotaExceeded = !isSuccess && (result.error.includes("Monthly quota has been exceeded") || result.error.includes("466"));
+
+    // If quota or rate limits are hit, pause/fail the job gracefully
+    if (isQuotaExceeded) {
+      console.warn(`[WhatsApp Batch] Quota/rate limit exceeded. Halting job.`);
+      await supabase
+        .from("crm_jobs")
+        .update({
+          progress: currentProgress,
+          status: "failed",
+          error: "WhatsApp sending rate limit or quota exceeded. Please check bridge status and retry.",
+          payload: {
+            ...job.payload,
+            recipientResults,
+            lastBatchAt: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
+
+      return { processed: sentCount, done: true };
+    }
 
     if (isDone) {
       return { processed: sentCount, done: true };

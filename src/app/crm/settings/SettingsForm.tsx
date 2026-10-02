@@ -27,19 +27,23 @@ export function SettingsForm({ settings, whatsappConfigured }: { settings: CrmSe
     setChecking(true);
     const result = await checkWhatsAppConnection();
     setChecking(false);
-    setConnectionState("state" in result ? result.state : `Error: ${result.error}`);
+    if ("error" in result && result.error) {
+      setConnectionState(`Error: ${result.error}`);
+    } else {
+      setConnectionState(result.state);
+    }
   }
 
   return (
     <>
       <div className="bg-header/20 border border-border rounded-xl p-4 sm:p-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">WhatsApp (GREEN-API)</h2>
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">WhatsApp (Baileys Bridge)</h2>
           <p className="text-sm text-muted flex items-center gap-1.5">
             {whatsappConfigured ? <CheckCircle2 size={14} className="text-accent-green" /> : <XCircle size={14} className="text-red-400" />}
-            {whatsappConfigured ? "Environment variables set" : "Not configured — see docs/CRM_SETUP.md"}
+            {whatsappConfigured ? "Bridge URL & Secret configured" : "Not configured (set BAILEYS_BRIDGE_URL & BAILEYS_BRIDGE_SECRET)"}
           </p>
-          {connectionState && <p className="text-xs text-muted mt-1">Instance state: {connectionState}</p>}
+          {connectionState && <p className="text-xs text-muted mt-1">Bridge state: {connectionState}</p>}
         </div>
         {whatsappConfigured && (
           <button type="button" onClick={handleCheckConnection} disabled={checking} className={crmPrimaryBtnClass}>

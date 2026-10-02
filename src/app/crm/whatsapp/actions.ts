@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { requireCrmUser } from "@/lib/crm/auth";
-import { sendWhatsAppMessage } from "@/lib/crm/green-api";
+import { sendWhatsAppMessage } from "@/lib/crm/whatsapp";
 import { processBulkWhatsAppJobBatch, triggerCrmDrainAsync } from "@/lib/crm/jobs";
 import type { ActionResult } from "@/lib/crm/types";
 

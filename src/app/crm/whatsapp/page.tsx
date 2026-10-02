@@ -2,9 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { AlertTriangle, Copy, RotateCcw, CheckCircle2, Wifi, WifiOff } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
-import { isGreenApiConfigured, getGreenApiInstanceState } from "@/lib/crm/green-api";
+import { isWhatsAppConfigured, getWhatsAppInstanceState } from "@/lib/crm/whatsapp";
 import type { CrmJourneyStage } from "@/lib/crm/types";
 import { WhatsAppForm } from "./WhatsAppForm";
+import { WhatsAppDeviceModal } from "./WhatsAppDeviceModal";
 import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
 
 export const metadata = { title: "WhatsApp · CRM" };
@@ -62,13 +63,13 @@ export default async function CrmWhatsAppPage({
     resendEventId
       ? supabase.from("crm_whatsapp_events").select("*").eq("id", resendEventId).maybeSingle()
       : Promise.resolve({ data: null }),
-    getGreenApiInstanceState(),
+    getWhatsAppInstanceState(),
   ]);
 
   const stages = ((journey?.stages as CrmJourneyStage[] | undefined) || []).sort((a, b) => a.position - b.position);
-  const configured = isGreenApiConfigured();
-  const instanceState = "state" in instanceStatusResult ? instanceStatusResult.state : "disconnected";
-  const isAuthorized = instanceState === "authorized";
+  const configured = isWhatsAppConfigured();
+  const instanceState = instanceStatusResult.state;
+  const isAuthorized = instanceState === "authorized" || instanceState === "connected";
 
   // Last 5 activities only
   const pagedEvents = ((events as EventRow[]) || []).slice(0, 5);
@@ -148,23 +149,19 @@ export default async function CrmWhatsAppPage({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-foreground">WhatsApp</h1>
-          <p className="text-sm text-muted">Single sends and small batches via GREEN-API.</p>
+          <p className="text-sm text-muted">
+            {instanceStatusResult.provider === "baileys"
+              ? "Fast, direct WhatsApp messaging via Baileys multi-device."
+              : "Single sends and small batches via WhatsApp."}
+          </p>
         </div>
 
-        {/* GREEN-API Connection Status Badge */}
-        <div className="flex items-center gap-2">
-          {isAuthorized ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>GREEN-API: Connected ({instanceState})</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-400/15 text-red-400 border border-red-400/30">
-              <WifiOff size={13} />
-              <span>GREEN-API: Disconnected ({instanceState})</span>
-            </div>
-          )}
-        </div>
+        {/* Live WhatsApp Multi-Device Connection & QR Modal */}
+        <WhatsAppDeviceModal
+          initialState={instanceState}
+          connectedPhone={instanceStatusResult.phone}
+          provider={instanceStatusResult.provider}
+        />
       </div>
 
       <CrmPageGuide
@@ -182,15 +179,15 @@ export default async function CrmWhatsAppPage({
         <div className="flex items-start gap-2 text-sm text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded-lg p-3">
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <span>
-            WhatsApp isn&apos;t configured yet — set <code>GREEN_API_ID_INSTANCE</code> and{" "}
-            <code>GREEN_API_API_TOKEN_INSTANCE</code>. See <code>docs/CRM_SETUP.md</code> for the full setup guide.
+            WhatsApp isn&apos;t configured yet — set <code>BAILEYS_BRIDGE_URL</code> and{" "}
+            <code>BAILEYS_BRIDGE_SECRET</code> in Vercel environment variables.
           </span>
         </div>
       ) : !isAuthorized ? (
-        <div className="flex items-start gap-2 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg p-3">
+        <div className="flex items-start gap-2 text-sm text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded-lg p-3">
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <span>
-            <strong>Warning: GREEN-API instance is disconnected</strong> (Status: <code>{instanceState}</code>). Scan the QR code in your GREEN-API console to re-authorize WhatsApp Web.
+            <strong>WhatsApp device is not linked.</strong> Click <strong>&quot;Link Device&quot;</strong> above to scan the live QR code with your smartphone.
           </span>
         </div>
       ) : null}

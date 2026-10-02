@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { getGreenApiInstanceState } from "@/lib/crm/green-api";
+import { getWhatsAppInstanceState } from "@/lib/crm/whatsapp";
 import type { ActionResult } from "@/lib/crm/types";
 
 export async function saveSettings(formData: FormData): Promise<ActionResult> {
@@ -60,5 +60,5 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
 
 export async function checkWhatsAppConnection() {
   await requireAdmin();
-  return getGreenApiInstanceState();
+  return getWhatsAppInstanceState();
 }

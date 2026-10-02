@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/ping-baileys",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/weekly",
       "schedule": "0 9 * * 1"
     },

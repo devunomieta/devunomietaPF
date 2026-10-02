@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { isGreenApiConfigured } from "@/lib/crm/green-api";
+import { isWhatsAppConfigured } from "@/lib/crm/whatsapp";
 import type { CrmSettings } from "@/lib/crm/types";
 import { SettingsForm } from "./SettingsForm";
 import { CrmPageGuide } from "@/components/crm/CrmPageGuide";
@@ -24,12 +24,12 @@ export default async function CrmSettingsPage() {
         description="Configure your business identity for generated invoices, set default currencies and tax rates, and review the connectivity status of external messaging gateways."
         tips={[
           "Your business logo and invoice notes will dynamically appear on all generated client invoices.",
-          "Verify that GreenAPI instance credentials are set to enable direct WhatsApp messaging.",
+          "Verify that your Baileys bridge credentials are set to enable direct WhatsApp messaging.",
           "Brevo email dispatch is governed by the daily sending cap configured here.",
         ]}
       />
 
-      <SettingsForm settings={settings as CrmSettings} whatsappConfigured={isGreenApiConfigured()} />
+      <SettingsForm settings={settings as CrmSettings} whatsappConfigured={isWhatsAppConfigured()} />
 
       <NotificationPreferencesSection />
     </div>

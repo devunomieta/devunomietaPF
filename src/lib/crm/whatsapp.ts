@@ -1,19 +1,109 @@
-// GREEN-API wraps the WhatsApp Web multi-device protocol behind a REST API.
-// See docs/CRM_SETUP.md for how to create an instance and get these two values.
-const idInstance = process.env.GREEN_API_ID_INSTANCE;
-const apiTokenInstance = process.env.GREEN_API_API_TOKEN_INSTANCE;
-const baseUrl = process.env.GREEN_API_BASE_URL || "https://api.green-api.com";
-
 import { normalizeE164Phone } from "@/lib/crm/phone";
 
-export function isGreenApiConfigured() {
-  return Boolean(idInstance && apiTokenInstance);
+/**
+ * WhatsApp Provider Integration via self-hosted Baileys bridge.
+ */
+
+const BAILEYS_URL = process.env.BAILEYS_BRIDGE_URL;
+const BAILEYS_SECRET = process.env.BAILEYS_BRIDGE_SECRET;
+
+export function isWhatsAppConfigured(): boolean {
+  return Boolean(BAILEYS_URL && BAILEYS_SECRET);
 }
 
-function normalizePhone(phone: string): string | null {
-  return normalizeE164Phone(phone);
+// Backwards compatibility alias
+export const isGreenApiConfigured = isWhatsAppConfigured;
+
+export type WhatsAppInstanceState = {
+  state: "authorized" | "connected" | "qr_ready" | "connecting" | "disconnected" | "notAuthorized" | "unconfigured";
+  phone?: string | null;
+  qr?: string | null;
+  provider: "baileys" | "none";
+  error?: string;
+};
+
+/**
+ * Fetches connection state from the Baileys bridge.
+ */
+export async function getWhatsAppInstanceState(): Promise<WhatsAppInstanceState> {
+  if (BAILEYS_URL && BAILEYS_SECRET) {
+    try {
+      const endpoint = `${BAILEYS_URL.replace(/\/$/, "")}/status`;
+      const res = await fetch(endpoint, {
+        headers: { "x-service-key": BAILEYS_SECRET },
+        cache: "no-store",
+        next: { revalidate: 0 },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const state = data.state === "connected" ? "authorized" : data.state;
+        return {
+          state: state || "disconnected",
+          phone: data.phone || null,
+          provider: "baileys",
+        };
+      }
+    } catch {
+      return { state: "disconnected", provider: "baileys", error: "Could not reach Baileys bridge" };
+    }
+  }
+
+  return { state: "unconfigured", provider: "none" };
 }
 
+// Backwards compatibility alias
+export async function getGreenApiInstanceState(): Promise<{ state: string } | { error: string }> {
+  const result = await getWhatsAppInstanceState();
+  return { state: result.state };
+}
+
+/**
+ * Fetches the active QR code for phone pairing (Baileys).
+ */
+export async function getBaileysQrCode(): Promise<{ qr: string | null; state: string } | { error: string }> {
+  if (!BAILEYS_URL || !BAILEYS_SECRET) {
+    return { error: "Baileys bridge is not configured. Set BAILEYS_BRIDGE_URL and BAILEYS_BRIDGE_SECRET." };
+  }
+
+  try {
+    const res = await fetch(`${BAILEYS_URL.replace(/\/$/, "")}/qr`, {
+      headers: { "x-service-key": BAILEYS_SECRET },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+
+    const data = await res.json();
+    return { qr: data.qr || null, state: data.state || "unknown" };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to fetch QR code from bridge" };
+  }
+}
+
+/**
+ * Log out and unlink the active WhatsApp device from the Baileys bridge.
+ */
+export async function logoutBaileysDevice(): Promise<{ success: boolean; error?: string }> {
+  if (!BAILEYS_URL || !BAILEYS_SECRET) {
+    return { success: false, error: "Baileys bridge is not configured." };
+  }
+
+  try {
+    const res = await fetch(`${BAILEYS_URL.replace(/\/$/, "")}/logout`, {
+      method: "POST",
+      headers: { "x-service-key": BAILEYS_SECRET },
+      signal: AbortSignal.timeout(8000),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Logout failed" };
+  }
+}
+
+/**
+ * WhatsApp Message Sender using Baileys bridge.
+ */
 export async function sendWhatsAppMessage({
   phone,
   message,
@@ -21,42 +111,32 @@ export async function sendWhatsAppMessage({
   phone: string;
   message: string;
 }): Promise<{ success: true; messageId: string } | { error: string }> {
-  if (!isGreenApiConfigured()) {
-    return { error: "WhatsApp is not configured — set GREEN_API_ID_INSTANCE and GREEN_API_API_TOKEN_INSTANCE." };
-  }
-
-  const chatId = normalizePhone(phone);
+  const chatId = normalizeE164Phone(phone);
   if (!chatId) return { error: `"${phone}" doesn't look like a valid phone number.` };
 
-  try {
-    const response = await fetch(
-      `${baseUrl}/waInstance${idInstance}/sendMessage/${apiTokenInstance}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chatId: `${chatId}@c.us`, message }),
-      }
-    );
+  if (!BAILEYS_URL || !BAILEYS_SECRET) {
+    return { error: "WhatsApp is not configured. Set BAILEYS_BRIDGE_URL & BAILEYS_BRIDGE_SECRET." };
+  }
 
-    const data = await response.json();
-    if (!response.ok) {
-      return { error: data?.message || `GREEN-API error (${response.status})` };
+  try {
+    const res = await fetch(`${BAILEYS_URL.replace(/\/$/, "")}/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-service-key": BAILEYS_SECRET,
+      },
+      body: JSON.stringify({ phone: chatId, message }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      return { error: data.error || `Baileys send failed (${res.status})` };
     }
 
-    return { success: true, messageId: data.idMessage as string };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unknown WhatsApp send error" };
-  }
-}
-
-export async function getGreenApiInstanceState(): Promise<{ state: string } | { error: string }> {
-  if (!isGreenApiConfigured()) return { error: "WhatsApp is not configured." };
-  try {
-    const response = await fetch(`${baseUrl}/waInstance${idInstance}/getStateInstance/${apiTokenInstance}`);
-    const data = await response.json();
-    if (!response.ok) return { error: data?.message || `GREEN-API error (${response.status})` };
-    return { state: data.stateInstance as string };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unknown error" };
+    return { success: true, messageId: data.messageId as string };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Network error contacting Baileys bridge" };
   }
 }
