@@ -350,7 +350,7 @@ export function PostEditor({ post }: { post?: any }) {
                   </div>
                   <h2 className="text-xl font-bold text-foreground mb-2">📬 Post Saved Successfully!</h2>
                   <p className="text-sm text-muted mb-6 leading-relaxed">
-                    Your publication <strong>"{savedPostInfo.title}"</strong> is now live. Would you like to broadcast this release as a beautiful dual-mode newsletter to all subscribers right now?
+                    Your publication <strong>&ldquo;{savedPostInfo.title}&rdquo;</strong> is now live. Would you like to broadcast this release as a beautiful dual-mode newsletter to all subscribers right now?
                   </p>
                   <div className="flex flex-col w-full gap-3 mt-1">
                     <button

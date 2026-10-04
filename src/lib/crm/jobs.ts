@@ -7,7 +7,6 @@ import { spinText } from "@/lib/crm/spintax";
 
 const IMPORT_BATCH_SIZE = 200;
 const BULK_SEND_BATCH_SIZE = 20;
-const BULK_WHATSAPP_BATCH_SIZE = 10;
 
 type ImportPayload = {
   targetType: "client" | "lead";
@@ -335,8 +334,10 @@ export async function processBulkWhatsAppJobBatch(
     return { processed: 0, done: false };
   }
 
-  // Smart Anti-Ban: Randomize slice size to 2 or 3 messages per burst (so it never forms a rigid pattern)
-  const randomSliceTarget = Math.random() < 0.5 ? 2 : 3;
+  // Smart Anti-Ban: Dynamic micro-burst size (1, 2, or 3 messages; weighted towards 2)
+  // This breaks robotic rhythmic chunks so bursts appear completely organic
+  const sliceRoll = Math.random();
+  const randomSliceTarget = sliceRoll < 0.25 ? 1 : sliceRoll < 0.75 ? 2 : 3;
   const sliceSize = Math.max(1, Math.min(randomSliceTarget, remainingDailyCap));
   const batch = recipients.slice(job.progress, job.progress + sliceSize);
 
@@ -474,10 +475,24 @@ export async function processBulkWhatsAppJobBatch(
     }
 
     // Apply safe randomized jitter before sending the next message in this burst
-    // Random 20s to 35s jitter so it delivers ~2 to 3 messages per minute without a detectable rhythm
+    // Organic multi-modal jitter distribution:
+    // - 20% chance: Rapid human typing/reply (12s - 18s)
+    // - 65% chance: Standard conversational pacing (20s - 40s)
+    // - 15% chance: Distracted / realistic human delay (45s - 85s)
     if (i < batch.length - 1) {
-      const jitterMs = Math.floor(Math.random() * (35000 - 20000 + 1)) + 20000;
-      console.log(`[WhatsApp Batch] In-slice jitter delay: ${(jitterMs / 1000).toFixed(1)}s`);
+      const roll = Math.random();
+      let jitterMs: number;
+      if (roll < 0.20) {
+        // Fast burst (12s - 18s)
+        jitterMs = Math.floor(Math.random() * (18000 - 12000 + 1)) + 12000;
+      } else if (roll < 0.85) {
+        // Standard pace (20s - 40s)
+        jitterMs = Math.floor(Math.random() * (40000 - 20000 + 1)) + 20000;
+      } else {
+        // Occasional human distraction / pause (45s - 85s)
+        jitterMs = Math.floor(Math.random() * (85000 - 45000 + 1)) + 45000;
+      }
+      console.log(`[WhatsApp Batch] Natural jitter delay: ${(jitterMs / 1000).toFixed(1)}s`);
       await new Promise((r) => setTimeout(r, jitterMs));
     }
   }
@@ -518,9 +533,13 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
   const sentEmailsToday = await getTodaysSentEmailCount(supabase);
   let remainingEmailCap = Math.max(0, dailyEmailCap - sentEmailsToday);
 
-  // Recommendation 5: Smart Account Warmup Scheduler
-  // If warmup mode is ON, dynamically scale the daily cap based on account age/history:
-  // Days 1-2: 15 messages/day | Days 3-4: 25 | Days 5-6: 40 | Days 7+: Full configured cap (default 60+)
+  // Smart Account Warmup Scheduler:
+  // Dynamically scale the daily cap based on outbound history:
+  // Days 1-2: 20 messages/day
+  // Days 3-4: 35 messages/day
+  // Days 5-7: 50 messages/day
+  // Days 8-10: 75 messages/day
+  // Days 11+: Full configured cap (default up to 100)
   let effectiveWhatsAppCap = settings?.whatsapp_daily_cap ?? 60;
   if (settings?.whatsapp_warmup_mode) {
     const { data: firstMessage } = await supabase
@@ -536,15 +555,17 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
         (Date.now() - new Date(firstMessage.occurred_at).getTime()) / (1000 * 60 * 60 * 24)
       );
       if (daysSinceStart <= 2) {
-        effectiveWhatsAppCap = Math.min(15, effectiveWhatsAppCap);
+        effectiveWhatsAppCap = Math.min(20, effectiveWhatsAppCap);
       } else if (daysSinceStart <= 4) {
-        effectiveWhatsAppCap = Math.min(25, effectiveWhatsAppCap);
-      } else if (daysSinceStart <= 6) {
-        effectiveWhatsAppCap = Math.min(40, effectiveWhatsAppCap);
+        effectiveWhatsAppCap = Math.min(35, effectiveWhatsAppCap);
+      } else if (daysSinceStart <= 7) {
+        effectiveWhatsAppCap = Math.min(50, effectiveWhatsAppCap);
+      } else if (daysSinceStart <= 10) {
+        effectiveWhatsAppCap = Math.min(75, effectiveWhatsAppCap);
       }
     } else {
-      // Very first day
-      effectiveWhatsAppCap = Math.min(15, effectiveWhatsAppCap);
+      // First day on new session
+      effectiveWhatsAppCap = Math.min(20, effectiveWhatsAppCap);
     }
   }
 

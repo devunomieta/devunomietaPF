@@ -263,8 +263,13 @@ export class BaileysSocketManager {
 
     try {
       try {
-        await this.sock.sendPresenceUpdate("composing", jid);
-        await new Promise((r) => setTimeout(r, 1200));
+        await this.sock.presenceSubscribe(jid);
+        await new Promise((r) => setTimeout(r, 600 + Math.random() * 600));
+
+        const presenceAction = mediaType === "audio" ? "recording" : "composing";
+        await this.sock.sendPresenceUpdate(presenceAction, jid);
+        const typingDurationMs = Math.floor(Math.random() * (6000 - 3000 + 1)) + 3000;
+        await new Promise((r) => setTimeout(r, typingDurationMs));
         await this.sock.sendPresenceUpdate("paused", jid);
       } catch {
         // ignore presence errors
@@ -325,11 +330,15 @@ export class BaileysSocketManager {
 
     const jid = `${cleanPhone}@s.whatsapp.net`;
 
-    try {
-      // Human presence simulation: Show typing indicator for 1.2s before transmission
+      // Human presence simulation: Subscribe & show composing (typing...) for 3-7s based on length
       try {
+        await this.sock.presenceSubscribe(jid);
+        await new Promise((r) => setTimeout(r, 600 + Math.random() * 600));
+
         await this.sock.sendPresenceUpdate("composing", jid);
-        await new Promise((r) => setTimeout(r, 1200));
+        // Realistic human typing delay: 3000ms - 7000ms scaled with text length and jitter
+        const typingDurationMs = Math.min(7000, Math.max(3000, message.length * 35 + Math.random() * 2500));
+        await new Promise((r) => setTimeout(r, typingDurationMs));
         await this.sock.sendPresenceUpdate("paused", jid);
       } catch {
         // Continue even if presence update fails

@@ -86,11 +86,12 @@ export async function sendCampaignAction(id: string) {
   const { data: campaign } = await adminDb.from('campaigns').select('*').eq('id', id).single()
   if (!campaign) return { error: 'Campaign not found' }
 
-  let { data: subscribers, error: subError } = await adminDb
+  const { data: initialSubs, error: subError } = await adminDb
     .from('subscribers')
     .select('email, name')
     .eq('status', 'active')
   
+  let subscribers = initialSubs;
   // Bulletproof Fallback: If query fails (e.g., missing 'status' column before running SQL),
   // automatically fallback to core subscribers list to guarantee campaigns send instantly!
   if (subError || !subscribers || subscribers.length === 0) {

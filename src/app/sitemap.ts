@@ -22,7 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }))
 
   // Secure fetch for dynamic blog posts
-  let blogRoutes: any[] = []
+  let blogRoutes: MetadataRoute.Sitemap = []
   try {
     const adminDb = createAdminClient()
     const { data: posts } = await adminDb

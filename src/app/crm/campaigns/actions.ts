@@ -650,3 +650,147 @@ export async function batchDeleteCampaigns(campaignIds: string[]): Promise<Actio
   revalidatePath("/crm/campaigns");
   return { success: true };
 }
+
+export type BouncedRecipientInfo = {
+  email: string;
+  bounceType: "hard_bounce" | "soft_bounce";
+  occurredAt: string;
+  leadId: string | null;
+  clientId: string | null;
+  contactId: string | null;
+  entityName?: string;
+  contactName?: string;
+  entityType: "lead" | "client" | "contact" | "unlinked";
+};
+
+/**
+ * Get all bounced recipients for a campaign with auto-detected CRM links
+ */
+export async function getBouncedRecipientsForCampaign(
+  campaignId: string
+): Promise<{ success: true; bounces: BouncedRecipientInfo[] } | { error: string }> {
+  try {
+    await requireCrmUser({ page: "campaigns" });
+    const supabase = createAdminClient();
+
+    const { data: events, error } = await supabase
+      .from("crm_email_events")
+      .select("recipient_email, type, occurred_at, client_id, lead_id")
+      .eq("campaign_id", campaignId)
+      .in("type", ["hard_bounce", "soft_bounce"])
+      .order("occurred_at", { ascending: false });
+
+    if (error) return { error: error.message };
+    if (!events || events.length === 0) return { success: true, bounces: [] };
+
+    // Deduplicate by recipient email (keep latest)
+    const latestEventsMap = new Map<string, (typeof events)[0]>();
+    for (const ev of events) {
+      const email = ev.recipient_email?.trim().toLowerCase();
+      if (email && !latestEventsMap.has(email)) {
+        latestEventsMap.set(email, ev);
+      }
+    }
+
+    const { resolveEntityFromEmail } = await import("@/lib/crm/communicationResolver");
+
+    const bounces: BouncedRecipientInfo[] = [];
+
+    for (const [email, ev] of Array.from(latestEventsMap.entries())) {
+      const resolved = await resolveEntityFromEmail(email);
+      let entityType: "lead" | "client" | "contact" | "unlinked" = "unlinked";
+      if (resolved.contactId) entityType = "contact";
+      else if (resolved.leadId) entityType = "lead";
+      else if (resolved.clientId) entityType = "client";
+
+      bounces.push({
+        email,
+        bounceType: ev.type as "hard_bounce" | "soft_bounce",
+        occurredAt: ev.occurred_at,
+        leadId: resolved.leadId || ev.lead_id || null,
+        clientId: resolved.clientId || ev.client_id || null,
+        contactId: resolved.contactId || null,
+        entityName: resolved.entityName,
+        contactName: resolved.contactName,
+        entityType,
+      });
+    }
+
+    return { success: true, bounces };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to load bounced recipients" };
+  }
+}
+
+/**
+ * Correct a bounced email address and relink to target lead, contact, or client
+ */
+export async function correctBouncedRecipientAndRelink(payload: {
+  oldEmail: string;
+  newEmail: string;
+  targetType: "lead" | "client" | "contact" | "unlinked";
+  targetId?: string | null;
+}): Promise<ActionResult> {
+  try {
+    await requireCrmUser({ page: "campaigns", action: "campaigns_send" });
+    const supabase = createAdminClient();
+
+    const oldClean = payload.oldEmail.trim().toLowerCase();
+    const newClean = payload.newEmail.trim().toLowerCase();
+
+    if (!newClean || !newClean.includes("@")) {
+      return { error: "Please enter a valid email address." };
+    }
+
+    if (oldClean === newClean) {
+      return { error: "New email must be different from the old bounced email." };
+    }
+
+    // 1. Remove new email from suppression list if it was previously suppressed
+    await supabase.from("crm_suppressions").delete().eq("email", newClean);
+
+    // 2. Ensure old email is preserved in suppression list to avoid repeated failures
+    await supabase
+      .from("crm_suppressions")
+      .upsert([{ email: oldClean, reason: "hard_bounce" }], { onConflict: "email" });
+
+    // 3. Update the CRM record
+    if (payload.targetType === "lead" && payload.targetId) {
+      await supabase
+        .from("crm_leads")
+        .update({ email: newClean, updated_at: new Date().toISOString() })
+        .eq("id", payload.targetId);
+    } else if (payload.targetType === "client" && payload.targetId) {
+      await supabase
+        .from("crm_clients")
+        .update({ email: newClean, updated_at: new Date().toISOString() })
+        .eq("id", payload.targetId);
+    } else if (payload.targetType === "contact" && payload.targetId) {
+      await supabase
+        .from("crm_contacts")
+        .update({ email: newClean, updated_at: new Date().toISOString() })
+        .eq("id", payload.targetId);
+    }
+
+    // Log activity
+    await supabase.from("crm_activities").insert([
+      {
+        action: "email_address_corrected",
+        details: {
+          old_email: oldClean,
+          new_email: newClean,
+          target_type: payload.targetType,
+          target_id: payload.targetId || null,
+        },
+      },
+    ]);
+
+    revalidatePath("/crm/campaigns");
+    revalidatePath("/crm/leads");
+    revalidatePath("/crm/clients");
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to update email address" };
+  }
+}
+

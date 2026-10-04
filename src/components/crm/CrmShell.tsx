@@ -79,7 +79,7 @@ function NavList({ links, pathname, onNavigate }: { links: NavLink[]; pathname: 
   const groups: {
     id: string;
     title: string;
-    icon: any;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
     links: NavLink[];
   }[] = [
     {

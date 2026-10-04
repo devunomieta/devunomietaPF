@@ -448,9 +448,9 @@ export async function fetchInvoicesReportData(
   let netCollected = 0;
   let totalOutstanding = 0;
 
-  let currentAging = { amount: 0, count: 0 };
-  let overdue30Aging = { amount: 0, count: 0 };
-  let critical60Aging = { amount: 0, count: 0 };
+  const currentAging = { amount: 0, count: 0 };
+  const overdue30Aging = { amount: 0, count: 0 };
+  const critical60Aging = { amount: 0, count: 0 };
   const channelsBreakdown: Record<string, number> = {};
 
   const items: InvoiceReportItem[] = [];

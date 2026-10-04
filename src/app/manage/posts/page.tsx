@@ -27,9 +27,12 @@ export default async function ManagePostsPage({ searchParams }: PageProps) {
     query = query.ilike('title', `%${searchQuery}%`)
   }
 
-  let { data: posts, count, error } = await query
+  const { data: initialPosts, count: initialCount, error } = await query
     .order('created_at', { ascending: false })
     .range((page - 1) * pageSize, page * pageSize - 1)
+
+  let posts = initialPosts
+  let count = initialCount
 
   // Bulletproof Fallback: If new analytics query fails (e.g., before SQL migration is executed)
   // instantly fallback to core columns to guarantee zero dashboard downtime!

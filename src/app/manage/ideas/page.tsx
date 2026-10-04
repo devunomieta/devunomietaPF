@@ -150,7 +150,7 @@ export default function IdeasPage() {
             <div className="space-y-4">
               {recommendations.map((idea) => (
                 <div 
-                  key={idea.id + Math.random()}
+                  key={idea.id}
                   onClick={() => setSelectedIdea(idea)}
                   className="group flex flex-col md:flex-row md:items-center gap-4 p-5 bg-header/40 border border-border rounded-xl hover:border-accent-blue/40 hover:bg-accent-blue/5 transition-all duration-300 cursor-pointer"
                 >
@@ -206,7 +206,7 @@ export default function IdeasPage() {
             <div className="space-y-4">
               {controversial.map((idea) => (
                 <div 
-                  key={idea.id + Math.random()}
+                  key={idea.id}
                   onClick={() => setSelectedIdea(idea)}
                   className="group flex flex-col md:flex-row md:items-center gap-4 p-5 bg-purple-400/5 border border-purple-400/20 rounded-xl hover:border-purple-400/40 hover:bg-purple-400/10 transition-all duration-300 cursor-pointer"
                 >

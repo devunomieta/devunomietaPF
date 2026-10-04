@@ -18,7 +18,7 @@ export default async function ForgotPasswordPage({
         
         <div className="text-center mb-6 mt-2">
           <h1 className="text-xl font-bold text-foreground">Forgot Password</h1>
-          <p className="text-muted text-sm mt-1">We'll send a reset link to your email</p>
+          <p className="text-muted text-sm mt-1">We&apos;ll send a reset link to your email</p>
         </div>
 
         {resolvedParams?.success ? (

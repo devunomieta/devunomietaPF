@@ -138,11 +138,12 @@ export async function broadcastPostAction(postId: string) {
   }
 
   // 2. Gather Subscriber Audience safely with fallback
-  let { data: subscribers, error: subError } = await adminDb
+  const { data: initialSubs, error: subError } = await adminDb
     .from('subscribers')
     .select('email, name')
     .eq('status', 'active')
 
+  let subscribers = initialSubs
   if (subError || !subscribers || subscribers.length === 0) {
     const { data: allSubs } = await adminDb.from('subscribers').select('email, name')
     subscribers = allSubs

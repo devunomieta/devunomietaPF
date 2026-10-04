@@ -24,8 +24,14 @@ import {
   Check,
   Clock,
   XCircle,
+  MailX,
+  ChevronDown,
+  Wrench,
 } from "lucide-react";
 import { ResponsiveTable, type CrmColumn } from "@/components/crm/ResponsiveTable";
+import { BounceCorrectionModal } from "./BounceCorrectionModal";
+import { getBouncedRecipientsForCampaign, type BouncedRecipientInfo } from "../actions";
+import { useCrmFeedback } from "@/components/crm/CrmFeedbackProvider";
 
 export type CampaignRecord = {
   id: string;
@@ -69,6 +75,7 @@ export function CampaignDetailClient({
   events: EventRecord[];
 }) {
   const router = useRouter();
+  const { toast } = useCrmFeedback();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"recipients" | "activity" | "preview">("recipients");
   const [searchFilter, setSearchFilter] = useState("");
@@ -76,6 +83,11 @@ export function CampaignDetailClient({
   const [page, setPage] = useState(1);
   const [recipientPage, setRecipientPage] = useState(1);
   const pageSize = 20;
+
+  // Bounce resolution state
+  const [showBounceModal, setShowBounceModal] = useState(false);
+  const [loadingBounces, setLoadingBounces] = useState(false);
+  const [bouncedList, setBouncedList] = useState<BouncedRecipientInfo[]>([]);
 
   useEffect(() => {
     setPage(1);
@@ -162,6 +174,41 @@ export function CampaignDetailClient({
   const clickRate = sentCount > 0 ? Math.round((uniqueClicked / sentCount) * 100) : 0;
   const deliveryRate = sentCount > 0 ? Math.round((deliveredCount / sentCount) * 100) : 100;
   const bounceRate = sentCount > 0 ? ((bounceCount / sentCount) * 100).toFixed(1) : "0.0";
+
+  // Segment counts for targeted retargeting
+  const unopenedCount = useMemo(() => {
+    let count = 0;
+    recipientActivityMap.forEach((r) => {
+      const isDelivered = r.allEvents.includes("delivered") || (!r.hasBounced && r.allEvents.includes("sent"));
+      if (isDelivered && !r.hasOpened && !r.hasBounced) count++;
+    });
+    return count;
+  }, [recipientActivityMap]);
+
+  const openedNoClickCount = useMemo(() => {
+    let count = 0;
+    recipientActivityMap.forEach((r) => {
+      if (r.hasOpened && !r.hasClicked && !r.hasBounced) count++;
+    });
+    return count;
+  }, [recipientActivityMap]);
+
+  const handleOpenBounceModal = async () => {
+    setLoadingBounces(true);
+    try {
+      const res = await getBouncedRecipientsForCampaign(campaign.id);
+      if ("error" in res) {
+        toast(res.error, "error");
+      } else {
+        setBouncedList(res.bounces);
+        setShowBounceModal(true);
+      }
+    } catch {
+      toast("Could not fetch bounced contacts.", "error");
+    } finally {
+      setLoadingBounces(false);
+    }
+  };
 
   // Filtered raw events for the log
   const filteredEvents = useMemo(() => {
@@ -376,12 +423,48 @@ export function CampaignDetailClient({
               <Copy size={13} className="text-accent-blue" />
               Duplicate &amp; Edit
             </Link>
+
+            {/* Smart Precision Retargeting Action Buttons */}
+            {unopenedCount > 0 && (
+              <Link
+                href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=unopened`}
+                title="Resend email with a fresh subject to recipients who never opened"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/25 text-xs font-semibold transition-colors shadow-2xs"
+              >
+                <RotateCcw size={13} />
+                Resend to Unopened ({unopenedCount})
+              </Link>
+            )}
+
+            {openedNoClickCount > 0 && (
+              <Link
+                href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=opened_no_click`}
+                title="Follow up with interested leads who opened but clicked no links"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/25 text-xs font-semibold transition-colors shadow-2xs"
+              >
+                <MousePointerClick size={13} />
+                Follow-up Non-Clickers ({openedNoClickCount})
+              </Link>
+            )}
+
+            {bounceCount > 0 && (
+              <button
+                onClick={handleOpenBounceModal}
+                disabled={loadingBounces}
+                title="Correct invalid addresses and link to lead or contact profiles"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+              >
+                <Wrench size={13} className={loadingBounces ? "animate-spin" : ""} />
+                Fix &amp; Resend Bounces ({bounceCount})
+              </button>
+            )}
+
             <Link
               href={`/crm/campaigns/new?duplicateId=${campaign.id}`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent-blue text-white hover:bg-accent-blue/90 text-xs font-semibold transition-colors shadow-2xs"
             >
               <RotateCcw size={13} />
-              Resend to Audience
+              Resend to All
             </Link>
           </div>
         </div>
@@ -427,7 +510,17 @@ export function CampaignDetailClient({
                 style={{ width: `${Math.min(100, openRate)}%` }}
               />
             </div>
-            <span className="text-[11px] text-muted block mt-1">Industry avg ~21.3%</span>
+            <div className="flex items-center justify-between mt-2 pt-1 border-t border-border/50 text-[11px]">
+              <span className="text-muted">Unopened: {unopenedCount}</span>
+              {unopenedCount > 0 && (
+                <Link
+                  href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=unopened`}
+                  className="text-emerald-400 hover:underline font-semibold"
+                >
+                  Resend &rarr;
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 
@@ -448,7 +541,17 @@ export function CampaignDetailClient({
                 style={{ width: `${Math.min(100, clickRate)}%` }}
               />
             </div>
-            <span className="text-[11px] text-muted block mt-1">Industry avg ~2.6%</span>
+            <div className="flex items-center justify-between mt-2 pt-1 border-t border-border/50 text-[11px]">
+              <span className="text-muted">Non-clickers: {openedNoClickCount}</span>
+              {openedNoClickCount > 0 && (
+                <Link
+                  href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=opened_no_click`}
+                  className="text-indigo-400 hover:underline font-semibold"
+                >
+                  Follow up &rarr;
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 
@@ -469,7 +572,17 @@ export function CampaignDetailClient({
                 style={{ width: `${Math.min(100, parseFloat(bounceRate))}%` }}
               />
             </div>
-            <span className="text-[11px] text-muted block mt-1">Healthy threshold &lt; 2%</span>
+            <div className="flex items-center justify-between mt-2 pt-1 border-t border-border/50 text-[11px]">
+              <span className="text-muted">Bounced: {bounceCount}</span>
+              {bounceCount > 0 && (
+                <button
+                  onClick={handleOpenBounceModal}
+                  className="text-rose-400 hover:underline font-semibold cursor-pointer"
+                >
+                  Fix &amp; Resend &rarr;
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -611,6 +724,18 @@ export function CampaignDetailClient({
             </div>
           )}
         </div>
+      )}
+
+      {/* Bounce Correction & Relinking Modal */}
+      {showBounceModal && (
+        <BounceCorrectionModal
+          campaignId={campaign.id}
+          bounces={bouncedList}
+          onClose={() => setShowBounceModal(false)}
+          onRefresh={() => {
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
