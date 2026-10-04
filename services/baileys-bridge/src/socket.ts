@@ -330,6 +330,7 @@ export class BaileysSocketManager {
 
     const jid = `${cleanPhone}@s.whatsapp.net`;
 
+    try {
       // Human presence simulation: Subscribe & show composing (typing...) for 3-7s based on length
       try {
         await this.sock.presenceSubscribe(jid);
