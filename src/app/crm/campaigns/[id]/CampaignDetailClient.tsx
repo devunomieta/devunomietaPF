@@ -89,6 +89,9 @@ export function CampaignDetailClient({
   const [loadingBounces, setLoadingBounces] = useState(false);
   const [bouncedList, setBouncedList] = useState<BouncedRecipientInfo[]>([]);
 
+  // Precision Retarget dropdown state
+  const [showResendMenu, setShowResendMenu] = useState(false);
+
   useEffect(() => {
     setPage(1);
     setRecipientPage(1);
@@ -381,8 +384,8 @@ export function CampaignDetailClient({
           <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
           Back to Campaigns
         </Link>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="min-w-0">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-lg sm:text-2xl font-bold text-foreground tracking-tight break-words">
                 {campaign.subject || "(Untitled Campaign)"}
@@ -402,7 +405,8 @@ export function CampaignDetailClient({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Action Toolbar */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               onClick={() => {
                 setRefreshing(true);
@@ -416,56 +420,139 @@ export function CampaignDetailClient({
               <RefreshCw size={13} className={refreshing ? "animate-spin text-accent-blue" : "text-muted"} />
               Refresh
             </button>
+
             <Link
               href={`/crm/campaigns/new?duplicateId=${campaign.id}`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-header/20 hover:bg-header/50 text-foreground text-xs font-semibold transition-colors shadow-2xs"
             >
               <Copy size={13} className="text-accent-blue" />
-              Duplicate &amp; Edit
+              Duplicate
             </Link>
 
-            {/* Smart Precision Retargeting Action Buttons */}
-            {unopenedCount > 0 && (
-              <Link
-                href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=unopened`}
-                title="Resend email with a fresh subject to recipients who never opened"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/25 text-xs font-semibold transition-colors shadow-2xs"
+            {/* Smart Precision Retargeting Dropdown Menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowResendMenu(!showResendMenu)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-accent-blue text-white hover:bg-accent-blue/90 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
               >
                 <RotateCcw size={13} />
-                Resend to Unopened ({unopenedCount})
-              </Link>
-            )}
-
-            {openedNoClickCount > 0 && (
-              <Link
-                href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=opened_no_click`}
-                title="Follow up with interested leads who opened but clicked no links"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/25 text-xs font-semibold transition-colors shadow-2xs"
-              >
-                <MousePointerClick size={13} />
-                Follow-up Non-Clickers ({openedNoClickCount})
-              </Link>
-            )}
-
-            {bounceCount > 0 && (
-              <button
-                onClick={handleOpenBounceModal}
-                disabled={loadingBounces}
-                title="Correct invalid addresses and link to lead or contact profiles"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
-              >
-                <Wrench size={13} className={loadingBounces ? "animate-spin" : ""} />
-                Fix &amp; Resend Bounces ({bounceCount})
+                <span>Resend / Retarget</span>
+                {(unopenedCount > 0 || openedNoClickCount > 0 || bounceCount > 0) && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+                )}
+                <ChevronDown size={13} className={`transition-transform duration-200 ${showResendMenu ? "rotate-180" : ""}`} />
               </button>
-            )}
 
-            <Link
-              href={`/crm/campaigns/new?duplicateId=${campaign.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent-blue text-white hover:bg-accent-blue/90 text-xs font-semibold transition-colors shadow-2xs"
-            >
-              <RotateCcw size={13} />
-              Resend to All
-            </Link>
+              {showResendMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowResendMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-1.5 w-72 sm:w-80 rounded-2xl bg-card/95 backdrop-blur-md border border-border p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted border-b border-border/50">
+                      Smart Retargeting Actions
+                    </div>
+
+                    {/* 1. Resend to Unopened */}
+                    <Link
+                      href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=unopened`}
+                      onClick={() => setShowResendMenu(false)}
+                      className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors ${
+                        unopenedCount > 0
+                          ? "hover:bg-header/50 text-foreground cursor-pointer"
+                          : "opacity-40 pointer-events-none text-muted"
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0 mt-0.5">
+                        <RotateCcw size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold">Resend to Unopened</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400">
+                            {unopenedCount}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted leading-tight mt-0.5">
+                          Follow up with recipients who never opened with a new subject line.
+                        </p>
+                      </div>
+                    </Link>
+
+                    {/* 2. Follow-up Non-Clickers */}
+                    <Link
+                      href={`/crm/campaigns/new?resendCampaignId=${campaign.id}&resendSegment=opened_no_click`}
+                      onClick={() => setShowResendMenu(false)}
+                      className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors ${
+                        openedNoClickCount > 0
+                          ? "hover:bg-header/50 text-foreground cursor-pointer"
+                          : "opacity-40 pointer-events-none text-muted"
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 shrink-0 mt-0.5">
+                        <MousePointerClick size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold">Follow-up Non-Clickers</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-400">
+                            {openedNoClickCount}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted leading-tight mt-0.5">
+                          Target engaged readers who opened but clicked zero embedded CTAs.
+                        </p>
+                      </div>
+                    </Link>
+
+                    {/* 3. Fix & Resend Bounces */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResendMenu(false);
+                        handleOpenBounceModal();
+                      }}
+                      className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors w-full ${
+                        bounceCount > 0
+                          ? "hover:bg-header/50 text-foreground cursor-pointer"
+                          : "opacity-40 pointer-events-none text-muted"
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 shrink-0 mt-0.5">
+                        <Wrench size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold">Fix &amp; Resend Bounces</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-400">
+                            {bounceCount}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted leading-tight mt-0.5">
+                          Correct invalid addresses, update lead profiles, and resend.
+                        </p>
+                      </div>
+                    </button>
+
+                    <div className="h-px bg-border/50 my-0.5" />
+
+                    {/* 4. Resend to Entire Audience */}
+                    <Link
+                      href={`/crm/campaigns/new?duplicateId=${campaign.id}`}
+                      onClick={() => setShowResendMenu(false)}
+                      className="flex items-center justify-between p-2 rounded-xl text-xs font-semibold hover:bg-header/50 text-muted hover:text-foreground transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <RotateCcw size={12} /> Resend to All Recipients
+                      </span>
+                      <span className="text-[10px] font-mono text-muted">{sentCount}</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
