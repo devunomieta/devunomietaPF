@@ -717,7 +717,7 @@ export function WhatsAppForm({
           <div className="flex items-start gap-1.5 text-muted leading-relaxed">
             <ShieldCheck size={14} className="text-accent-green shrink-0 mt-0.5" />
             <span>
-              <strong>Smart Anti-Ban Protection Active:</strong> Outbound messages simulate natural human typing presence (3s–7s) in organic micro-bursts of <strong>1 to 3 messages</strong> with <strong>natural randomized jitter</strong> (12s–85s) and <strong>5 to 10 minute rest pauses</strong> between bursts.
+              <strong>Smart Anti-Ban Protection Active:</strong> Outbound messages simulate natural human typing presence (3s–7s) in micro-bursts of <strong>1 to 3 messages</strong> with <strong>natural randomized jitter</strong> (12s–85s). Enforces a <strong>two-tiered rest structure</strong>: 5 to 10 min pauses between bursts, plus an extended <strong>25 to 45 min hourly shift rest</strong> every 10–12 messages.
             </span>
           </div>
         </div>

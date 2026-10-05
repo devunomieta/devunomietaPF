@@ -302,6 +302,9 @@ type BulkWhatsAppPayload = {
   recipientResults?: RecipientResult[];
   lastBatchAt?: string;
   nextBatchCooldownMs?: number;
+  sessionMessagesSent?: number;
+  sessionStartedAt?: string;
+  isHourlyRest?: boolean;
 };
 
 export async function getTodaysSentWhatsAppCount(supabase: SupabaseClient): Promise<number> {
@@ -399,8 +402,36 @@ export async function processBulkWhatsAppJobBatch(
     currentProgress++;
     const isDone = currentProgress >= job.total;
 
-    // Calculate a randomized rest pause (5 to 10 minutes) for the next batch burst
-    const nextBatchCooldownMs = Math.floor(Math.random() * (600000 - 300000 + 1)) + 300000;
+    // TWO-TIERED ANTI-BAN REST STRUCTURE:
+    // 1. Session tracking: Track messages sent in the current working block and session start time
+    const sessionMessagesSent = (job.payload.sessionMessagesSent || 0) + 1;
+    const sessionStartedAt = job.payload.sessionStartedAt || new Date().toISOString();
+    const sessionElapsedMs = Date.now() - new Date(sessionStartedAt).getTime();
+
+    // Trigger hourly rest if:
+    // - Session has reached ~10-12 messages (e.g. 10 messages) OR
+    // - Session active elapsed time has exceeded 45 to 60 minutes
+    const shouldTakeHourlyRest =
+      sessionMessagesSent >= 10 || sessionElapsedMs >= 45 * 60 * 1000;
+
+    let nextBatchCooldownMs: number;
+    let nextSessionMessagesSent = sessionMessagesSent;
+    let nextSessionStartedAt = sessionStartedAt;
+    let isHourlyRest = false;
+
+    if (shouldTakeHourlyRest) {
+      // Tier 2: Hourly Extended Macro Rest (25 to 45 minutes)
+      nextBatchCooldownMs = Math.floor(Math.random() * (2700000 - 1500000 + 1)) + 1500000;
+      isHourlyRest = true;
+      nextSessionMessagesSent = 0;
+      nextSessionStartedAt = new Date(Date.now() + nextBatchCooldownMs).toISOString();
+      console.log(
+        `[WhatsApp Batch] Hourly Work Shift Complete (${sessionMessagesSent} msgs sent). Triggering Tier 2 Macro Rest of ${(nextBatchCooldownMs / 60000).toFixed(1)} mins.`
+      );
+    } else {
+      // Tier 1: Micro-burst rest pause (5 to 10 minutes)
+      nextBatchCooldownMs = Math.floor(Math.random() * (600000 - 300000 + 1)) + 300000;
+    }
 
     // ATOMIC PROGRESS UPDATE: Immediately commit progress after EACH message
     // If the serverless process dies or is killed, it will NEVER resend to this recipient
@@ -414,6 +445,9 @@ export async function processBulkWhatsAppJobBatch(
           recipientResults,
           lastBatchAt: new Date().toISOString(),
           nextBatchCooldownMs,
+          sessionMessagesSent: nextSessionMessagesSent,
+          sessionStartedAt: nextSessionStartedAt,
+          isHourlyRest,
         },
         updated_at: new Date().toISOString(),
       })
@@ -581,7 +615,8 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
         const elapsedMs = Date.now() - new Date(lastBatchAt).getTime();
         if (elapsedMs < cooldownTargetMs) {
           const waitMinsRemaining = ((cooldownTargetMs - elapsedMs) / 60000).toFixed(1);
-          console.log(`[WhatsApp Batch] Anti-Ban Rest Period active for job ${job.id}. ${waitMinsRemaining}m remaining before next burst.`);
+          const restTypeLabel = job.payload?.isHourlyRest ? "Hourly Shift Macro Rest (25-45m)" : "Micro-Burst Rest (5-10m)";
+          console.log(`[WhatsApp Batch] Anti-Ban ${restTypeLabel} active for job ${job.id}. ${waitMinsRemaining}m remaining before next burst.`);
           continue;
         }
       }
@@ -610,10 +645,19 @@ export async function drainCrmJobs(supabase: SupabaseClient): Promise<{ jobsTouc
   const hasRemaining = (remainingJobsCount || 0) > 0;
 
   // SELF-CHAINING ASYNC DRAIN:
-  // If jobs still remain, schedule next burst after a randomized 5 to 10 minute rest pause (300s–600s)
+  // If jobs still remain, schedule next burst according to the longest remaining cooldown target
   if (hasRemaining) {
-    const nextRestPauseMs = Math.floor(Math.random() * (600000 - 300000 + 1)) + 300000; // 5 to 10 minutes
-    triggerCrmDrainAsync(nextRestPauseMs);
+    // Find if any whatsapp job is undergoing an extended hourly macro rest
+    let drainDelayMs = Math.floor(Math.random() * (600000 - 300000 + 1)) + 300000; // default 5 to 10 minutes
+    const pendingWhatsApp = jobs.find((j) => j.type === "bulk_whatsapp" && j.payload?.nextBatchCooldownMs);
+    if (pendingWhatsApp?.payload?.nextBatchCooldownMs && pendingWhatsApp.payload.lastBatchAt) {
+      const elapsed = Date.now() - new Date(pendingWhatsApp.payload.lastBatchAt).getTime();
+      const targetRemaining = pendingWhatsApp.payload.nextBatchCooldownMs - elapsed;
+      if (targetRemaining > 0) {
+        drainDelayMs = Math.max(drainDelayMs, targetRemaining);
+      }
+    }
+    triggerCrmDrainAsync(drainDelayMs);
   }
 
   return { jobsTouched: jobs.length, remainingJobs: remainingJobsCount || 0 };
