@@ -39,7 +39,7 @@ export default function EcsEcosystemPage() {
         aria-label="ECS Ecosystem Video Player"
         className="relative bg-header border border-border rounded-2xl overflow-hidden shadow-2xl p-2 sm:p-3"
       >
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-background border border-border/60">
+        <div className="relative w-full aspect-[4/5] sm:aspect-video max-h-[70vh] rounded-xl overflow-hidden bg-black border border-border/60 mx-auto">
           <iframe
             id="ecs-ecosystem-video-frame"
             src={driveEmbedUrl}
