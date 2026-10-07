@@ -36,7 +36,7 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName, resumeUrl = "/resu
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsMenuOpen(true)}
-              className="md:hidden text-muted hover:text-foreground p-1"
+              className="lg:hidden text-muted hover:text-foreground p-1"
             >
               <Menu size={20} />
             </button>
@@ -55,7 +55,7 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName, resumeUrl = "/resu
               )}
             </Link>
 
-            <nav className="hidden md:flex items-center gap-1 ml-2">
+            <nav className="hidden lg:flex items-center gap-1 ml-2">
               {navLinks.slice(0, 5).map((link) => {
                 const isActive = pathname === link.path;
                 return (
@@ -79,11 +79,12 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName, resumeUrl = "/resu
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
-              className="flex items-center gap-2 px-2 sm:px-3 py-1.5 text-xs text-muted border border-border rounded-md bg-background hover:border-muted transition-colors w-10 sm:w-64"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 text-xs text-muted border border-border rounded-md bg-background hover:border-muted transition-colors w-9 sm:w-56 lg:w-64 justify-center sm:justify-start shrink-0"
+              aria-label="Search or jump to"
             >
               <Search size={14} className="shrink-0" />
-              <span className="flex-1 text-left hidden sm:inline-block">Search or jump to...</span>
-              <kbd className="hidden sm:inline-block ml-2 border border-border rounded px-1.5 font-mono text-[10px]">
+              <span className="flex-1 text-left hidden sm:inline-block truncate whitespace-nowrap">Search or jump to...</span>
+              <kbd className="hidden md:inline-flex shrink-0 border border-border rounded px-1.5 font-mono text-[10px]">
                 ⌘K
               </kbd>
             </button>
@@ -93,15 +94,15 @@ export function HeaderClient({ logoUrl, faviconUrl, siteName, resumeUrl = "/resu
               className="text-xs font-bold bg-accent-green hover:bg-accent-green/90 text-white px-2.5 sm:px-4 py-2 rounded-md border border-white/10 transition-all flex items-center gap-2 glow"
             >
               <Zap size={14} className="fill-current shrink-0" />
-              <span>Contact Me</span>
+              <span className="hidden sm:inline">Contact Me</span>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile / Tablet Menu Overlay */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200 bg-header flex flex-col p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-50 lg:hidden animate-in fade-in duration-200 bg-header flex flex-col p-6 overflow-y-auto">
           <div className="flex items-center justify-between mb-8">
             <span className="font-bold text-lg text-foreground">Menu</span>
             <button onClick={() => setIsMenuOpen(false)} className="text-muted p-2 hover:text-foreground">
