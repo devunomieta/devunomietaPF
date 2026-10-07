@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default function EcsEcosystemPage() {
-  const driveEmbedUrl = "https://drive.google.com/file/d/1bnI6GHbjeJ_KccBxv733Lj9-u2_U8TnW/preview";
-  const driveDirectUrl = "https://drive.google.com/file/d/1bnI6GHbjeJ_KccBxv733Lj9-u2_U8TnW/view?usp=sharing";
+  const vimeoEmbedUrl = "https://player.vimeo.com/video/1233721147?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&muted=1&loop=1";
+  const vimeoDirectUrl = "https://vimeo.com/1233721147";
 
   return (
     <div className="w-full max-w-5xl mx-auto py-6 sm:py-10 space-y-8 animate-fade-in">
@@ -30,7 +30,7 @@ export default function EcsEcosystemPage() {
         </h1>
 
         <p className="text-muted text-base sm:text-lg max-w-2xl leading-relaxed">
-          My introduction, priotized ECS venture, problems I'm solving, and my first 90 days..
+          My introduction, priotized ECS venture, problems I&apos;m solving, and my first 90 days..
         </p>
       </header>
 
@@ -39,13 +39,13 @@ export default function EcsEcosystemPage() {
         aria-label="ECS Ecosystem Video Player"
         className="relative bg-header border border-border rounded-2xl overflow-hidden shadow-2xl p-2 sm:p-3"
       >
-        <div className="relative w-full aspect-[4/5] sm:aspect-video max-h-[70vh] rounded-xl overflow-hidden bg-black border border-border/60 mx-auto">
+        <div className="relative w-full aspect-[100/72.68] rounded-xl overflow-hidden bg-black border border-border/60 mx-auto">
           <iframe
             id="ecs-ecosystem-video-frame"
-            src={driveEmbedUrl}
-            title="ECS Ecosystem Video Presentation"
-            className="w-full h-full border-0 rounded-lg"
-            allow="autoplay; encrypted-media; picture-in-picture"
+            src={vimeoEmbedUrl}
+            title="Unomieta - ECS"
+            className="w-full h-full border-0 rounded-lg absolute inset-0"
+            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
             allowFullScreen
             loading="lazy"
           />
@@ -54,12 +54,12 @@ export default function EcsEcosystemPage() {
         <div className="mt-3 px-2 flex items-center justify-between text-xs text-muted">
           <span>Embedded Video Player</span>
           <a
-            href={driveDirectUrl}
+            href={vimeoDirectUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 hover:text-accent-blue transition-colors"
           >
-            <span>Open in Google Drive</span>
+            <span>Open in Vimeo</span>
             <ExternalLink size={12} />
           </a>
         </div>
